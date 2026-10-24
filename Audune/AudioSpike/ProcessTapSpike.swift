@@ -24,7 +24,7 @@ struct SpikeAliveResult: Sendable {
 @Observable
 final class ProcessTapSpike {
     var phase: SpikePhase = .idle
-    var tapAutoStart = false
+    var tapAutoStart = true
     var appliedTapAutoStart = false
     var statusText = "noErr (0)"
     var failureText = ""
@@ -89,6 +89,7 @@ final class ProcessTapSpike {
         description.name = "Audune Spike Tap"
         description.muteBehavior = .unmuted
         description.isPrivate = true
+        description.isExclusive = true
 
         var createdTap = AudioObjectID(kAudioObjectUnknown)
         let tapStatus = AudioHardwareCreateProcessTap(description, &createdTap)
@@ -111,7 +112,10 @@ final class ProcessTapSpike {
                 [kAudioSubDeviceUIDKey: outputUID]
             ],
             kAudioAggregateDeviceTapListKey: [
-                [kAudioSubTapUIDKey: description.uuid.uuidString]
+                [
+                    kAudioSubTapUIDKey: description.uuid.uuidString,
+                    kAudioSubTapDriftCompensationKey: NSNumber(value: 1)
+                ]
             ]
         ]
         var createdAggregate = AudioObjectID(kAudioObjectUnknown)

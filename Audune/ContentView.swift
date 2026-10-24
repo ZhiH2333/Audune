@@ -18,6 +18,9 @@ struct ContentView: View {
             Text("Debug macOS App Sandbox is off for this local spike. That setting is temporary and does not change Release or other platforms.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            Text("tapautostart stays on. With it off, the output device still clocks IO, but the tap buffers stayed at zero while audio played.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Button("Start") {
