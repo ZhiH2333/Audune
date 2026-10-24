@@ -48,7 +48,8 @@ struct StudioContentView: View {
                 get: { model.alwaysOnTop },
                 set: { setAlwaysOnTop($0) }
             ))
-            Spacer(minLength: 0)
+            SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -75,6 +76,10 @@ struct StudioContentView: View {
 
     private var stopDisabled: Bool {
         spike.phase == .idle
+    }
+
+    private var drawsBars: Bool {
+        spike.phase == .running && model.snapshot.isSilent == false
     }
 }
 #endif
