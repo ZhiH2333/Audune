@@ -7,6 +7,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private let spike: ProcessTapSpike
     let model = StudioModel()
     private let panel: NSPanel
+    private let hitMap = StudioHitMap()
     private var timer: Timer?
     private var screenObserver: NSObjectProtocol?
     private var didShutdown = false
@@ -27,6 +28,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     var isVisible: Bool { panel.isVisible }
 
     func show() {
+        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         clampOntoVisibleScreen()
         applyLevel()
         panel.orderFrontRegardless()
@@ -77,10 +79,22 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         return true
     }
 
+    func inspectWindowForTests() -> StudioWindowInspection {
+        StudioWindowInspection(
+            collectionBehavior: panel.collectionBehavior,
+            isMovable: panel.isMovable,
+            isMovableByWindowBackground: panel.isMovableByWindowBackground,
+            isResizable: panel.styleMask.contains(.resizable),
+            usesDragHostingView: panel.contentView is StudioHostingView<StudioContentView>
+        )
+    }
+
     private func configurePanel() {
         panel.delegate = self
         panel.isReleasedWhenClosed = false
+        panel.isMovable = true
         panel.isMovableByWindowBackground = true
+        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
         panel.hasShadow = true
@@ -104,9 +118,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             },
             close: { [weak self] in
                 self?.hide()
-            }
+            },
+            hitMap: hitMap
         )
-        panel.contentView = NSHostingView(rootView: root)
+        let host = StudioHostingView(rootView: root)
+        host.hitMap = hitMap
+        panel.contentView = host
         if panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName) == false {
             panel.center()
         }

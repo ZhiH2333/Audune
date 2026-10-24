@@ -55,6 +55,18 @@ Studio v1 observation, 2026-10-24, same MacBook Pro (Mac15,6) and macOS 27.0.1 l
 
 The floating panel can be opened from the menu bar. `StudioFrameTests` only checks off-screen frame clamping. Color, opacity, mode, and always-on-top persistence are covered by `StudioPreferencesTests`; seeing them in the window stays `NOT TESTED`.
 
+### Studio v1.1 window checks
+
+`StudioWindowBehaviorTests` checks collection-behavior flags and drag-route geometry only. These rows stay `NOT TESTED` until a real macOS GUI session runs them. Do not mark them `PASS` from that automated test.
+
+- [ ] `NOT TESTED` — With Studio open, switching to another desktop Space still shows Studio without reopening it.
+- [ ] `NOT TESTED` — A full-screen app shows Studio on that Space while Always on Top is on.
+- [ ] `NOT TESTED` — With Always on Top off, a full-screen app can cover Studio.
+- [ ] `NOT TESTED` — Leaving full screen leaves Studio visible on the normal desktop.
+- [ ] `NOT TESTED` — Dragging the canvas moves Studio. Start, Stop, mode, Always on Top, color, opacity, Reset, and Close do not start a drag.
+- [ ] `NOT TESTED` — Resizing from the window edges does not clip the graphic.
+- [ ] `NOT TESTED` — Dragging Studio to another display, then disconnecting that display, returns it to a visible screen.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

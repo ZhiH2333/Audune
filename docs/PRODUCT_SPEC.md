@@ -188,6 +188,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 #### 窗口行为
 
 - 无标题栏外观；可拖动、可调整大小；默认尺寸应能清楚显示图形。
+- 默认加入所有桌面空间：`collectionBehavior` 包含 `canJoinAllSpaces`。
+- 全屏 App 兼容同时包含 `fullScreenAuxiliary`。普通桌面和全屏空间都要在真实 Mac 上确认窗口确实可见；置顶继续使用公开的 `.floating` 与 `.normal`。
 - 提供 `Always on Top` 开关。Studio 默认置顶与否应在 UI 中清晰可见；推荐默认开启，并允许立即关闭。
 - 置顶状态使用公开 AppKit 窗口层级控制；不得使用私有窗口级别。
 - 关闭/隐藏 Studio 不停止音频捕获，也不关闭菜单栏应用。
