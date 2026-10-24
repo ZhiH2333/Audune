@@ -66,6 +66,9 @@ The floating panel can be opened from the menu bar. `StudioFrameTests` only chec
 - [ ] `NOT TESTED` — Dragging the canvas moves Studio. Start, Stop, mode, Always on Top, color, opacity, Reset, and Close do not start a drag.
 - [ ] `NOT TESTED` — Resizing from the window edges does not clip the graphic.
 - [ ] `NOT TESTED` — Dragging Studio to another display, then disconnecting that display, returns it to a visible screen.
+- [ ] `NOT TESTED` — Studio v1.1 visual review. Graphite and warm white, the canvas is the main surface, the bar stays compact, appearance settings stay collapsed until requested, and Spectrum, Waveform, and Orbit share that chrome.
+
+The v1 `NEEDS REDESIGN` row above stays as the record of the old chrome. The v1.1 visual review stays `NOT TESTED` until someone looks at it on a real Mac.
 
 ## E. Visualizers
 
