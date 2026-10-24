@@ -69,6 +69,7 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
                 sequence: sequence,
                 timestampNanoseconds: timestamp,
                 spectrum: Array(repeating: 0, count: Self.bandCount),
+                waveform: Array(repeating: 0, count: AudioSnapshot.waveformCount),
                 rms: 0,
                 peak: 0,
                 isSilent: true
@@ -82,6 +83,7 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
             sequence: sequence,
             timestampNanoseconds: timestamp,
             spectrum: smoothed.map(unit),
+            waveform: Array(repeating: 0, count: AudioSnapshot.waveformCount),
             rms: unit(frame.rms),
             peak: unit(frame.peak),
             isSilent: isSilent

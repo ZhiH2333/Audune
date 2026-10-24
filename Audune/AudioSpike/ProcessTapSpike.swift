@@ -225,7 +225,9 @@ final class ProcessTapSpike {
             let analyzer = SpectrumAnalyzer(sampleRate: sampleRate)
             while Task.isCancelled == false {
                 if let window = meter.copyLatestWindow() {
-                    snapshots.store(analyzer.process(window), generation: generation)
+                    var snapshot = analyzer.process(window)
+                    snapshot.waveform = WaveformSampler.downsample(window)
+                    snapshots.store(snapshot, generation: generation)
                 }
                 try? await Task.sleep(for: .milliseconds(32))
             }

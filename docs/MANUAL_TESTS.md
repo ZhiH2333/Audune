@@ -53,7 +53,7 @@ The floating panel can be opened from the menu bar. These rows stay `NOT TESTED`
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.
-- [ ] `NOT TESTED` — Waveform represents incoming samples and does not use random motion.
+- [ ] `NOT TESTED` — Waveform represents incoming samples and does not use random motion. `WaveformSamplerTests` uses synthetic windows only.
 - [ ] `NOT TESTED` — Orbit responds to real frequency-band data.
 - [ ] `NOT TESTED` — All modes handle silence with a stable baseline.
 - [ ] `NOT TESTED` — Switching modes repeatedly creates no duplicate capture tasks.

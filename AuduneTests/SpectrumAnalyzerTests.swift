@@ -133,5 +133,9 @@ final class SpectrumAnalyzerTests: XCTestCase {
         for value in snapshot.spectrum {
             XCTAssertTrue(value.isFinite && value >= 0 && value <= 1, file: file, line: line)
         }
+        XCTAssertEqual(snapshot.waveform.count, AudioSnapshot.waveformCount, file: file, line: line)
+        for value in snapshot.waveform {
+            XCTAssertEqual(value, 0, file: file, line: line)
+        }
     }
 }

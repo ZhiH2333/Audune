@@ -6,11 +6,26 @@ import SwiftUI
 final class StudioModel {
     var snapshot = AudioSnapshot.zero
     var alwaysOnTop = true
+    var mode: StudioVisualMode = .spectrum
+}
+
+enum StudioVisualMode: String, CaseIterable, Identifiable {
+    case spectrum
+    case waveform
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .spectrum: return "Spectrum"
+        case .waveform: return "Waveform"
+        }
+    }
 }
 
 struct StudioContentView: View {
     @Bindable var spike: ProcessTapSpike
-    var model: StudioModel
+    @Bindable var model: StudioModel
     var setAlwaysOnTop: (Bool) -> Void
     var close: () -> Void
 
@@ -48,8 +63,22 @@ struct StudioContentView: View {
                 get: { model.alwaysOnTop },
                 set: { setAlwaysOnTop($0) }
             ))
-            SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Picker("Mode", selection: $model.mode) {
+                ForEach(StudioVisualMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Group {
+                switch model.mode {
+                case .spectrum:
+                    SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars)
+                case .waveform:
+                    WaveformCanvas(samples: model.snapshot.waveform)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
