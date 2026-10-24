@@ -25,11 +25,5 @@ nonisolated enum StudioFrame {
 }
 
 nonisolated enum StudioWindowStorage {
-    static let alwaysOnTopKey = "studio.alwaysOnTop"
     static let frameAutosaveName = "AuduneStudio"
-
-    static func alwaysOnTop(in defaults: UserDefaults = .standard) -> Bool {
-        guard defaults.object(forKey: alwaysOnTopKey) != nil else { return true }
-        return defaults.bool(forKey: alwaysOnTopKey)
-    }
 }

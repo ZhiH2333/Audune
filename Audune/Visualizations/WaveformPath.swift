@@ -34,6 +34,7 @@ nonisolated enum WaveformPath {
 
 struct WaveformCanvas: View {
     var samples: [Float]
+    var color: Color
 
     var body: some View {
         Canvas { context, size in
@@ -48,7 +49,7 @@ struct WaveformCanvas: View {
             }
             context.stroke(
                 path,
-                with: .color(Color(red: 0.96, green: 0.94, blue: 0.90)),
+                with: .color(color),
                 lineWidth: 1.5
             )
         }

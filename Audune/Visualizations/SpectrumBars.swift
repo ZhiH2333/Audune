@@ -47,19 +47,20 @@ nonisolated enum SpectrumBars {
 struct SpectrumCanvas: View {
     var spectrum: [Float]
     var drawsBars: Bool
+    var color: Color
 
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let color = GraphicsContext.Shading.color(Color(red: 0.96, green: 0.94, blue: 0.90))
+            let shade = GraphicsContext.Shading.color(color)
             if drawsBars {
                 for rect in SpectrumBars.bars(spectrum: spectrum, in: bounds) {
-                    context.fill(Path(rect), with: color)
+                    context.fill(Path(rect), with: shade)
                 }
             } else {
                 let line = SpectrumBars.baseline(in: bounds)
                 if line.width > 0, line.height > 0 {
-                    context.fill(Path(line), with: color)
+                    context.fill(Path(line), with: shade)
                 }
             }
         }

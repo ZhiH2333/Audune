@@ -20,7 +20,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         super.init()
-        model.alwaysOnTop = StudioWindowStorage.alwaysOnTop()
+        apply(StudioPreferences.load())
         configurePanel()
     }
 
@@ -59,8 +59,17 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     func setAlwaysOnTop(_ enabled: Bool) {
         model.alwaysOnTop = enabled
-        UserDefaults.standard.set(enabled, forKey: StudioWindowStorage.alwaysOnTopKey)
+        savePreferences()
         applyLevel()
+    }
+
+    func savePreferences() {
+        currentPreferences().save()
+    }
+
+    func resetPreferences() {
+        StudioPreferences.reset()
+        apply(StudioPreferences.standard)
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -76,8 +85,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.becomesKeyOnlyIfNeeded = false
         panel.hasShadow = true
         panel.title = "Audune Studio"
-        panel.isOpaque = true
-        panel.backgroundColor = NSColor(srgbRed: 24.0 / 255.0, green: 26.0 / 255.0, blue: 30.0 / 255.0, alpha: 1)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
         panel.minSize = StudioFrame.minimumSize
         panel.contentMinSize = StudioFrame.minimumSize
         applyLevel()
@@ -86,6 +95,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model: model,
             setAlwaysOnTop: { [weak self] enabled in
                 self?.setAlwaysOnTop(enabled)
+            },
+            savePreferences: { [weak self] in
+                self?.savePreferences()
+            },
+            resetPreferences: { [weak self] in
+                self?.resetPreferences()
             },
             close: { [weak self] in
                 self?.hide()
@@ -109,6 +124,23 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func applyLevel() {
         panel.level = model.alwaysOnTop ? .floating : .normal
+    }
+
+    private func apply(_ preferences: StudioPreferences) {
+        model.mode = preferences.mode
+        model.alwaysOnTop = preferences.alwaysOnTop
+        model.backgroundOpacity = preferences.backgroundOpacity
+        model.accent = preferences.accent
+        applyLevel()
+    }
+
+    private func currentPreferences() -> StudioPreferences {
+        StudioPreferences(
+            mode: model.mode,
+            alwaysOnTop: model.alwaysOnTop,
+            backgroundOpacity: model.backgroundOpacity,
+            accent: model.accent
+        )
     }
 
     private func clampOntoVisibleScreen() {

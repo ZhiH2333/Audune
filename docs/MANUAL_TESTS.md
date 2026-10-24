@@ -48,7 +48,7 @@
 - [ ] `NOT TESTED` — Window geometry and chosen mode restore after app restart.
 - [ ] `NOT TESTED` — Moving to an external display then disconnecting it restores Studio to a visible screen.
 
-The floating panel can be opened from the menu bar. These rows stay `NOT TESTED` until a real macOS GUI session runs them. `StudioFrameTests` only checks off-screen frame clamping.
+The floating panel can be opened from the menu bar. These rows stay `NOT TESTED` until a real macOS GUI session runs them. `StudioFrameTests` only checks off-screen frame clamping. Color, opacity, mode, and always-on-top persistence are covered by `StudioPreferencesTests`; seeing them in the window stays `NOT TESTED`.
 
 ## E. Visualizers
 

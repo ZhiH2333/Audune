@@ -5,30 +5,18 @@ import SwiftUI
 @Observable
 final class StudioModel {
     var snapshot = AudioSnapshot.zero
-    var alwaysOnTop = true
+    var alwaysOnTop = StudioPreferences.standard.alwaysOnTop
     var mode: StudioVisualMode = .spectrum
-}
-
-enum StudioVisualMode: String, CaseIterable, Identifiable {
-    case spectrum
-    case waveform
-    case orbit
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .spectrum: return "Spectrum"
-        case .waveform: return "Waveform"
-        case .orbit: return "Orbit"
-        }
-    }
+    var backgroundOpacity = StudioPreferences.standard.backgroundOpacity
+    var accent: StudioAccent = .warm
 }
 
 struct StudioContentView: View {
     @Bindable var spike: ProcessTapSpike
     @Bindable var model: StudioModel
     var setAlwaysOnTop: (Bool) -> Void
+    var savePreferences: () -> Void
+    var resetPreferences: () -> Void
     var close: () -> Void
 
     var body: some View {
@@ -37,6 +25,7 @@ struct StudioContentView: View {
                 Text("Studio")
                     .font(.headline)
                 Spacer()
+                Button("Reset", action: resetPreferences)
                 Button("Close", action: close)
             }
             Text(title)
@@ -72,22 +61,39 @@ struct StudioContentView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            Picker("Color", selection: $model.accent) {
+                ForEach(StudioAccent.allCases) { accent in
+                    Text(accent.title).tag(accent)
+                }
+            }
+            HStack {
+                Text("Opacity")
+                Slider(value: $model.backgroundOpacity, in: StudioPreferences.opacityRange)
+            }
+            .accessibilityElement(children: .combine)
             Group {
                 switch model.mode {
                 case .spectrum:
-                    SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars)
+                    SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars, color: accentColor)
                 case .waveform:
-                    WaveformCanvas(samples: model.snapshot.waveform)
+                    WaveformCanvas(samples: model.snapshot.waveform, color: accentColor)
                 case .orbit:
-                    OrbitCanvas(spectrum: model.snapshot.spectrum, drawsLevels: drawsBars)
+                    OrbitCanvas(spectrum: model.snapshot.spectrum, drawsLevels: drawsBars, color: accentColor)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(red: 24.0 / 255.0, green: 26.0 / 255.0, blue: 30.0 / 255.0))
+        .background(Color(red: 24.0 / 255.0, green: 26.0 / 255.0, blue: 30.0 / 255.0).opacity(model.backgroundOpacity))
         .foregroundStyle(Color(red: 0.96, green: 0.94, blue: 0.90))
+        .onChange(of: model.mode) { _, _ in savePreferences() }
+        .onChange(of: model.accent) { _, _ in savePreferences() }
+        .onChange(of: model.backgroundOpacity) { _, _ in savePreferences() }
+    }
+
+    private var accentColor: Color {
+        Color(red: model.accent.red, green: model.accent.green, blue: model.accent.blue)
     }
 
     private var title: String {

@@ -53,6 +53,7 @@ nonisolated enum OrbitLayout {
 struct OrbitCanvas: View {
     var spectrum: [Float]
     var drawsLevels: Bool
+    var color: Color
 
     var body: some View {
         Canvas { context, size in
@@ -66,7 +67,7 @@ struct OrbitCanvas: View {
             }
             context.stroke(
                 path,
-                with: .color(Color(red: 0.96, green: 0.94, blue: 0.90)),
+                with: .color(color),
                 lineWidth: 2
             )
         }
