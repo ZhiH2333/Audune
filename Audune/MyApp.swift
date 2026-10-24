@@ -9,9 +9,10 @@ import AppKit
     #endif
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "debug") {
             #if os(macOS)
             ContentView(spike: spike)
+                .background(MenuBarInstaller(spike: spike))
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     spike.stop()
                 }
