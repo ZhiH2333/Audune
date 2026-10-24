@@ -48,6 +48,8 @@
 - [ ] `NOT TESTED` — Window geometry and chosen mode restore after app restart.
 - [ ] `NOT TESTED` — Moving to an external display then disconnecting it restores Studio to a visible screen.
 
+The floating panel can be opened from the menu bar. These rows stay `NOT TESTED` until a real macOS GUI session runs them. `StudioFrameTests` only checks off-screen frame clamping.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. There is no Studio spectrum in this build.

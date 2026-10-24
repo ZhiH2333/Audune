@@ -6,6 +6,8 @@ import SwiftUI
 final class MenuBarController: NSObject {
     private let spike: ProcessTapSpike
     private let openDebug: () -> Void
+    private let toggleStudio: () -> Void
+    private let studioVisible: () -> Bool
     private let model = MenuBarModel()
     private let spectrumImage = MenuBarSpectrumImage()
     private let statusItem = NSStatusBar.system.statusItem(withLength: MenuBarSpectrumImage.pointSize.width)
@@ -16,14 +18,22 @@ final class MenuBarController: NSObject {
     private var lastReadingRefresh = ContinuousClock.now
     private var didShutdown = false
 
-    init(spike: ProcessTapSpike, openDebug: @escaping () -> Void) {
+    init(
+        spike: ProcessTapSpike,
+        openDebug: @escaping () -> Void,
+        toggleStudio: @escaping () -> Void,
+        studioVisible: @escaping () -> Bool
+    ) {
         self.spike = spike
         self.openDebug = openDebug
+        self.toggleStudio = toggleStudio
+        self.studioVisible = studioVisible
         super.init()
         let root = MenuBarPopoverView(
             model: model,
             start: { [weak self] in self?.startCapture() },
             stop: { [weak self] in self?.stopCapture() },
+            toggleStudio: { [weak self] in self?.toggleStudioWindow() },
             openDebug: { [weak self] in self?.showDebugWindow() },
             quit: { NSApp.terminate(nil) }
         )
@@ -72,6 +82,11 @@ final class MenuBarController: NSObject {
         openDebug()
     }
 
+    private func toggleStudioWindow() {
+        popover.performClose(nil)
+        toggleStudio()
+    }
+
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusItem.button else { return }
         if popover.isShown {
@@ -110,6 +125,8 @@ final class MenuBarController: NSObject {
         if model.showDetail != presentation.showDetail { model.showDetail = presentation.showDetail }
         if model.startDisabled != presentation.startDisabled { model.startDisabled = presentation.startDisabled }
         if model.stopDisabled != presentation.stopDisabled { model.stopDisabled = presentation.stopDisabled }
+        let studioOpen = studioVisible()
+        if model.studioVisible != studioOpen { model.studioVisible = studioOpen }
         guard let button = statusItem.button else { return }
         let sequence = presentation.state == .receiving ? snapshot.sequence : nil
         if renderedState == presentation.state && renderedSequence == sequence { return }
@@ -151,20 +168,29 @@ struct MenuBarInstaller: View {
     @Bindable var spike: ProcessTapSpike
     @Environment(\.openWindow) private var openWindow
     @State private var controller: MenuBarController?
+    @State private var studio: StudioWindowController?
 
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
             .onAppear {
                 guard controller == nil else { return }
+                let studio = StudioWindowController(spike: spike)
+                self.studio = studio
                 let openWindow = openWindow
-                controller = MenuBarController(spike: spike) {
-                    openWindow(id: "debug")
-                    NSApp.activate()
-                }
+                controller = MenuBarController(
+                    spike: spike,
+                    openDebug: {
+                        openWindow(id: "debug")
+                        NSApp.activate()
+                    },
+                    toggleStudio: { studio.toggle() },
+                    studioVisible: { studio.isVisible }
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 controller?.shutdown()
+                studio?.shutdown()
             }
     }
 }

@@ -10,12 +10,14 @@ final class MenuBarModel {
     var showDetail = false
     var startDisabled = false
     var stopDisabled = true
+    var studioVisible = false
 }
 
 struct MenuBarPopoverView: View {
     @Bindable var model: MenuBarModel
     var start: () -> Void
     var stop: () -> Void
+    var toggleStudio: () -> Void
     var openDebug: () -> Void
     var quit: () -> Void
 
@@ -39,6 +41,7 @@ struct MenuBarPopoverView: View {
                 Button("Stop", action: stop)
                     .disabled(model.stopDisabled)
             }
+            Button(model.studioVisible ? "Hide Studio" : "Open Studio", action: toggleStudio)
             Button("Open Debug Window", action: openDebug)
             Divider()
             Button("Quit Audune", action: quit)
