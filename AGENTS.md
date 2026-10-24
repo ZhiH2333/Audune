@@ -7,8 +7,11 @@ Read `docs/PRODUCT_SPEC.md` and `docs/GITHUB_ISSUES.md` before changing code. Th
 - Work only on the `dev` branch. Before editing, run `git status --short` and `git branch --show-current`.
 - If not on `dev` and the worktree is clean, switch to an existing `dev` branch. If switching could affect uncommitted work, stop and report; never stash/reset/discard user changes. If `dev` does not exist, create it from the current clean baseline. Never create another development branch.
 - Never switch to `main` or continue work on another branch. Never merge, rebase, hard-reset, force-push, delete branches, or overwrite existing user changes.
-- **Do not create commits automatically.** Commit only when the user explicitly asks. Before committing, inspect the diff and report which files will be included. Do not push unless explicitly asked.
-- When explicitly asked to commit, use exactly `:gitmoji: short-git-message`, one line, for example `:sparkles: add system audio capture`. Do not add `feat:`, issue numbers, or other prefixes unless the user changes this rule.
+- **Automatically create one commit after each completed TODO.** A TODO means a checkbox/task item in the approved plan or GitHub Issue. Commit it only after its implementation is complete and its relevant checks/tests pass. Do not wait for the user to ask for each commit.
+- Keep commits small and traceable: normally one commit per completed TODO. If multiple checklist items genuinely cannot be built or validated independently, define the smallest independently verifiable unit in the plan and commit that unit; do not batch unrelated completed TODOs just to reduce the commit count, and do not split work into meaningless micro-commits.
+- Before each commit, inspect `git status --short` and the full staged diff. Stage only files belonging to that TODO. Never include pre-existing user changes, unrelated files, secrets, local settings, build outputs, or generated artifacts. If ownership of a changed file is ambiguous, stop and ask rather than commit it.
+- If relevant checks fail, the TODO is incomplete: do not mark it complete or commit it. Fix the issue or report the blocker. For documentation-only TODOs, run an appropriate consistency/link/format check when available. Never bypass failing hooks or tests just to commit.
+- Use exactly `:gitmoji: short-git-message` for every commit, one line, for example `:sparkles: add system audio capture`. Use one gitmoji shortcode, one space, and a short English description. Do not add `feat:`, issue numbers, or other prefixes. Do not automatically push.
 - Re-check the active branch at task completion. It must still be `dev`.
 
 ## Coding workflow
@@ -42,4 +45,4 @@ At the end of each task, report:
 - Manual tests still required.
 - Known limitations or blockers.
 - Confirmation the current branch remains `dev`.
-- Do not create a commit unless asked.
+- After each completed and validated TODO, create the required commit automatically; report the commit hash and message in the completion report. Never push automatically.

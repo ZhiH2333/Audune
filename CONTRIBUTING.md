@@ -6,9 +6,10 @@ Thanks for contributing. Audune is a native, local-first macOS audio visualizer.
 
 - Development stays on `dev`.
 - Do not create extra working branches, merge, rebase, reset hard, force-push, or discard user changes.
-- Do not create commits automatically. Commit only when the maintainer explicitly asks.
-- If asked to commit, use the exact one-line format `:gitmoji: short-git-message`, e.g. `:sparkles: add spectrum renderer`.
-- Do not push unless explicitly asked.
+- Automatically create one commit after each completed, independently verifiable TODO/checklist item once its relevant tests/checks pass. Do not ask for permission for each commit.
+- Before each commit, inspect status and staged diff; stage only files related to that TODO and never include pre-existing user changes or unrelated files. If relevant tests fail, do not commit that TODO.
+- Use exactly `:gitmoji: short-git-message`, e.g. `:sparkles: add spectrum renderer`. Use one gitmoji shortcode, one space, and a short English description; no `feat:` or issue-number prefix.
+- Never push automatically.
 
 ## Development workflow
 

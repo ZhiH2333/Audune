@@ -19,8 +19,9 @@
 1. **所有开发工作始终位于 `dev` 分支。** 开始操作前检查 `git status --short` 和 `git branch --show-current`。
 2. 若当前不在 `dev` 且工作区干净、已有 `dev` 分支，可以切换到 `dev`；若工作区有未提交改动、切换可能丢失或覆盖工作，先停止并报告，不自行 stash、reset、discard 或覆盖用户改动。若没有 `dev`，只有在工作区干净时才从当前基线创建 `dev`。不得创建其他开发分支。
 3. **禁止切换到 `main` 或其他分支继续开发；禁止 merge、rebase、reset --hard、force push，以及删除或覆盖用户已有的改动。**
-4. **不要自动创建 Git commit。** 只有用户明确要求提交时才提交；提交前汇报将纳入提交的文件并检查 diff。禁止为了“完成任务”而自作主张提交。
-5. 用户明确要求提交时，commit message 必须严格符合格式：
+4. **每完成一个 TODO 自动创建一次 Git commit。** TODO 指已批准计划或 GitHub Issue 中的一个可勾选任务项。该项实现完整且相关测试/检查通过后，无需再次询问用户，立即提交。通常每个 TODO 一个 commit；若多个子项在技术上无法独立构建或验证，应在计划阶段说明并合并为最小可独立验收单元，禁止囤积多个无关已完成 TODO。
+5. 每次提交前检查 `git status --short` 和完整 staged diff，只暂存属于当前 TODO 的文件；绝不混入用户已有修改、无关文件、密钥、个人配置或构建产物。相关测试失败时，该 TODO 不算完成，不得提交。文件归属不明确时停止并询问。
+6. 每个 commit message 必须严格符合格式：
 
    ```text
    :gitmoji: short-git-message
@@ -33,8 +34,8 @@
    - `:white_check_mark: add analyzer unit tests`
    - `:memo: document audio capture permissions`
 
-   只写一行；使用一个 gitmoji shortcode、一个空格和简短英文描述。不要添加 `feat:`、Issue 编号或其他前缀，除非用户以后明确修改格式。不要自动 push。
-6. 一个阶段结束时复核当前分支仍是 `dev`，汇报修改内容、构建/测试结果、未解决项。不得声称未实际运行的测试已经通过。
+   只写一行；使用一个 gitmoji shortcode、一个空格和简短英文描述。不要添加 `feat:`、Issue 编号或其他前缀。**自动 commit，但绝不自动 push。** 若 Git hook 或提交失败，不得绕过检查；报告原因并停止。
+7. 每次 TODO 提交后继续当前获批任务；最终复核分支仍是 `dev`，汇报各 TODO 的 commit hash/message、修改内容、构建/测试结果及未解决项。不得声称未实际运行的测试已经通过。
 
 ### 实施行为规则
 
@@ -713,7 +714,8 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 - [ ] 无新增未授权网络请求、遥测、音频存储或不必要依赖。
 - [ ] 文档同步更新（如行为/限制/安装要求变化）。
 - [ ] 当前 Git 分支仍为 `dev`。
-- [ ] 未自动提交；除非用户明确要求，否则保持工作区改动供用户检查。
+- [ ] 每个已完成且通过相关验证的 TODO 均有独立 commit；未完成或相关测试失败的 TODO 未提交。
+- [ ] commit message 严格使用 `:gitmoji: short-git-message`；没有自动 push，也没有把用户已有改动混入 commit。
 
 ---
 
@@ -751,6 +753,6 @@ Audune 的 Core MVP 在以下条件全部满足时才算可交付：
 6. 自动化 DSP/设置测试通过，人工音频/窗口测试清单已执行并记录。
 7. 隐私承诺与代码一致；不存在音频保存、上传、遥测和麦克风 fallback。
 8. 连续运行 30 分钟、反复启停捕获和基本设备切换测试没有阻塞性问题。
-9. 项目在 `dev` 分支完成；没有未经用户明确要求而生成的 Git commit 或 push。
+9. 项目在 `dev` 分支完成；每个已完成且通过相关验证的 TODO 均按规定创建独立 commit；没有自动 push。
 
 Island 与 Desktop Magnet 的完整验收分别作为后续版本里程碑，不得为了宣称 Core MVP 完成而伪称已经交付。

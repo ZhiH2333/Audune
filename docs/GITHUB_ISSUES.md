@@ -1,6 +1,6 @@
 # Audune — GitHub Issue Backlog
 
-> Copy these issues into GitHub. Implement them sequentially by dependency, one issue per coding session unless the user explicitly groups work. Current branch must remain `dev`; do not auto-commit.
+> Copy these issues into GitHub. Implement them sequentially by dependency, one issue per coding session unless the user explicitly groups work. Current branch must remain `dev`. Automatically commit each completed TODO after its relevant checks/tests pass; never auto-push.
 
 ## Suggested labels
 
@@ -582,4 +582,5 @@ Core MVP released and profiled.
 - [ ] Relevant automated tests passed; manual tests are honestly marked.
 - [ ] No unrelated refactor, private API, new unnecessary dependency, raw audio file, network upload, or telemetry was introduced.
 - [ ] User-facing states and docs reflect actual behavior.
-- [ ] No commit or push was performed unless the user explicitly requested it.
+- [ ] Each completed and validated TODO has its own commit using `:gitmoji: short-git-message`.
+- [ ] No automatic push occurred; commits contain only files belonging to the corresponding TODO, not pre-existing user changes.

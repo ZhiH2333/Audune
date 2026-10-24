@@ -84,7 +84,9 @@
 - [ ] `PASS / FAIL / NOT TESTED` — No raw audio file is created.
 - [ ] `PASS / FAIL / NOT TESTED` — No audio data, telemetry, or analytics is sent over the network.
 - [ ] `PASS / FAIL / NOT TESTED` — Permission and capture errors remain distinguishable from silence.
-- [ ] `PASS / FAIL / NOT TESTED` — Current Git branch is `dev`; no commit/push occurred unless explicitly requested.
+- [ ] `PASS / FAIL / NOT TESTED` — Current Git branch is `dev`.
+- [ ] `PASS / FAIL / NOT TESTED` — Every completed and validated TODO has its own commit using `:gitmoji: short-git-message`.
+- [ ] `PASS / FAIL / NOT TESTED` — No automatic push occurred and no pre-existing user changes were included in commits.
 
 ## Results
 
