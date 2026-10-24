@@ -43,12 +43,17 @@
 ## D. Studio
 
 - [ ] `NOT TESTED` — Studio opens and closes independently of the audio engine.
-- [ ] `NOT TESTED` — Studio can be moved and resized without graphic clipping.
+- [ ] `FAIL` — Studio can be dragged. On the real Mac session below, the borderless panel did not move.
+- [ ] `NOT TESTED` — Studio can be resized without graphic clipping.
 - [ ] `NOT TESTED` — Always-on-Top on/off changes window layering as expected.
 - [ ] `NOT TESTED` — Window geometry and chosen mode restore after app restart.
 - [ ] `NOT TESTED` — Moving to an external display then disconnecting it restores Studio to a visible screen.
+- [ ] `FAIL` — Studio is visible on every macOS desktop Space. It appeared on only one Space.
+- [ ] `NEEDS REDESIGN` — Studio visual review. The current chrome is not acceptable and needs a systematic redesign.
 
-The floating panel can be opened from the menu bar. These rows stay `NOT TESTED` until a real macOS GUI session runs them. `StudioFrameTests` only checks off-screen frame clamping. Color, opacity, mode, and always-on-top persistence are covered by `StudioPreferencesTests`; seeing them in the window stays `NOT TESTED`.
+Studio v1 observation, 2026-10-24, same MacBook Pro (Mac15,6) and macOS 27.0.1 listed above. Debug build at `69a3f68` (`:sparkles: add studio visual settings`). Confirmed on that build: multi-desktop `FAIL`, dragging `FAIL`, visual review `NEEDS REDESIGN`. These three are not `PASS`. Rows that were not run in that session stay `NOT TESTED`.
+
+The floating panel can be opened from the menu bar. `StudioFrameTests` only checks off-screen frame clamping. Color, opacity, mode, and always-on-top persistence are covered by `StudioPreferencesTests`; seeing them in the window stays `NOT TESTED`.
 
 ## E. Visualizers
 
@@ -93,7 +98,7 @@ The floating panel can be opened from the menu bar. These rows stay `NOT TESTED`
 ## Results
 
 - Passed: local playback, pause, resume, menu-bar response, silence baseline, popover, shared debug-window counters, Quit, and both appearance checks recorded on 2026-10-24. `Open Debug Window` brought the existing counter window forward. Frames stayed at 1326080 across two reads after Stop. Quit left output unmuted on `MacBook Pro扬声器`.
-- Failed: none in the cases above.
-- Not tested: permission prompt (Start did not show one and capture still ran), denying or changing permission, microphone prompt, browser audio, headphones, Bluetooth, sleep, 20 start/stop cycles, 30-minute run, mode switching, Studio, Settings, retry, Island, Magnet, waveform, orbit, and `Capture failed`. `Starting` passed too quickly to read. Output volume was 44 unmuted near the start of the session and 38 unmuted immediately before and after Quit; the device did not change and Quit did not mute playback, but the earlier volume change was not bracketed, so that checklist row stays `NOT TESTED`.
+- Failed: Studio v1 at `69a3f68` on 2026-10-24 — multi-desktop `FAIL`, dragging `FAIL`, visual review `NEEDS REDESIGN`. The earlier menu-bar cases in this file had no failures.
+- Not tested: permission prompt (Start did not show one and capture still ran), denying or changing permission, microphone prompt, browser audio, headphones, Bluetooth, sleep, 20 start/stop cycles, 30-minute run, mode switching, Studio open/close, resize, Always-on-Top, geometry restore, external-display disconnect, Settings, retry, Island, Magnet, waveform, orbit, and `Capture failed`. `Starting` passed too quickly to read. Output volume was 44 unmuted near the start of the session and 38 unmuted immediately before and after Quit; the device did not change and Quit did not mute playback, but the earlier volume change was not bracketed, so that checklist row stays `NOT TESTED`.
 - Issues filed: none.
 - Logs/screen recordings (avoid capturing private audio content): none saved in the repository.
