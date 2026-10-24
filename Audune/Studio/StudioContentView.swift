@@ -12,6 +12,7 @@ final class StudioModel {
 enum StudioVisualMode: String, CaseIterable, Identifiable {
     case spectrum
     case waveform
+    case orbit
 
     var id: String { rawValue }
 
@@ -19,6 +20,7 @@ enum StudioVisualMode: String, CaseIterable, Identifiable {
         switch self {
         case .spectrum: return "Spectrum"
         case .waveform: return "Waveform"
+        case .orbit: return "Orbit"
         }
     }
 }
@@ -76,6 +78,8 @@ struct StudioContentView: View {
                     SpectrumCanvas(spectrum: model.snapshot.spectrum, drawsBars: drawsBars)
                 case .waveform:
                     WaveformCanvas(samples: model.snapshot.waveform)
+                case .orbit:
+                    OrbitCanvas(spectrum: model.snapshot.spectrum, drawsLevels: drawsBars)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
