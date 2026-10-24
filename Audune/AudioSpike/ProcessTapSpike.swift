@@ -43,6 +43,8 @@ final class ProcessTapSpike {
     private var meter: SpikeLevelMeter?
     private var active = false
     private var startInFlight = false
+    let snapshots = AudioSnapshotBox()
+    private var analysisTask: Task<Void, Never>?
 
     var displayState: String {
         switch phase {
@@ -180,6 +182,7 @@ final class ProcessTapSpike {
         outputUIDAfterStart = copyDefaultOutputDevice().flatMap(copyDeviceUID) ?? ""
         framesAtRun = levelMeter.snapshot().frames
         phase = .running
+        startAnalysis(meter: levelMeter)
         if outputUIDAfterStart != outputUIDAtStart {
             failureText = "Default output UID changed while starting. Capture was not switched onto another device by Audune."
         }
@@ -212,7 +215,31 @@ final class ProcessTapSpike {
         releaseResources()
     }
 
+    private func startAnalysis(meter: SpikeLevelMeter) {
+        analysisTask?.cancel()
+        analysisTask = nil
+        let generation = snapshots.reset()
+        let snapshots = self.snapshots
+        let sampleRate = meter.format.sampleRate
+        analysisTask = Task.detached(priority: .userInitiated) {
+            let analyzer = SpectrumAnalyzer(sampleRate: sampleRate)
+            while Task.isCancelled == false {
+                if let window = meter.copyLatestWindow() {
+                    snapshots.store(analyzer.process(window), generation: generation)
+                }
+                try? await Task.sleep(for: .milliseconds(32))
+            }
+        }
+    }
+
+    private func stopAnalysis() {
+        analysisTask?.cancel()
+        analysisTask = nil
+        _ = snapshots.reset()
+    }
+
     private func releaseResources() {
+        stopAnalysis()
         let deviceID = aggregateID
         let procID = ioProcID
         let createdTap = tapID

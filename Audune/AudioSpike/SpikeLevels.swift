@@ -60,9 +60,11 @@ nonisolated struct SpikeLevelSnapshot: Sendable {
     var bufferCount: UInt32
 }
 
-/// One-pass RMS and frame counter. The callback only stores atomics.
-nonisolated final class SpikeLevelMeter: Sendable {
+/// One-pass RMS, frame counter, and bounded mono window.
+/// The callback only stores atomics and copies into the preallocated window.
+nonisolated final class SpikeLevelMeter: @unchecked Sendable {
     let format: SpikeStreamFormat
+    let window = PCMWindowBuffer()
 
     private let frames = Atomic<UInt64>(0)
     private let finiteSamples = Atomic<UInt64>(0)
@@ -71,9 +73,22 @@ nonisolated final class SpikeLevelMeter: Sendable {
     private let hasRMS = Atomic<UInt8>(0)
     private let formatMismatch = Atomic<UInt8>(0)
     private let bufferCount = Atomic<UInt32>(0)
+    private let scratch: UnsafeMutablePointer<Float>
+    private let scratchCapacity = PCMWindowBuffer.windowLength
 
     init(format: SpikeStreamFormat) {
         self.format = format
+        scratch = .allocate(capacity: PCMWindowBuffer.windowLength)
+        scratch.initialize(repeating: 0, count: PCMWindowBuffer.windowLength)
+    }
+
+    deinit {
+        scratch.deinitialize(count: PCMWindowBuffer.windowLength)
+        scratch.deallocate()
+    }
+
+    func copyLatestWindow() -> [Float]? {
+        window.copyLatestWindow()
     }
 
     func consume(_ input: UnsafePointer<AudioBufferList>) {
@@ -134,6 +149,7 @@ nonisolated final class SpikeLevelMeter: Sendable {
             finite += accumulated.finite
             nonFinite += accumulated.nonFinite
         }
+        writeNonInterleavedWindow(buffers, frames: Int(safeFrames))
         commit(frames: safeFrames, sumSquares: sumSquares, finite: finite, nonFinite: nonFinite)
     }
 
@@ -163,7 +179,61 @@ nonisolated final class SpikeLevelMeter: Sendable {
             formatMismatch.store(1, ordering: .relaxed)
             return
         }
+        writeInterleavedWindow(buffers)
         commit(frames: totalFrames, sumSquares: sumSquares, finite: finite, nonFinite: nonFinite)
+    }
+
+    private func writeNonInterleavedWindow(_ buffers: UnsafeBufferPointer<AudioBuffer>, frames: Int) {
+        var frame = 0
+        while frame < frames {
+            let chunk = min(scratchCapacity, frames - frame)
+            for offset in 0..<chunk {
+                var sum = 0.0
+                var used = 0
+                for buffer in buffers {
+                    guard let data = buffer.mData else { continue }
+                    let sample = data.assumingMemoryBound(to: Float.self)[frame + offset]
+                    if sample.isFinite {
+                        sum += Double(sample)
+                        used += 1
+                    }
+                }
+                scratch[offset] = used > 0 ? Float(sum / Double(used)) : 0
+            }
+            window.write(scratch, count: chunk)
+            frame += chunk
+        }
+    }
+
+    private func writeInterleavedWindow(_ buffers: UnsafeBufferPointer<AudioBuffer>) {
+        let channels = Int(format.channelsPerFrame)
+        let bytesPerFrame = format.bytesPerFrame
+        guard channels > 0, bytesPerFrame > 0 else { return }
+        for buffer in buffers {
+            guard let frameCount = floatSampleCount(buffer, bytesPerFrame: bytesPerFrame),
+                  let data = buffer.mData else { continue }
+            let samples = data.assumingMemoryBound(to: Float.self)
+            let frames = Int(frameCount)
+            var frame = 0
+            while frame < frames {
+                let chunk = min(scratchCapacity, frames - frame)
+                for offset in 0..<chunk {
+                    var sum = 0.0
+                    var used = 0
+                    let base = (frame + offset) * channels
+                    for channel in 0..<channels {
+                        let sample = samples[base + channel]
+                        if sample.isFinite {
+                            sum += Double(sample)
+                            used += 1
+                        }
+                    }
+                    scratch[offset] = used > 0 ? Float(sum / Double(used)) : 0
+                }
+                window.write(scratch, count: chunk)
+                frame += chunk
+            }
+        }
     }
 
     /// `AudioDeviceIOProc` has no frame-count argument. Frames are the samples that fit in `mDataByteSize`.
