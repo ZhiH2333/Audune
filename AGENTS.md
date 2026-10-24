@@ -1,0 +1,45 @@
+# Audune — AI Coding Agent Instructions
+
+Read `docs/PRODUCT_SPEC.md` and `docs/GITHUB_ISSUES.md` before changing code. These instructions apply to every coding session and override generic assumptions about how to finish a task.
+
+## Mandatory Git rules
+
+- Work only on the `dev` branch. Before editing, run `git status --short` and `git branch --show-current`.
+- If not on `dev` and the worktree is clean, switch to an existing `dev` branch. If switching could affect uncommitted work, stop and report; never stash/reset/discard user changes. If `dev` does not exist, create it from the current clean baseline. Never create another development branch.
+- Never switch to `main` or continue work on another branch. Never merge, rebase, hard-reset, force-push, delete branches, or overwrite existing user changes.
+- **Do not create commits automatically.** Commit only when the user explicitly asks. Before committing, inspect the diff and report which files will be included. Do not push unless explicitly asked.
+- When explicitly asked to commit, use exactly `:gitmoji: short-git-message`, one line, for example `:sparkles: add system audio capture`. Do not add `feat:`, issue numbers, or other prefixes unless the user changes this rule.
+- Re-check the active branch at task completion. It must still be `dev`.
+
+## Coding workflow
+
+1. Inspect the repository, current diff, Xcode project/schemes, and existing conventions before editing.
+2. Implement only the requested Issue and its necessary dependencies. Do not generate the whole app in one pass.
+3. Keep every stage buildable. Run the relevant build/tests and report exactly what ran and what did not.
+4. Never claim that a test passed unless it actually ran successfully. System audio permission and notch/window behaviors may require a real macOS user session and must be listed as manual tests if CI cannot verify them.
+5. Do not replace real system capture with random/demo data. Any demo mode must be explicitly labelled, off by default, and must not be confused with actual capture.
+6. Use public Apple APIs. No private APIs, code injection, undocumented WindowServer manipulation, microphone fallback, or system-file modification.
+7. Avoid adding dependencies or frameworks without a clear need and license review. Prefer Swift, SwiftUI, AppKit, Core Audio, Accelerate/vDSP, XCTest, and UserDefaults.
+8. Preserve existing user work. Do not use destructive commands or broad formatting/refactoring unrelated to the issue.
+
+## Product invariants
+
+- Audune is native macOS, free, fully open source, local-first, and has no account, ads, telemetry, or analytics SDK.
+- Do not request microphone permission. Use Core Audio Process Tap for system output audio, explain permission using `NSAudioCaptureUsageDescription`, and never persist or upload raw PCM.
+- Audio tap callbacks must not update UI, write files, access network, block, synchronously log, or perform unbounded allocation. Use preallocated bounded buffers and move DSP off the real-time callback.
+- One capture pipeline and one latest `AudioSnapshot` feed all visible surfaces. Each surface must not create its own tap or FFT loop.
+- Core visualizations are Spectrum, Waveform, and Orbit. They must respond to real analyzed audio, not random movement.
+- Menu Bar and Studio belong to Core MVP. Island and Desktop Magnet are later staged features defined by the product spec; do not silently scope-creep.
+- Island must use public screen geometry and degrade safely where notch positioning cannot be supported.
+- Desktop Magnet uses normal window level and can be covered by regular app windows; it must not be implemented as an always-on-top overlay or a private desktop-layer hack.
+- Maintain truthful product docs and manual acceptance records.
+
+## Completion report
+
+At the end of each task, report:
+- Files changed and the behavior implemented.
+- Build/test commands actually run and results.
+- Manual tests still required.
+- Known limitations or blockers.
+- Confirmation the current branch remains `dev`.
+- Do not create a commit unless asked.
