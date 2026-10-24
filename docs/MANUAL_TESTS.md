@@ -4,94 +4,94 @@
 
 ## Test environment
 
-- macOS version/build:
-- Mac model / CPU:
-- Display setup (built-in / external / scaled resolutions):
-- Audune version / commit:
-- Tester / date:
+- macOS version/build: macOS 27.0.1 (26A434)
+- Mac model / CPU: MacBook Pro (Mac15,6), Apple M3 Pro
+- Display setup (built-in / external / scaled resolutions): built-in Liquid Retina XDR, 3024 x 1964, one display
+- Audune version / commit: Debug build at `400e264` (`:sparkles: add menu bar spectrum`)
+- Tester / date: local session, 2026-10-24
 
 ## A. First launch and permissions
 
-- [ ] `PASS / FAIL / NOT TESTED` — First launch shows the expected app entry point and no unexpected Dock icon.
-- [ ] `PASS / FAIL / NOT TESTED` — Starting system audio capture presents the expected macOS permission prompt.
-- [ ] `PASS / FAIL / NOT TESTED` — Granting permission leads to a running capture state.
-- [ ] `PASS / FAIL / NOT TESTED` — Denying permission produces clear instructions and does not falsely show live audio.
-- [ ] `PASS / FAIL / NOT TESTED` — Changing permission in System Settings and retrying/relaunching behaves predictably.
-- [ ] `PASS / FAIL / NOT TESTED` — Audune does not request microphone permission.
+- [ ] `NOT TESTED` — First launch shows the expected app entry point and no unexpected Dock icon.
+- [ ] `NOT TESTED` — Starting system audio capture presents the expected macOS permission prompt.
+- [ ] `NOT TESTED` — Granting permission leads to a running capture state.
+- [ ] `NOT TESTED` — Denying permission produces clear instructions and does not falsely show live audio.
+- [ ] `NOT TESTED` — Changing permission in System Settings and retrying/relaunching behaves predictably.
+- [ ] `NOT TESTED` — Audune does not request microphone permission.
 
 ## B. Real system audio capture
 
-- [ ] `PASS / FAIL / NOT TESTED` — Browser video/audio drives the visualizer.
-- [ ] `PASS / FAIL / NOT TESTED` — A local audio player drives the visualizer.
-- [ ] `PASS / FAIL / NOT TESTED` — Pausing playback returns the display to a stable silence/baseline state.
-- [ ] `PASS / FAIL / NOT TESTED` — Resuming playback resumes visual response without restarting the app.
-- [ ] `PASS / FAIL / NOT TESTED` — Output volume/device remains unchanged; capture does not mute or interrupt playback.
-- [ ] `PASS / FAIL / NOT TESTED` — Built-in speakers and available headphones work.
-- [ ] `PASS / FAIL / NOT TESTED` — Available Bluetooth output device can be selected/connected without leaving the app stuck.
-- [ ] `PASS / FAIL / NOT TESTED` — System sleep/wake restores capture or presents an actionable error.
-- [ ] `PASS / FAIL / NOT TESTED` — Stop/start capture 20 times without crash or resource accumulation.
+- [ ] `NOT TESTED` — Browser video/audio drives the visualizer.
+- [ ] `PASS` — A local audio player drives the visualizer. `afplay` of an 80 Hz + 4 kHz tone moved the menu bar; the debug window went from `Frames 0` / `State running` to `State receiving` (39424, then 1264128, then 1315328 frames).
+- [ ] `PASS` — Pausing playback returns the display to a stable silence/baseline state. After stopping `afplay`, the panel read `No audio` and the status item was one baseline.
+- [ ] `PASS` — Resuming playback resumes visual response without restarting the app. Playing again returned `Listening` and the same 16-bar shape.
+- [ ] `NOT TESTED` — Output volume/device remains unchanged; capture does not mute or interrupt playback.
+- [ ] `NOT TESTED` — Built-in speakers and available headphones work.
+- [ ] `NOT TESTED` — Available Bluetooth output device can be selected/connected without leaving the app stuck.
+- [ ] `NOT TESTED` — System sleep/wake restores capture or presents an actionable error.
+- [ ] `NOT TESTED` — Stop/start capture 20 times without crash or resource accumulation.
 
 ## C. Menu bar
 
-- [ ] `PASS / FAIL / NOT TESTED` — Menu-bar visual responds to real audio and settles during silence.
-- [ ] `PASS / FAIL / NOT TESTED` — Icon remains legible in the current menu-bar appearance.
-- [ ] `PASS / FAIL / NOT TESTED` — Clicking the icon opens the control popover.
-- [ ] `PASS / FAIL / NOT TESTED` — Mode switching does not interrupt capture.
-- [ ] `PASS / FAIL / NOT TESTED` — Studio, Settings, retry, and Quit actions work.
-- [ ] `PASS / FAIL / NOT TESTED` — On macOS versions with a system menu-bar visibility control, Audune remains visible when permitted by system settings.
+- [ ] `PASS` — Menu-bar visual responds to real audio and settles during silence. Idle and silence are one baseline. The two-tone showed 16 bars, tall on the left and one shorter bar to the right. Stop while audio continued returned the baseline and it stayed there on a second capture. `Not listening` before Start; `No audio` while running and silent; `Listening` while audio played. `Starting` and `Capture failed` were not seen.
+- [ ] `PASS` — Icon remains legible in the current menu-bar appearance. Dark appearance: light baseline and light bars on the dark menu bar. System appearance was then set to light: the popover used dark text on a light panel, and the menu bar item stayed light on the dark menu-bar material, still readable. Appearance was restored to Dark.
+- [ ] `PASS` — Clicking the icon opens the control popover. The panel showed `Not listening`, an enabled Start, a dimmed Stop, `Open Debug Window`, and `Quit Audune`.
+- [ ] `NOT TESTED` — Mode switching does not interrupt capture.
+- [ ] `NOT TESTED` — Studio, Settings, retry, and Quit actions work.
+- [ ] `NOT TESTED` — On macOS versions with a system menu-bar visibility control, Audune remains visible when permitted by system settings.
 
 ## D. Studio
 
-- [ ] `PASS / FAIL / NOT TESTED` — Studio opens and closes independently of the audio engine.
-- [ ] `PASS / FAIL / NOT TESTED` — Studio can be moved and resized without graphic clipping.
-- [ ] `PASS / FAIL / NOT TESTED` — Always-on-Top on/off changes window layering as expected.
-- [ ] `PASS / FAIL / NOT TESTED` — Window geometry and chosen mode restore after app restart.
-- [ ] `PASS / FAIL / NOT TESTED` — Moving to an external display then disconnecting it restores Studio to a visible screen.
+- [ ] `NOT TESTED` — Studio opens and closes independently of the audio engine.
+- [ ] `NOT TESTED` — Studio can be moved and resized without graphic clipping.
+- [ ] `NOT TESTED` — Always-on-Top on/off changes window layering as expected.
+- [ ] `NOT TESTED` — Window geometry and chosen mode restore after app restart.
+- [ ] `NOT TESTED` — Moving to an external display then disconnecting it restores Studio to a visible screen.
 
 ## E. Visualizers
 
-- [ ] `PASS / FAIL / NOT TESTED` — Spectrum responds to changes in audio frequency and energy.
-- [ ] `PASS / FAIL / NOT TESTED` — Waveform represents incoming samples and does not use random motion.
-- [ ] `PASS / FAIL / NOT TESTED` — Orbit responds to real frequency-band data.
-- [ ] `PASS / FAIL / NOT TESTED` — All modes handle silence with a stable baseline.
-- [ ] `PASS / FAIL / NOT TESTED` — Switching modes repeatedly creates no duplicate capture tasks.
-- [ ] `PASS / FAIL / NOT TESTED` — Very small and large window sizes do not crash or draw invalid geometry.
+- [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. There is no Studio spectrum in this build.
+- [ ] `NOT TESTED` — Waveform represents incoming samples and does not use random motion.
+- [ ] `NOT TESTED` — Orbit responds to real frequency-band data.
+- [ ] `NOT TESTED` — All modes handle silence with a stable baseline.
+- [ ] `NOT TESTED` — Switching modes repeatedly creates no duplicate capture tasks.
+- [ ] `NOT TESTED` — Very small and large window sizes do not crash or draw invalid geometry.
 
 ## F. Island (only after the Island milestone)
 
-- [ ] `PASS / FAIL / NOT TESTED` — Notch location uses actual display geometry on a supported MacBook.
-- [ ] `PASS / FAIL / NOT TESTED` — Collapsed state is compact and does not block normal menu-bar controls.
-- [ ] `PASS / FAIL / NOT TESTED` — Hover expansion, click-to-pin, delayed collapse, and Escape behave correctly.
-- [ ] `PASS / FAIL / NOT TESTED` — Opening/closing Island does not restart capture.
-- [ ] `PASS / FAIL / NOT TESTED` — Built-in and external display switching recalculates location correctly.
-- [ ] `PASS / FAIL / NOT TESTED` — On a no-notch display, Island is disabled or degrades as documented without covering unrelated system UI.
-- [ ] `PASS / FAIL / NOT TESTED` — Full-screen applications do not cause stuck, invisible, or click-blocking windows.
+- [ ] `NOT TESTED` — Notch location uses actual display geometry on a supported MacBook.
+- [ ] `NOT TESTED` — Collapsed state is compact and does not block normal menu-bar controls.
+- [ ] `NOT TESTED` — Hover expansion, click-to-pin, delayed collapse, and Escape behave correctly.
+- [ ] `NOT TESTED` — Opening/closing Island does not restart capture.
+- [ ] `NOT TESTED` — Built-in and external display switching recalculates location correctly.
+- [ ] `NOT TESTED` — On a no-notch display, Island is disabled or degrades as documented without covering unrelated system UI.
+- [ ] `NOT TESTED` — Full-screen applications do not cause stuck, invisible, or click-blocking windows.
 
 ## G. Desktop Magnet (only after the Magnet milestone)
 
-- [ ] `PASS / FAIL / NOT TESTED` — Magnet can be dragged and resized.
-- [ ] `PASS / FAIL / NOT TESTED` — A normal application window can cover Magnet.
-- [ ] `PASS / FAIL / NOT TESTED` — Magnet does not force itself to front when switching apps.
-- [ ] `PASS / FAIL / NOT TESTED` — Position, size, and mode restore on next launch.
-- [ ] `PASS / FAIL / NOT TESTED` — Display disconnect moves it back into a visible area.
-- [ ] `PASS / FAIL / NOT TESTED` — Closing/hiding Magnet does not stop the shared audio engine.
+- [ ] `NOT TESTED` — Magnet can be dragged and resized.
+- [ ] `NOT TESTED` — A normal application window can cover Magnet.
+- [ ] `NOT TESTED` — Magnet does not force itself to front when switching apps.
+- [ ] `NOT TESTED` — Position, size, and mode restore on next launch.
+- [ ] `NOT TESTED` — Display disconnect moves it back into a visible area.
+- [ ] `NOT TESTED` — Closing/hiding Magnet does not stop the shared audio engine.
 
 ## H. Performance, lifecycle, privacy
 
-- [ ] `PASS / FAIL / NOT TESTED` — Run for at least 30 minutes without crash or obvious memory growth.
-- [ ] `PASS / FAIL / NOT TESTED` — Hidden surfaces no longer perform high-frequency drawing.
-- [ ] `PASS / FAIL / NOT TESTED` — When audio analysis is explicitly stopped, capture resources are released.
-- [ ] `PASS / FAIL / NOT TESTED` — No raw audio file is created.
-- [ ] `PASS / FAIL / NOT TESTED` — No audio data, telemetry, or analytics is sent over the network.
-- [ ] `PASS / FAIL / NOT TESTED` — Permission and capture errors remain distinguishable from silence.
-- [ ] `PASS / FAIL / NOT TESTED` — Current Git branch is `dev`.
-- [ ] `PASS / FAIL / NOT TESTED` — Every completed and validated TODO has its own commit using `:gitmoji: short-git-message`.
-- [ ] `PASS / FAIL / NOT TESTED` — No automatic push occurred and no pre-existing user changes were included in commits.
+- [ ] `NOT TESTED` — Run for at least 30 minutes without crash or obvious memory growth.
+- [ ] `NOT TESTED` — Hidden surfaces no longer perform high-frequency drawing.
+- [ ] `NOT TESTED` — When audio analysis is explicitly stopped, capture resources are released.
+- [ ] `NOT TESTED` — No raw audio file is created.
+- [ ] `NOT TESTED` — No audio data, telemetry, or analytics is sent over the network.
+- [ ] `NOT TESTED` — Permission and capture errors remain distinguishable from silence.
+- [ ] `PASS` — Current Git branch is `dev`.
+- [ ] `PASS` — Every completed and validated TODO has its own commit using `:gitmoji: short-git-message`. Spectrum path is `75cef7e`; menu bar is `400e264`.
+- [ ] `PASS` — No automatic push occurred and no pre-existing user changes were included in commits. `dev` has no upstream.
 
 ## Results
 
-- Passed:
-- Failed:
-- Not tested:
-- Issues filed:
-- Logs/screen recordings (avoid capturing private audio content):
+- Passed: local playback, pause, resume, menu-bar response, silence baseline, popover, shared debug-window counters, Quit, and both appearance checks recorded on 2026-10-24. `Open Debug Window` brought the existing counter window forward. Frames stayed at 1326080 across two reads after Stop. Quit left output unmuted on `MacBook Pro扬声器`.
+- Failed: none in the cases above.
+- Not tested: permission prompt (Start did not show one and capture still ran), denying or changing permission, microphone prompt, browser audio, headphones, Bluetooth, sleep, 20 start/stop cycles, 30-minute run, mode switching, Studio, Settings, retry, Island, Magnet, waveform, orbit, and `Capture failed`. `Starting` passed too quickly to read. Output volume was 44 unmuted near the start of the session and 38 unmuted immediately before and after Quit; the device did not change and Quit did not mute playback, but the earlier volume change was not bracketed, so that checklist row stays `NOT TESTED`.
+- Issues filed: none.
+- Logs/screen recordings (avoid capturing private audio content): none saved in the repository.
