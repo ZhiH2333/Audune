@@ -405,6 +405,13 @@ struct SettingsView: View {
                 step: 0.05
             )
             Toggle("Show in full-screen apps", isOn: $islandModel.prefs.showsInFullScreen)
+            SettingsSlider(
+                title: "Animation speed",
+                value: $islandModel.prefs.animationSpeed,
+                range: IslandPreferences.animationSpeedRange,
+                step: 0.1,
+                fractionDigits: 1
+            )
             Toggle("Follow system Reduce Motion", isOn: $islandModel.prefs.followsReduceMotion)
             if islandModel.isSupported && islandModel.prefs.isEnabled {
                 HStack {

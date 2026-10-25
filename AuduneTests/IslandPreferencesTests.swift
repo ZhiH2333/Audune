@@ -39,6 +39,7 @@ final class IslandPreferencesTests: XCTestCase {
             collapseDelaySeconds: 0.9,
             expandDelaySeconds: 0.2,
             hapticStrength: .strong,
+            animationSpeed: 1.5,
             compactBarCountPerSide: 6,
             showsInFullScreen: true,
             followsReduceMotion: false
@@ -99,6 +100,13 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(IslandPreferences.load(from: defaults).hapticStrength, .off)
         defaults.set(IslandHapticStrength.light.rawValue, forKey: IslandPreferenceKey.hapticStrength)
         XCTAssertEqual(IslandPreferences.load(from: defaults).hapticStrength, .light)
+
+        defaults.set(9.0, forKey: IslandPreferenceKey.animationSpeed)
+        XCTAssertEqual(IslandPreferences.load(from: defaults).animationSpeed, IslandPreferences.animationSpeedRange.upperBound, accuracy: 0.000_1)
+        defaults.set(0.1, forKey: IslandPreferenceKey.animationSpeed)
+        XCTAssertEqual(IslandPreferences.load(from: defaults).animationSpeed, IslandPreferences.animationSpeedRange.lowerBound, accuracy: 0.000_1)
+        defaults.set(Double.nan, forKey: IslandPreferenceKey.animationSpeed)
+        XCTAssertEqual(IslandPreferences.load(from: defaults).animationSpeed, IslandPreferences.standard.animationSpeed, accuracy: 0.000_1)
     }
 
     func testResetRestoresDefaultsWithoutTouchingStudioPreferences() {

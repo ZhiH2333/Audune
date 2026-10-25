@@ -8,6 +8,7 @@ nonisolated enum IslandPreferenceKey {
     static let collapseDelaySeconds = "island.collapseDelaySeconds"
     static let expandDelaySeconds = "island.expandDelaySeconds"
     static let hapticStrength = "island.hapticStrength"
+    static let animationSpeed = "island.animationSpeed"
     static let compactBarCountPerSide = "island.compactBarCountPerSide"
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
@@ -21,12 +22,14 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var collapseDelaySeconds: Double
     var expandDelaySeconds: Double
     var hapticStrength: IslandHapticStrength
+    var animationSpeed: Double
     var compactBarCountPerSide: Int
     var showsInFullScreen: Bool
     var followsReduceMotion: Bool
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
     static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
+    static let animationSpeedRange: ClosedRange<Double> = 0.5...2.0
     static let compactBarCounts = IslandGeometry.compactBarCounts
 
     static let standard = IslandPreferences(
@@ -37,6 +40,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         collapseDelaySeconds: 0.35,
         expandDelaySeconds: 0.35,
         hapticStrength: .off,
+        animationSpeed: 1,
         compactBarCountPerSide: 5,
         showsInFullScreen: false,
         followsReduceMotion: true
@@ -80,6 +84,16 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         }
         let hapticStrength = defaults.string(forKey: IslandPreferenceKey.hapticStrength)
             .flatMap(IslandHapticStrength.init(rawValue:)) ?? standard.hapticStrength
+        let animationSpeed: Double
+        if defaults.object(forKey: IslandPreferenceKey.animationSpeed) != nil {
+            animationSpeed = StudioPreferences.clamped(
+                defaults.double(forKey: IslandPreferenceKey.animationSpeed),
+                to: animationSpeedRange,
+                fallback: standard.animationSpeed
+            )
+        } else {
+            animationSpeed = standard.animationSpeed
+        }
         let compactBarCount: Int
         if defaults.object(forKey: IslandPreferenceKey.compactBarCountPerSide) != nil {
             let stored = defaults.integer(forKey: IslandPreferenceKey.compactBarCountPerSide)
@@ -102,6 +116,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             collapseDelaySeconds: collapseDelay,
             expandDelaySeconds: expandDelay,
             hapticStrength: hapticStrength,
+            animationSpeed: animationSpeed,
             compactBarCountPerSide: compactBarCount,
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion
@@ -122,6 +137,11 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             to: Self.expandDelayRange,
             fallback: standard.expandDelaySeconds
         )
+        result.animationSpeed = StudioPreferences.clamped(
+            animationSpeed,
+            to: Self.animationSpeedRange,
+            fallback: standard.animationSpeed
+        )
         result.compactBarCountPerSide = Self.compactBarCounts.contains(compactBarCountPerSide)
             ? compactBarCountPerSide
             : standard.compactBarCountPerSide
@@ -141,6 +161,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.collapseDelaySeconds, forKey: IslandPreferenceKey.collapseDelaySeconds)
         defaults.set(normalized.expandDelaySeconds, forKey: IslandPreferenceKey.expandDelaySeconds)
         defaults.set(normalized.hapticStrength.rawValue, forKey: IslandPreferenceKey.hapticStrength)
+        defaults.set(normalized.animationSpeed, forKey: IslandPreferenceKey.animationSpeed)
         defaults.set(normalized.compactBarCountPerSide, forKey: IslandPreferenceKey.compactBarCountPerSide)
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)

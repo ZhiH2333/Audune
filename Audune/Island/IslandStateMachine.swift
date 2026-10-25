@@ -67,14 +67,39 @@ nonisolated enum IslandMotion {
         return armedContentScale
     }
 
+    static let defaultAnimationSpeed = 1.0
+    /// Ease-out control points stay inside 0...1, so the window frame never passes its target.
+    static let expandSettleControlPoints: (Float, Float, Float, Float) = (0.22, 0.90, 0.20, 1)
+
+    static func normalizedAnimationSpeed(_ speed: Double) -> Double {
+        guard speed.isFinite else { return defaultAnimationSpeed }
+        return min(max(speed, IslandPreferences.animationSpeedRange.lowerBound), IslandPreferences.animationSpeedRange.upperBound)
+    }
+
     static func transitionSeconds(
         expanding: Bool,
         reduceMotion: Bool,
-        followsReduceMotion: Bool = true
+        followsReduceMotion: Bool = true,
+        speed: Double = defaultAnimationSpeed
     ) -> Double {
         guard reduceMotion == false || followsReduceMotion == false else { return 0 }
-        return expanding ? expandSeconds : collapseSeconds
+        let base = expanding ? expandSeconds : collapseSeconds
+        return base / normalizedAnimationSpeed(speed)
     }
+
+    static func framePace(expanding: Bool, duration: Double) -> IslandFramePace {
+        guard duration.isFinite, duration > 0 else { return .immediate }
+        return expanding ? .expandSettle : .collapseSettle
+    }
+}
+
+nonisolated enum IslandFramePace: Equatable, Sendable {
+    /// No timing curve. The frame jumps to the target.
+    case immediate
+    /// Soft ease-out that does not overshoot the target frame.
+    case expandSettle
+    /// Restrained ease-in.
+    case collapseSettle
 }
 
 nonisolated enum IslandStateMachine {

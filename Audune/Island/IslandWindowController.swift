@@ -569,13 +569,15 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             ? IslandMotion.transitionSeconds(
                 expanding: expanding,
                 reduceMotion: reduceMotion,
-                followsReduceMotion: model.prefs.followsReduceMotion
+                followsReduceMotion: model.prefs.followsReduceMotion,
+                speed: model.prefs.animationSpeed
             )
             : 0
         if duration > 0 {
+            let pace = IslandMotion.framePace(expanding: expanding, duration: duration)
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = duration
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                context.timingFunction = Self.timingFunction(for: pace)
                 panel.animator().setFrame(targetFrame, display: panel.isVisible)
             } completionHandler: { [weak self] in
                 MainActor.assumeIsolated {
@@ -585,6 +587,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         } else {
             panel.setFrame(targetFrame, display: panel.isVisible)
             performHaptic(hapticPattern, token: token)
+        }
+    }
+
+    private static func timingFunction(for pace: IslandFramePace) -> CAMediaTimingFunction {
+        switch pace {
+        case .immediate, .collapseSettle:
+            return CAMediaTimingFunction(name: .easeIn)
+        case .expandSettle:
+            let points = IslandMotion.expandSettleControlPoints
+            return CAMediaTimingFunction(controlPoints: points.0, points.1, points.2, points.3)
         }
     }
 
