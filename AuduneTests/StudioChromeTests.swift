@@ -44,6 +44,15 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertEqual(StudioChromeMotion.hideSeconds, 0.25, accuracy: 0.000_1)
     }
 
+    func testPointerNearTheEdgeStillCountsAsInside() {
+        let frame = CGRect(x: 100, y: 80, width: 240, height: 160)
+        XCTAssertTrue(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: 200, y: 140)))
+        XCTAssertTrue(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: 96, y: 140)))
+        XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: 80, y: 140)))
+        XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: CGFloat.nan, y: 140)))
+        XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: .zero, cursor: CGPoint(x: 1, y: 1)))
+    }
+
     func testCanvasFrameStaysPutWhenChromeHides() {
         let bounds = CGRect(x: 0, y: 0, width: 640, height: 400)
         let canvas = StudioChrome.canvasFrame(in: bounds)

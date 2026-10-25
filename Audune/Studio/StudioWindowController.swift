@@ -224,7 +224,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func refreshPointerInside() {
-        model.pointerInside = panel.frame.contains(NSEvent.mouseLocation)
+        let inside = StudioChrome.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation)
+        if model.pointerInside != inside {
+            model.pointerInside = inside
+        }
     }
 
     private func refreshStudioSpectrum() {
@@ -270,6 +273,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func tick() {
         model.snapshot = spike.snapshots.load()
+        refreshPointerInside()
         refreshStudioSpectrum()
     }
 }

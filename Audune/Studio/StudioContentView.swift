@@ -138,7 +138,6 @@ struct StudioContentView: View {
             .fixedSize()
             .accessibilityLabel("Window mode")
             .studioControlRegion()
-            StudioTextButton(title: "Hide", action: close)
         }
         .frame(height: StudioChrome.barHeight)
     }
@@ -215,6 +214,7 @@ struct StudioContentView: View {
                 .studioControlRegion()
             }
             StudioTextButton(title: "Reset", action: resetPreferences)
+            StudioTextButton(title: "Hide", action: close)
         }
         .frame(width: 220, alignment: .leading)
     }
@@ -325,7 +325,7 @@ private struct StudioTextButton: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(StudioPlainButtonStyle(showsFill: highlighted))
         .disabled(disabled)
         .focusable()
         .focused($focused)
@@ -333,6 +333,20 @@ private struct StudioTextButton: View {
         .accessibilityLabel(accessibilityLabel ?? title)
         .accessibilityValue(accessibilityValue ?? "")
         .studioControlRegion()
+    }
+}
+
+private struct StudioPlainButtonStyle: ButtonStyle {
+    var showsFill: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background {
+                if showsFill == false && configuration.isPressed {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(0.22))
+                }
+            }
     }
 }
 #endif

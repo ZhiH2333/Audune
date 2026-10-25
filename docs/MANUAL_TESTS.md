@@ -136,6 +136,16 @@ Level and collection-behavior flags are covered by `StudioWindowBehaviorTests`. 
 - [ ] `NOT TESTED` — On Desktop's actual multi-Space behavior is recorded here after a real session. Do not mark this `PASS` from `canJoinAllSpaces` alone.
 - [ ] `NOT TESTED` — The selected window mode and frame restore after relaunch.
 
+### Studio v1.3 hover controls
+
+`StudioChromeTests` checks the 200ms / 400ms / 250ms timings, Reduce Motion, and an 8pt edge slop. It does not move a pointer over the window. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — With the pointer away, only the visualization is visible. No full-window background, bar, or border appears.
+- [ ] `NOT TESTED` — Moving into the window fades in mode, settings, window mode, and the grip. Moving toward those controls does not hide them.
+- [ ] `NOT TESTED` — After the pointer leaves, the controls wait briefly and then fade out.
+- [ ] `NOT TESTED` — Settings, window mode, and the grip can be used. Hide is inside Settings. None of these clicks move the window.
+- [ ] `NOT TESTED` — Reduce Motion shows and hides the controls without a fade. The leave delay remains.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

@@ -149,7 +149,11 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
     }
 
     override func mouseExited(with event: NSEvent) {
-        onPointerInside?(false)
+        guard let window else {
+            onPointerInside?(false)
+            return
+        }
+        onPointerInside?(StudioChrome.pointerIsInside(windowFrame: window.frame, cursor: NSEvent.mouseLocation))
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

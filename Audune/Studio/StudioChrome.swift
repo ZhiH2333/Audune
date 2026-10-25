@@ -16,6 +16,15 @@ nonisolated enum StudioChrome {
     static let barHeight: CGFloat = 36
     static let gripWidth: CGFloat = 28
     static let gripHeight: CGFloat = 22
+    /// Keeps the controls up while the pointer is on the edge, moving toward them.
+    static let pointerSlop: CGFloat = 8
+
+    static func pointerIsInside(windowFrame: CGRect, cursor: CGPoint) -> Bool {
+        guard windowFrame.width.isFinite, windowFrame.height.isFinite, windowFrame.width > 0, windowFrame.height > 0,
+              cursor.x.isFinite, cursor.y.isFinite
+        else { return false }
+        return windowFrame.insetBy(dx: -pointerSlop, dy: -pointerSlop).contains(cursor)
+    }
 
     static func isVisible(
         pointerInside: Bool,
