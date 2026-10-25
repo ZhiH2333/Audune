@@ -18,6 +18,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     /// Set by the owner of the Settings window. Studio never owns that window.
     var openSettings: (() -> Void)?
     private var screenObserver: NSObjectProtocol?
+    private var menuObservers: [NSObjectProtocol] = []
     private var pointerMonitor: Any?
     private var smoothedStudio: [Float] = []
     private var smoothedWave: [Float] = []
@@ -66,6 +67,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         orderOutPassthroughWindows()
         panel.orderOut(nil)
         model.isShown = false
+        clearInteractionState()
         updatePlaybackTimer()
     }
 
@@ -105,6 +107,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             NotificationCenter.default.removeObserver(screenObserver)
             self.screenObserver = nil
         }
+        menuObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        menuObservers.removeAll()
         if let pointerMonitor {
             NSEvent.removeMonitor(pointerMonitor)
             self.pointerMonitor = nil
@@ -113,6 +117,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         orderOutPassthroughWindows()
         panel.orderOut(nil)
         model.isShown = false
+        clearInteractionState()
     }
 
     func setPlayerID(_ id: String) {
@@ -263,9 +268,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
         model.chromeVisible = visible
-        if visible == false, model.prefs.window.passesMouseThrough {
-            interactionContentSize = CGSize(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
-        }
+        applyHiddenInteractionSizeIfNeeded()
         syncPassthroughWindows()
     }
 
@@ -358,6 +361,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             panel.center()
         }
         applyWindowPreferences()
+        installMenuTracking()
         clampOntoVisibleScreen()
         applyWindowMode()
         let storedPlayer = UserDefaults.standard.string(forKey: PlayerSelectionKey.selected) ?? ""
@@ -720,6 +724,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func performPassthroughSync() {
         let enabled = model.prefs.window.passesMouseThrough
         panel.ignoresMouseEvents = enabled
+        applyHiddenInteractionSizeIfNeeded()
         guard enabled else {
             orderOutPassthroughWindows()
             return
@@ -865,6 +870,42 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func orderOutPassthroughWindows() {
         interactionPanel?.orderOut(nil)
         edgePanels.forEach { $0.orderOut(nil) }
+    }
+
+    private func applyHiddenInteractionSizeIfNeeded() {
+        guard model.chromeVisible == false else { return }
+        interactionContentSize = StudioChrome.hiddenContentSize(
+            region: model.prefs.window.summonRegion,
+            visualWidth: panel.frame.width
+        )
+    }
+
+    private func clearInteractionState() {
+        model.pointerInside = false
+        model.pointerDown = false
+        model.menuTracking = false
+    }
+
+    private func installMenuTracking() {
+        let center = NotificationCenter.default
+        menuObservers.append(center.addObserver(
+            forName: NSMenu.didBeginTrackingNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.model.menuTracking = true
+            }
+        })
+        menuObservers.append(center.addObserver(
+            forName: NSMenu.didEndTrackingNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.model.menuTracking = false
+            }
+        })
     }
 }
 #endif

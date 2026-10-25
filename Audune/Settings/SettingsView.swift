@@ -317,9 +317,17 @@ struct SettingsView: View {
         }
         Section("Controls") {
             Toggle("Pass mouse events through the canvas", isOn: $model.prefs.window.passesMouseThrough)
-            Text("When this is on, clicks on the visualization reach the app underneath. The grip stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
+            Text("When this is on, clicks on the visualization reach the app underneath. The summon region stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
                 .foregroundStyle(.secondary)
+            Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
             SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)
+            Picker("Summon region", selection: $model.prefs.window.summonRegion) {
+                ForEach(StudioSummonRegion.allCases) { region in
+                    Text(region.title).tag(region)
+                }
+            }
+            Text("Move the pointer into the summon region to show the controls. Hidden buttons do not receive clicks. Reduce Motion removes the fade.")
+                .foregroundStyle(.secondary)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
             Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
             Text(reduceMotion ? "Reduce Motion is on in System Settings." : "Reduce Motion is off in System Settings.")

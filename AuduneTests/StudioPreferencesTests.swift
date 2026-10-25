@@ -66,7 +66,9 @@ final class StudioPreferencesTests: XCTestCase {
             hideDelaySeconds: 1.2,
             animatesChrome: false,
             followsReduceMotion: false,
-            passesMouseThrough: true
+            passesMouseThrough: true,
+            autoHidesControls: false,
+            summonRegion: .grip
         )
         stored.appearance = AppearancePreferences(
             color: StudioColor(red: 0.2, green: 0.4, blue: 0.6),
@@ -223,17 +225,31 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertTrue(standard.allowsDrag)
         XCTAssertTrue(standard.allowsResize)
         XCTAssertTrue(standard.restorePosition)
-        XCTAssertEqual(standard.hideDelaySeconds, 0.4, accuracy: 0.000_1)
+        XCTAssertEqual(standard.hideDelaySeconds, 0.8, accuracy: 0.000_1)
         XCTAssertTrue(standard.animatesChrome)
         XCTAssertTrue(standard.followsReduceMotion)
         XCTAssertFalse(standard.passesMouseThrough)
+        XCTAssertTrue(standard.autoHidesControls)
+        XCTAssertEqual(standard.summonRegion, .bottomEdge)
 
         defaults.set(99.0, forKey: StudioPreferenceKey.windowHideDelay)
-        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 2)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 3)
         defaults.set(0.0, forKey: StudioPreferenceKey.windowHideDelay)
-        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.1, accuracy: 0.000_1)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.2, accuracy: 0.000_1)
         defaults.set(Double.nan, forKey: StudioPreferenceKey.windowHideDelay)
-        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.4, accuracy: 0.000_1)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.8, accuracy: 0.000_1)
+        defaults.removeObject(forKey: StudioPreferenceKey.windowHideDelay)
+        defaults.set(false, forKey: StudioPreferenceKey.windowAllowsDrag)
+        let missing = StudioPreferences.load(from: defaults).window
+        XCTAssertEqual(missing.hideDelaySeconds, 0.8, accuracy: 0.000_1)
+        XCTAssertTrue(missing.autoHidesControls)
+        XCTAssertEqual(missing.summonRegion, .bottomEdge)
+        XCTAssertFalse(missing.allowsDrag)
+        defaults.set("sideways", forKey: StudioPreferenceKey.windowSummonRegion)
+        defaults.set(false, forKey: StudioPreferenceKey.windowAutoHidesControls)
+        let stored = StudioPreferences.load(from: defaults).window
+        XCTAssertEqual(stored.summonRegion, .bottomEdge)
+        XCTAssertFalse(stored.autoHidesControls)
     }
 
     func testStudioColorRoundTripsThroughHex() {

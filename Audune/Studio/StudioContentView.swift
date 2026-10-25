@@ -18,6 +18,7 @@ final class StudioModel {
     var settingsCategory: SettingsCategory = .appearance
     var pointerInside = false
     var pointerDown = false
+    var menuTracking = false
     var chromeVisible = true
     var isShown = false
 }
@@ -32,7 +33,7 @@ struct StudioContentView: View {
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var gripHovering = false
-    @State private var exitedAt: TimeInterval?
+    @State private var hide = StudioChromeHide()
     @State private var now = Date().timeIntervalSinceReferenceDate
     @State private var hideTask: Task<Void, Never>?
 
@@ -59,16 +60,37 @@ struct StudioContentView: View {
             hitMap.gripFramesTopLeft = frames
         }
         .onChange(of: model.pointerInside) { _, inside in
-            if inside {
+            if inside || model.isShown == false {
                 cancelHide()
-            } else if model.pointerDown == false {
+            } else if model.pointerDown == false && model.menuTracking == false {
                 beginHideCountdown()
             }
         }
         .onChange(of: model.pointerDown) { _, down in
-            if down {
-                hideTask?.cancel()
+            if down || model.menuTracking {
+                cancelHide()
             } else if model.pointerInside == false {
+                beginHideCountdown()
+            }
+        }
+        .onChange(of: model.menuTracking) { _, tracking in
+            if tracking || model.pointerDown {
+                cancelHide()
+            } else if model.pointerInside == false {
+                beginHideCountdown()
+            }
+        }
+        .onChange(of: model.prefs.window.autoHidesControls) { _, hides in
+            if hides == false || model.pointerInside || model.pointerDown || model.menuTracking {
+                cancelHide()
+            } else {
+                beginHideCountdown()
+            }
+        }
+        .onChange(of: model.isShown) { _, shown in
+            if shown == false {
+                cancelHide()
+            } else if model.pointerInside == false && model.pointerDown == false && model.menuTracking == false {
                 beginHideCountdown()
             }
         }
@@ -199,10 +221,11 @@ struct StudioContentView: View {
         StudioChrome.isVisible(
             pointerInside: model.pointerInside,
             pointerDown: model.pointerDown,
-            holdsChrome: false,
+            holdsChrome: model.menuTracking,
             now: now,
-            exitedAt: exitedAt,
-            hideDelay: model.prefs.window.hideDelaySeconds
+            exitedAt: hide.exitedAt,
+            hideDelay: model.prefs.window.hideDelaySeconds,
+            autoHides: model.prefs.window.autoHidesControls
         )
     }
 
@@ -219,13 +242,21 @@ struct StudioContentView: View {
 
     private func beginHideCountdown() {
         hideTask?.cancel()
+        guard model.isShown else {
+            hide.cancel()
+            return
+        }
         let exit = Date().timeIntervalSinceReferenceDate
-        exitedAt = exit
         now = exit
+        guard let token = hide.arm(
+            at: exit,
+            autoHides: model.prefs.window.autoHidesControls,
+            engaged: model.pointerDown || model.menuTracking
+        ) else { return }
         let delay = model.prefs.window.hideDelaySeconds
         hideTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(delay))
-            guard Task.isCancelled == false else { return }
+            guard Task.isCancelled == false, hide.isCurrent(token) else { return }
             now = exit + delay
         }
     }
@@ -233,7 +264,7 @@ struct StudioContentView: View {
     private func cancelHide() {
         hideTask?.cancel()
         hideTask = nil
-        exitedAt = nil
+        hide.cancel()
         now = Date().timeIntervalSinceReferenceDate
     }
 

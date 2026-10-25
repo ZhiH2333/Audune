@@ -331,6 +331,21 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertTrue(controller.allowsDragForTests)
     }
 
+    @MainActor
+    func testMenuTrackingAndHideClearTransientState() {
+        let controller = StudioWindowController(spike: ProcessTapSpike())
+        defer { controller.shutdown() }
+        controller.model.pointerInside = true
+        controller.model.pointerDown = true
+        NotificationCenter.default.post(name: NSMenu.didBeginTrackingNotification, object: nil)
+        XCTAssertTrue(controller.model.menuTracking)
+        controller.hide()
+        XCTAssertFalse(controller.model.menuTracking)
+        XCTAssertFalse(controller.model.pointerInside)
+        XCTAssertFalse(controller.model.pointerDown)
+        XCTAssertFalse(controller.inspectPassthroughForTests().interactionVisible)
+    }
+
     func testCenteredDefaultFrameStaysInsideTheVisibleArea() {
         let visible = CGRect(x: 100, y: 50, width: 1_440, height: 800)
         let frame = StudioFrame.centeredDefault(in: visible)

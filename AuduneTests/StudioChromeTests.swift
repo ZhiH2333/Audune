@@ -40,7 +40,7 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: true), 0)
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true), 0)
         XCTAssertEqual(StudioChromeMotion.revealSeconds, 0.20, accuracy: 0.000_1)
-        XCTAssertEqual(StudioChromeMotion.hideDelaySeconds, 0.40, accuracy: 0.000_1)
+        XCTAssertEqual(StudioChromeMotion.hideDelaySeconds, 0.80, accuracy: 0.000_1)
         XCTAssertEqual(StudioChromeMotion.hideSeconds, 0.25, accuracy: 0.000_1)
     }
 
@@ -52,7 +52,7 @@ final class StudioChromeTests: XCTestCase {
             pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.2, exitedAt: 10, hideDelay: 0.1
         ))
         XCTAssertFalse(StudioChrome.isVisible(
-            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.5, exitedAt: 10, hideDelay: .nan
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.8, exitedAt: 10, hideDelay: .nan
         ))
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: false, animates: false), 0)
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true, animates: true, followsReduceMotion: true), 0)
@@ -87,6 +87,65 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertEqual(StudioChrome.canvasFrame(in: .zero), .zero)
         XCTAssertEqual(StudioChrome.gripWidth, 28)
         XCTAssertEqual(StudioChrome.gripHeight, 22)
+    }
+
+    func testAutoHideOffKeepsChromeAfterTheDelay() {
+        XCTAssertTrue(StudioChrome.isVisible(
+            pointerInside: false,
+            pointerDown: false,
+            holdsChrome: false,
+            now: 20,
+            exitedAt: 10,
+            hideDelay: 0.8,
+            autoHides: false
+        ))
+    }
+
+    func testReturningOrInteractingCancelsTheHide() {
+        var hide = StudioChromeHide()
+        let first = hide.arm(at: 10, autoHides: true, engaged: false)
+        XCTAssertEqual(first, 1)
+        XCTAssertTrue(StudioChrome.isVisible(
+            pointerInside: true, pointerDown: false, holdsChrome: false, now: 12, exitedAt: hide.exitedAt
+        ))
+        hide.cancel()
+        XCTAssertFalse(hide.isCurrent(first ?? 0))
+        XCTAssertNil(hide.exitedAt)
+
+        let held = hide.arm(at: 12, autoHides: true, engaged: true)
+        XCTAssertNil(held)
+        XCTAssertNil(hide.exitedAt)
+        let armed = hide.arm(at: 12, autoHides: true, engaged: false)
+        XCTAssertFalse(hide.isCurrent(first ?? 0))
+        XCTAssertTrue(hide.isCurrent(armed ?? 0))
+        XCTAssertFalse(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 12.8, exitedAt: hide.exitedAt
+        ))
+        XCTAssertTrue(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: true, holdsChrome: false, now: 12.8, exitedAt: hide.exitedAt
+        ))
+        XCTAssertTrue(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: false, holdsChrome: true, now: 12.8, exitedAt: hide.exitedAt
+        ))
+        XCTAssertNil(hide.arm(at: 13, autoHides: false, engaged: false))
+    }
+
+    func testSummonRegionLeavesTheCanvasCenterOpen() {
+        let visual = CGRect(x: 40, y: 40, width: 640, height: 400)
+        let center = CGPoint(x: visual.midX, y: visual.midY)
+        let bottom = StudioPassthroughLayout.interactionFrame(
+            visual: visual,
+            contentSize: StudioChrome.hiddenContentSize(region: .bottomEdge, visualWidth: visual.width)
+        )
+        let grip = StudioPassthroughLayout.interactionFrame(
+            visual: visual,
+            contentSize: StudioChrome.hiddenContentSize(region: .grip, visualWidth: visual.width)
+        )
+        XCTAssertFalse(bottom.contains(center))
+        XCTAssertFalse(grip.contains(center))
+        XCTAssertGreaterThan(bottom.width, grip.width)
+        XCTAssertEqual(grip.width, StudioChrome.gripWidth, accuracy: 0.001)
+        XCTAssertLessThan(bottom.height, visual.height / 2)
     }
 
     private func visible(

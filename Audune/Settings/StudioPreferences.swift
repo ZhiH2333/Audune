@@ -59,6 +59,8 @@ nonisolated enum StudioPreferenceKey {
     static let windowAnimatesChrome = "studio.window.animatesChrome"
     static let windowFollowsReduceMotion = "studio.window.followsReduceMotion"
     static let windowPassesMouseThrough = "studio.window.passesMouseThrough"
+    static let windowAutoHidesControls = "studio.window.autoHidesControls"
+    static let windowSummonRegion = "studio.window.summonRegion"
     /// Versioned JSON for custom visual presets. Built-in presets are not stored here.
     static let visualPresets = "studio.visualPresets"
 }
@@ -334,6 +336,21 @@ nonisolated struct OrbitPreferences: Equatable {
     }
 }
 
+/// Where the pointer brings hidden Studio controls back. The hidden buttons themselves are not a target.
+nonisolated enum StudioSummonRegion: String, CaseIterable, Identifiable, Sendable {
+    case grip
+    case bottomEdge
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .grip: "Grip"
+        case .bottomEdge: "Bottom edge"
+        }
+    }
+}
+
 /// Window behavior that is not the level. The level and Spaces behavior come from `StudioWindowMode`.
 nonisolated struct WindowPreferences: Equatable {
     var allowsDrag: Bool
@@ -346,15 +363,20 @@ nonisolated struct WindowPreferences: Equatable {
     var followsReduceMotion: Bool
     /// Canvas clicks pass through. Controls live on a separate panel.
     var passesMouseThrough: Bool
+    /// When false, the controls stay visible.
+    var autoHidesControls: Bool
+    var summonRegion: StudioSummonRegion
 
     static let standard = WindowPreferences(
         allowsDrag: true,
         allowsResize: true,
         restorePosition: true,
-        hideDelaySeconds: 0.4,
+        hideDelaySeconds: 0.8,
         animatesChrome: true,
         followsReduceMotion: true,
-        passesMouseThrough: false
+        passesMouseThrough: false,
+        autoHidesControls: true,
+        summonRegion: .bottomEdge
     )
 }
 
@@ -376,7 +398,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let orbitInnerRange: ClosedRange<Double> = 0.35...0.8
     static let orbitOuterRange: ClosedRange<Double> = 0.6...1
     static let orbitGapRange: ClosedRange<Double> = 0...10
-    static let hideDelayRange: ClosedRange<Double> = 0.1...2
+    static let hideDelayRange: ClosedRange<Double> = 0.2...3
     static let minHzRange: ClosedRange<Double> = 20...500
     static let maxHzRange: ClosedRange<Double> = 2_000...20_000
     static let sensitivityRange: ClosedRange<Double> = 0...1
@@ -421,7 +443,9 @@ nonisolated struct StudioPreferences: Equatable {
                 hideDelaySeconds: reader.double(StudioPreferenceKey.windowHideDelay, range: hideDelayRange, fallback: standard.window.hideDelaySeconds),
                 animatesChrome: reader.bool(StudioPreferenceKey.windowAnimatesChrome, fallback: standard.window.animatesChrome),
                 followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion),
-                passesMouseThrough: reader.bool(StudioPreferenceKey.windowPassesMouseThrough, fallback: standard.window.passesMouseThrough)
+                passesMouseThrough: reader.bool(StudioPreferenceKey.windowPassesMouseThrough, fallback: standard.window.passesMouseThrough),
+                autoHidesControls: reader.bool(StudioPreferenceKey.windowAutoHidesControls, fallback: standard.window.autoHidesControls),
+                summonRegion: defaults.string(forKey: StudioPreferenceKey.windowSummonRegion).flatMap(StudioSummonRegion.init(rawValue:)) ?? standard.window.summonRegion
             ),
             appearance: AppearancePreferences(
                 color: color,
@@ -515,6 +539,8 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.window.animatesChrome, forKey: StudioPreferenceKey.windowAnimatesChrome)
         defaults.set(p.window.followsReduceMotion, forKey: StudioPreferenceKey.windowFollowsReduceMotion)
         defaults.set(p.window.passesMouseThrough, forKey: StudioPreferenceKey.windowPassesMouseThrough)
+        defaults.set(p.window.autoHidesControls, forKey: StudioPreferenceKey.windowAutoHidesControls)
+        defaults.set(p.window.summonRegion.rawValue, forKey: StudioPreferenceKey.windowSummonRegion)
 
         defaults.set(p.appearance.color.hex, forKey: StudioPreferenceKey.color)
         defaults.set(p.appearance.strokeColor.hex, forKey: StudioPreferenceKey.strokeColor)
