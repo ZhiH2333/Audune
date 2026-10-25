@@ -99,8 +99,8 @@ final class StudioDragView: NSView {
         return StudioDragRouting.route(
             point: point,
             bounds: content.bounds,
-            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height),
+            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height, isFlipped: content.isFlipped),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height, isFlipped: content.isFlipped),
             chromeVisible: hitMap.chromeVisible
         )
     }
@@ -179,13 +179,13 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
         StudioWindowDrag.track(window)
     }
 
-    private func currentRoute(_ point: CGPoint) -> StudioDragRoute {
+    func currentRoute(_ point: CGPoint) -> StudioDragRoute {
         let height = bounds.height
         return StudioDragRouting.route(
             point: point,
             bounds: bounds,
-            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height),
+            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height, isFlipped: isFlipped),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height, isFlipped: isFlipped),
             chromeVisible: hitMap.chromeVisible
         )
     }

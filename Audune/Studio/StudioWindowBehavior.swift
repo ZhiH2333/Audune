@@ -1,6 +1,13 @@
 #if os(macOS)
 import AppKit
 import CoreGraphics
+#if DEBUG
+import os
+
+/// Debug-only trace of the Studio grip drag. View it with
+/// `log stream --predicate 'subsystem == "Audune" AND category == "StudioDrag"'`. No audio data is logged.
+let studioDragLog = Logger(subsystem: "Audune", category: "StudioDrag")
+#endif
 
 /// Window level and Spaces membership are separate.
 /// `fullScreenAuxiliary` alone hides a panel on ordinary desktops, so On Top pairs it with `canJoinAllSpaces`.
@@ -73,8 +80,10 @@ nonisolated enum StudioDragRouting {
         return .idle
     }
 
-    /// SwiftUI frames use a top-left origin. AppKit view bounds use a bottom-left origin.
-    static func appKitFrames(fromTopLeft frames: [CGRect], containerHeight: CGFloat) -> [CGRect] {
+    /// SwiftUI frames use a top-left origin. A plain AppKit view uses a bottom-left origin,
+    /// but `NSHostingView.isFlipped` is true, so its bounds already use the same top-left origin.
+    /// Flipping again inside a flipped view mirrors every region to the other edge.
+    static func appKitFrames(fromTopLeft frames: [CGRect], containerHeight: CGFloat, isFlipped: Bool = false) -> [CGRect] {
         guard containerHeight.isFinite, containerHeight > 0 else { return [] }
         return frames.compactMap { rect in
             guard rect.origin.x.isFinite, rect.origin.y.isFinite, rect.width.isFinite, rect.height.isFinite,
@@ -82,7 +91,7 @@ nonisolated enum StudioDragRouting {
             else { return nil }
             return CGRect(
                 x: rect.origin.x,
-                y: containerHeight - rect.origin.y - rect.height,
+                y: isFlipped ? rect.origin.y : containerHeight - rect.origin.y - rect.height,
                 width: rect.width,
                 height: rect.height
             )
@@ -119,6 +128,13 @@ enum StudioWindowDrag {
     static func track(_ window: NSWindow) {
         let startMouse = NSEvent.mouseLocation
         let startOrigin = window.frame.origin
+        #if DEBUG
+        studioDragLog.debug("drag begin mouse=\(startMouse.x, privacy: .public),\(startMouse.y, privacy: .public) origin=\(startOrigin.x, privacy: .public),\(startOrigin.y, privacy: .public)")
+        defer {
+            let end = window.frame.origin
+            studioDragLog.debug("drag end origin=\(end.x, privacy: .public),\(end.y, privacy: .public)")
+        }
+        #endif
         let mask: NSEvent.EventTypeMask = [.leftMouseDragged, .leftMouseUp]
         let monitor = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
             if event.type != .leftMouseUp, event.window === window || event.window == nil {

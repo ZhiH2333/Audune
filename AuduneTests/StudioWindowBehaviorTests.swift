@@ -1,7 +1,27 @@
 import AppKit
 import CoreGraphics
+import SwiftUI
 import XCTest
 @testable import Audune
+
+private struct GripFixture: View {
+    var hitMap: StudioHitMap
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.clear
+            Color.red
+                .frame(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
+                .studioGripRegion()
+                .padding(.bottom, 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .coordinateSpace(name: StudioCoordinateSpace.name)
+        .onPreferenceChange(StudioGripFramesKey.self) { frames in
+            hitMap.gripFramesTopLeft = frames
+        }
+    }
+}
 
 final class StudioWindowBehaviorTests: XCTestCase {
     func testWindowModesUseSeparateLevelAndSpaceBehavior() {
@@ -132,6 +152,45 @@ final class StudioWindowBehaviorTests: XCTestCase {
             ),
             []
         )
+    }
+
+    func testFlippedContainerKeepsSwiftUIFramesUnchanged() {
+        let frames = StudioDragRouting.appKitFrames(
+            fromTopLeft: [CGRect(x: 16, y: 16, width: 80, height: 28)],
+            containerHeight: 400,
+            isFlipped: true
+        )
+
+        XCTAssertEqual(frames, [CGRect(x: 16, y: 16, width: 80, height: 28)])
+    }
+
+    /// Uses a real `NSHostingView` in an offscreen window. This checks coordinates only; it is not a real drag.
+    @MainActor
+    func testHostingViewRoutesTheBottomGripInItsOwnCoordinates() throws {
+        let hitMap = StudioHitMap()
+        let host = StudioHostingView(rootView: GripFixture(hitMap: hitMap))
+        host.hitMap = hitMap
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 400),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = host
+        host.frame = NSRect(x: 0, y: 0, width: 640, height: 400)
+        let deadline = Date(timeIntervalSinceNow: 2)
+        while hitMap.gripFramesTopLeft.isEmpty, Date() < deadline {
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+        }
+        let grip = try XCTUnwrap(hitMap.gripFramesTopLeft.first)
+
+        XCTAssertTrue(host.isFlipped, "NSHostingView uses a top-left origin")
+        XCTAssertEqual(grip.midY, 381, accuracy: 1)
+        XCTAssertEqual(host.currentRoute(CGPoint(x: grip.midX, y: grip.midY)), .drag)
+        XCTAssertEqual(host.currentRoute(CGPoint(x: grip.midX, y: 400 - grip.midY)), .idle)
+        XCTAssertEqual(host.currentRoute(CGPoint(x: 320, y: 2)), .resize)
+        XCTAssertEqual(host.currentRoute(CGPoint(x: 320, y: 200)), .idle)
     }
 
     func testHiddenChromeKeepsTheGripFromDragging() {

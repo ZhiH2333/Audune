@@ -575,6 +575,31 @@ Core MVP released and profiled.
 
 ---
 
+## AUD-26 — Studio v1.4: Settings Window & Interaction Polish
+
+**Labels:** `P1`, `ui`, `settings`  
+**Milestone:** Phase 2 — Core Surfaces
+
+### Tasks
+- [ ] Fix Studio grip drag hit coordinates (`NSHostingView` is flipped) and record the resize path; keep drag/resize rows `NOT TESTED` until a real Mac session.
+- [ ] Add a separate normal-level, resizable Settings window (about 760x600) with a native sidebar; reduce Studio to play/pause, three modes, Settings, and a grip.
+- [ ] Preferences v2, Appearance, and Spectrum settings; bars come from real FFT bins; one Process Tap.
+- [ ] Redraw Waveform from real PCM with style and density settings.
+- [ ] Redraw Orbit with radial settings.
+- [ ] Window settings: mode, drag/resize, position restore, hover delay, animation, Reduce Motion.
+- [ ] Playback status: Apple Events permission preflight, clear errors, signed-build verification record.
+- [ ] (Conditional) Edge resize handles only if the real-Mac check shows `.resizable` fails.
+
+### Acceptance criteria
+- [ ] Build and automated tests pass; GUI, Spaces, and Automation checks are recorded as `PASS`/`FAIL`/`NOT TESTED` in `docs/MANUAL_TESTS.md`.
+- [ ] No second capture session; Studio window stays fully transparent; no private APIs.
+- [ ] Playback never claims to control browser audio or all system output.
+
+### Dependencies
+AUD-09, AUD-13.
+
+---
+
 ## Project-wide Definition of Done
 
 - [ ] Current branch is still `dev`.

@@ -173,6 +173,15 @@ Spotify's scripting dictionary on this Mac includes `playpause` and `player stat
 - [ ] `NOT TESTED` — Selecting Spotify does not also control Music. Play/Pause changes Spotify's actual playback when Automation is allowed.
 - [ ] `NOT TESTED` — Denying Automation for Spotify, or quitting Spotify, disables the button and does not report a fake playback state.
 
+### Studio v1.4 drag and resize
+
+Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingView.isFlipped` is `true` on macOS 27.0.1, while the drag hit map flipped SwiftUI frames a second time. That mirrored the grip and the control regions to the opposite window edge. The fix keeps SwiftUI frames as they are inside a flipped container. `StudioWindowBehaviorTests` routes points in a real `NSHostingView` inside an offscreen window; that is a coordinate check, not a pointer drag. A Debug build logs the grip drag begin and end: `log stream --predicate 'subsystem == "Audune" AND category == "StudioDrag"'`. These rows stay `NOT TESTED` until a real macOS GUI session.
+
+- [ ] `NOT TESTED` — Dragging the grip moves Studio, and the console does not log `Window move completed without beginning`. The Debug log shows `drag begin` and `drag end` with different origins.
+- [ ] `NOT TESTED` — Dragging the blank canvas, a button, a slider, or a picker does not move the window.
+- [ ] `NOT TESTED` — Resizing from the four edges and four corners works, keeps the visual border transparent, and stops at the minimum size.
+- [ ] `NOT TESTED` — Position and size restore after relaunch and stay on a visible screen.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.
