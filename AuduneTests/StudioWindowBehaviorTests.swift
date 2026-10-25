@@ -266,7 +266,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior(for: .onTop))
 
         controller.setBarCount(3)
-        XCTAssertEqual(controller.model.barCount, 16)
+        XCTAssertEqual(controller.model.barCount, 32)
         XCTAssertEqual(spike.phase, .idle)
     }
 }

@@ -93,6 +93,12 @@ final class SpectrumBandsTests: XCTestCase {
         XCTAssertTrue(broken.allSatisfy { $0.isFinite && $0 >= 0 && $0 <= 1 })
     }
 
+    func testDisplayMixFollowsSmoothingWithoutRepeatingSixteenBands() {
+        XCTAssertEqual(SpectrumBands.displayMix(current: [0], toward: [1], count: 1, smoothing: 0), [1])
+        let slow = SpectrumBands.displayMix(current: [0], toward: [1], count: 1, smoothing: 1)
+        XCTAssertEqual(slow[0], 0.15, accuracy: 0.000_1)
+    }
+
     private func sine(frequency: Double, amplitude: Float) -> [Float] {
         let length = SpectrumAnalyzer.fftLength
         let step = 2 * Float.pi * Float(frequency) / 48_000

@@ -69,6 +69,11 @@ final class WaveformSamplerTests: XCTestCase {
             XCTAssertEqual(points.last?.x ?? -1, bounds.maxX, accuracy: 0.001)
         }
         XCTAssertTrue(WaveformPath.points(samples: [0.2], in: CGRect(x: 0, y: 0, width: 100, height: 40)).isEmpty)
+        let bounds = CGRect(x: 0, y: 0, width: 80, height: 100)
+        let quiet = WaveformPath.points(samples: [0.2, 0.2], in: bounds, amplitude: 1)
+        let lifted = WaveformPath.points(samples: [0.2, 0.2], in: bounds, amplitude: WaveformPath.displayGain)
+        XCTAssertGreaterThan(abs(lifted[0].y - bounds.midY), abs(quiet[0].y - bounds.midY) * 2)
+        XCTAssertGreaterThan(abs(lifted[0].y - bounds.midY), 20)
         XCTAssertEqual(WaveformPath.centerline(in: .zero), [])
     }
 

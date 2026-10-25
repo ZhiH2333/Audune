@@ -53,6 +53,15 @@ final class SpectrumBarsTests: XCTestCase {
         assertInside(bars, bounds: bounds)
     }
 
+    func testAmplitudeAndGapChangeRealBars() {
+        let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
+        let quiet = SpectrumBars.bars(spectrum: [0.4, 0.4], in: bounds, count: 2, gap: 10, amplitude: 1)
+        let louder = SpectrumBars.bars(spectrum: [0.4, 0.4], in: bounds, count: 2, gap: 10, amplitude: 2)
+        XCTAssertEqual(quiet.count, 2)
+        XCTAssertEqual(louder[0].height, quiet[0].height * 2, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(quiet[1].minX - quiet[0].maxX, 9)
+    }
+
     func testEmptyOrInvalidBoundsProduceNoBars() {
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .zero).isEmpty)
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .null).isEmpty)

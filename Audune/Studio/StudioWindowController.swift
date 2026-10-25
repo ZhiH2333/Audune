@@ -12,6 +12,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var screenObserver: NSObjectProtocol?
     private var pointerMonitor: Any?
     private var smoothedStudio: [Float] = []
+    private var smoothedWave: [Float] = []
     private var didShutdown = false
 
     init(spike: ProcessTapSpike) {
@@ -92,6 +93,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     func resetPreferences() {
         StudioPreferences.reset()
         smoothedStudio = []
+        smoothedWave = []
         apply(StudioPreferences.standard)
         refreshStudioSpectrum()
     }
@@ -207,6 +209,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.backgroundOpacity = preferences.backgroundOpacity
         model.accent = preferences.accent
         model.barCount = preferences.barCount
+        model.lineWidth = preferences.lineWidth
+        model.amplitude = preferences.amplitude
+        model.smoothing = preferences.smoothing
+        model.barGap = preferences.barGap
+        model.cornerRadius = preferences.cornerRadius
+        model.spectrumStroke = preferences.spectrumStroke
+        model.orbitInner = preferences.orbitInner
         if model.studioSpectrum.count != preferences.barCount {
             model.studioSpectrum = Array(repeating: 0, count: preferences.barCount)
         }
@@ -219,7 +228,14 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             windowMode: model.windowMode,
             backgroundOpacity: model.backgroundOpacity,
             accent: model.accent,
-            barCount: model.barCount
+            barCount: model.barCount,
+            lineWidth: model.lineWidth,
+            amplitude: model.amplitude,
+            smoothing: model.smoothing,
+            barGap: model.barGap,
+            cornerRadius: model.cornerRadius,
+            spectrumStroke: model.spectrumStroke,
+            orbitInner: model.orbitInner
         )
     }
 
@@ -237,8 +253,22 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             sampleRate: model.snapshot.sampleRate,
             count: count
         )
-        smoothedStudio = SpectrumBands.smooth(current: smoothedStudio, toward: levels, count: count)
+        smoothedStudio = SpectrumBands.displayMix(
+            current: smoothedStudio,
+            toward: levels,
+            count: count,
+            smoothing: Float(model.smoothing)
+        )
         model.studioSpectrum = smoothedStudio
+    }
+
+    private func refreshWaveform() {
+        smoothedWave = WaveformPath.mix(
+            current: smoothedWave,
+            toward: model.snapshot.waveform,
+            smoothing: Float(model.smoothing)
+        )
+        model.displayWaveform = smoothedWave
     }
 
     private func clampOntoVisibleScreen() {
@@ -275,6 +305,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.snapshot = spike.snapshots.load()
         refreshPointerInside()
         refreshStudioSpectrum()
+        refreshWaveform()
     }
 }
 #endif

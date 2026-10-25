@@ -11,6 +11,14 @@ final class StudioModel {
     var backgroundOpacity = StudioPreferences.standard.backgroundOpacity
     var accent: StudioAccent = .warm
     var barCount = StudioPreferences.standard.barCount
+    var lineWidth = StudioPreferences.standard.lineWidth
+    var amplitude = StudioPreferences.standard.amplitude
+    var smoothing = StudioPreferences.standard.smoothing
+    var barGap = StudioPreferences.standard.barGap
+    var cornerRadius = StudioPreferences.standard.cornerRadius
+    var spectrumStroke = StudioPreferences.standard.spectrumStroke
+    var orbitInner = StudioPreferences.standard.orbitInner
+    var displayWaveform = AudioSnapshot.zero.waveform
     var pointerInside = false
     var pointerDown = false
 }
@@ -57,6 +65,13 @@ struct StudioContentView: View {
         .onChange(of: model.mode) { _, _ in savePreferences() }
         .onChange(of: model.accent) { _, _ in savePreferences() }
         .onChange(of: model.backgroundOpacity) { _, _ in savePreferences() }
+        .onChange(of: model.lineWidth) { _, _ in savePreferences() }
+        .onChange(of: model.amplitude) { _, _ in savePreferences() }
+        .onChange(of: model.smoothing) { _, _ in savePreferences() }
+        .onChange(of: model.barGap) { _, _ in savePreferences() }
+        .onChange(of: model.cornerRadius) { _, _ in savePreferences() }
+        .onChange(of: model.spectrumStroke) { _, _ in savePreferences() }
+        .onChange(of: model.orbitInner) { _, _ in savePreferences() }
         .onChange(of: model.pointerInside) { _, inside in
             if inside {
                 cancelHide()
@@ -189,6 +204,9 @@ struct StudioContentView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Opacity")
             .studioControlRegion()
+            settingSlider("Line", value: $model.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+            settingSlider("Amplitude", value: $model.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
+            settingSlider("Smooth", value: $model.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
             if showsBarCount {
                 HStack(spacing: 8) {
                     Text("Bars")
@@ -213,6 +231,18 @@ struct StudioContentView: View {
                 .accessibilityLabel("Bar count")
                 .studioControlRegion()
             }
+            if model.mode == .spectrum {
+                settingSlider("Gap", value: $model.barGap, range: StudioPreferences.barGapRange, step: 0.5)
+                settingSlider("Corner", value: $model.cornerRadius, range: StudioPreferences.cornerRadiusRange, step: 0.5)
+                Toggle("Bar stroke", isOn: $model.spectrumStroke)
+                    .font(.system(size: 11, weight: .medium))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .studioControlRegion()
+            }
+            if model.mode == .orbit {
+                settingSlider("Ring", value: $model.orbitInner, range: StudioPreferences.orbitInnerRange, step: 0.05)
+            }
             StudioTextButton(title: "Reset", action: resetPreferences)
             StudioTextButton(title: "Hide", action: close)
         }
@@ -223,11 +253,36 @@ struct StudioContentView: View {
     private var visualization: some View {
         switch model.mode {
         case .spectrum:
-            SpectrumCanvas(spectrum: model.studioSpectrum, drawsBars: drawsBars, color: accentColor, opacity: model.backgroundOpacity)
+            SpectrumCanvas(
+                spectrum: model.studioSpectrum,
+                drawsBars: drawsBars,
+                color: accentColor,
+                opacity: model.backgroundOpacity,
+                amplitude: model.amplitude,
+                lineWidth: model.lineWidth,
+                cornerRadius: model.cornerRadius,
+                barGap: model.barGap,
+                drawsStroke: model.spectrumStroke
+            )
         case .waveform:
-            WaveformCanvas(samples: model.snapshot.waveform, color: accentColor, opacity: model.backgroundOpacity)
+            WaveformCanvas(
+                samples: model.displayWaveform,
+                color: accentColor,
+                opacity: model.backgroundOpacity,
+                amplitude: model.amplitude,
+                lineWidth: model.lineWidth,
+                smoothing: model.smoothing
+            )
         case .orbit:
-            OrbitCanvas(spectrum: model.studioSpectrum, drawsLevels: drawsBars, color: accentColor, opacity: model.backgroundOpacity)
+            OrbitCanvas(
+                spectrum: model.studioSpectrum,
+                drawsLevels: drawsBars,
+                color: accentColor,
+                opacity: model.backgroundOpacity,
+                amplitude: model.amplitude,
+                lineWidth: model.lineWidth,
+                innerRatio: model.orbitInner
+            )
         }
     }
 
@@ -253,6 +308,24 @@ struct StudioContentView: View {
 
     private var barIndex: Int {
         StudioPreferences.barCounts.firstIndex(of: model.barCount) ?? 2
+    }
+
+    private func settingSlider(
+        _ title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(warmWhite.opacity(0.72))
+                .frame(width: 68, alignment: .leading)
+            Slider(value: value, in: range, step: step)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .studioControlRegion()
     }
 
     private func beginHideCountdown() {

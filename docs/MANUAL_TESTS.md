@@ -146,6 +146,16 @@ Level and collection-behavior flags are covered by `StudioWindowBehaviorTests`. 
 - [ ] `NOT TESTED` — Settings, window mode, and the grip can be used. Hide is inside Settings. None of these clicks move the window.
 - [ ] `NOT TESTED` — Reduce Motion shows and hides the controls without a fade. The leave delay remains.
 
+### Studio v1.3 visuals
+
+Geometry tests cover bar gap, waveform display gain, orbit inner ring, and display smoothing. They do not judge appearance on a real desktop. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Spectrum, Waveform, and Orbit look deliberate at their defaults, before any slider is moved. Waveform and Orbit are not a recolor of the previous drawing.
+- [ ] `NOT TESTED` — Line width, color, opacity, amplitude, and smoothing change the graphic immediately and restore after relaunch. Reset returns the defaults.
+- [ ] `NOT TESTED` — Spectrum bar counts 8, 12, 16, 24, 32, 48, and 64 follow real frequency energy. The menu bar stays at 16 bars. Gap, corner radius, and optional bar stroke work.
+- [ ] `NOT TESTED` — Waveform follows real playback, including quiet passages. Orbit follows frequency energy and rests on its ring during silence.
+- [ ] `NOT TESTED` — Changing these settings does not create a second Process Tap.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

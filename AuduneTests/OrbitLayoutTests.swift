@@ -27,7 +27,9 @@ final class OrbitLayoutTests: XCTestCase {
 
         XCTAssertEqual(spokes.count, 16)
         XCTAssertEqual(radii.max() ?? 0, radii.min() ?? 1, accuracy: 0.001)
-        XCTAssertGreaterThan(radii[0], 0)
+        let inner = spokes.map { distance($0.start, center) }
+        XCTAssertGreaterThan(inner[0], min(bounds.width, bounds.height) * 0.2)
+        XCTAssertEqual(inner[0], radii[0], accuracy: 1.6)
     }
 
     func testLoudBandReachesFartherThanQuietBand() {

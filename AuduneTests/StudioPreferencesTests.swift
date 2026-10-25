@@ -21,7 +21,11 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(StudioPreferences.standard.mode, .spectrum)
         XCTAssertEqual(StudioPreferences.standard.accent, .warm)
         XCTAssertEqual(StudioPreferences.standard.backgroundOpacity, 0.92)
-        XCTAssertEqual(StudioPreferences.standard.barCount, 16)
+        XCTAssertEqual(StudioPreferences.standard.barCount, 32)
+        XCTAssertEqual(StudioPreferences.standard.lineWidth, 1.5)
+        XCTAssertEqual(StudioPreferences.standard.amplitude, 1)
+        XCTAssertEqual(StudioPreferences.standard.smoothing, 0.35)
+        XCTAssertFalse(StudioPreferences.standard.spectrumStroke)
     }
 
     func testInvalidValuesNormalize() {
@@ -52,7 +56,14 @@ final class StudioPreferencesTests: XCTestCase {
             windowMode: .onDesktop,
             backgroundOpacity: 0.5,
             accent: .sea,
-            barCount: 48
+            barCount: 48,
+            lineWidth: 3,
+            amplitude: 1.5,
+            smoothing: 0.2,
+            barGap: 4,
+            cornerRadius: 3,
+            spectrumStroke: true,
+            orbitInner: 0.4
         )
         stored.save(to: defaults)
         XCTAssertEqual(StudioPreferences.load(from: defaults), stored)
@@ -89,13 +100,18 @@ final class StudioPreferencesTests: XCTestCase {
         defaults.set(true, forKey: StudioPreferenceKey.cleanCanvas)
         let loaded = StudioPreferences.load(from: defaults)
 
-        XCTAssertEqual(loaded.barCount, 16)
+        XCTAssertEqual(loaded.barCount, 32)
         loaded.save(to: defaults)
         XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.cleanCanvas))
 
         defaults.set("many", forKey: StudioPreferenceKey.barCount)
-        XCTAssertEqual(StudioPreferences.load(from: defaults).barCount, 16)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).barCount, 32)
         XCTAssertEqual(StudioPreferences.normalizedBarCount(64), 64)
-        XCTAssertEqual(StudioPreferences.normalizedBarCount(0), 16)
+        XCTAssertEqual(StudioPreferences.normalizedBarCount(0), 32)
+
+        defaults.set(9.0, forKey: StudioPreferenceKey.lineWidth)
+        defaults.set(Double.nan, forKey: StudioPreferenceKey.smoothing)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).lineWidth, 4)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).smoothing, StudioPreferences.standard.smoothing)
     }
 }

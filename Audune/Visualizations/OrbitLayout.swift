@@ -6,22 +6,31 @@ nonisolated struct OrbitSpoke: Equatable {
     var end: CGPoint
 }
 
-/// Fixed-angle spokes from the same 16 spectrum bands. Zero level keeps a short base radius.
+/// Ring of spokes driven by real band energy. Silence stays on the inner ring.
 nonisolated enum OrbitLayout {
-    static func spokes(spectrum: [Float], in bounds: CGRect, count: Int = AudioSnapshot.bandCount) -> [OrbitSpoke] {
+    static func spokes(
+        spectrum: [Float],
+        in bounds: CGRect,
+        count: Int = AudioSnapshot.bandCount,
+        innerRatio: CGFloat = 0.55,
+        amplitude: CGFloat = 1
+    ) -> [OrbitSpoke] {
         guard count > 0, isDrawable(bounds) else { return [] }
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         let limit = min(bounds.width, bounds.height)
-        let margin = limit * 0.08
-        let outer = limit / 2 - margin
+        let outer = limit / 2 - limit * 0.04
         guard outer.isFinite, outer > 0 else { return [] }
-        let base = outer * 0.22
+        let ratio = innerRatio.isFinite ? min(max(innerRatio, 0.2), 0.9) : 0.55
+        let inner = outer * ratio
+        let gain = amplitude.isFinite ? max(amplitude, 0) : 1
         var spokes: [OrbitSpoke] = []
         spokes.reserveCapacity(count)
         for index in 0..<count {
             let raw = index < spectrum.count ? spectrum[index] : 0
-            let level = raw.isFinite ? min(max(CGFloat(raw), 0), 1) : 0
-            let radius = base + (outer - base) * level
+            let level = raw.isFinite ? min(max(CGFloat(raw) * gain, 0), 1) : 0
+            let travel = max(outer - inner, 0)
+            let span = max(min(1.5, travel), travel * level)
+            let radius = min(outer, inner + span)
             guard radius.isFinite, radius >= 0, radius <= outer + 0.001 else { return [] }
             let angle = (CGFloat(index) / CGFloat(count)) * 2 * CGFloat.pi - CGFloat.pi / 2
             let end = CGPoint(
@@ -29,8 +38,8 @@ nonisolated enum OrbitLayout {
                 y: center.y + sin(angle) * radius
             )
             let start = CGPoint(
-                x: center.x + cos(angle) * base * 0.35,
-                y: center.y + sin(angle) * base * 0.35
+                x: center.x + cos(angle) * inner,
+                y: center.y + sin(angle) * inner
             )
             guard inside(start, bounds), inside(end, bounds) else { return [] }
             spokes.append(OrbitSpoke(start: start, end: end))
@@ -55,13 +64,22 @@ struct OrbitCanvas: View {
     var drawsLevels: Bool
     var color: Color
     var opacity: Double = 1
+    var amplitude: Double = 1
+    var lineWidth: Double = 1.5
+    var innerRatio: Double = 0.55
 
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
             let count = spectrum.isEmpty ? AudioSnapshot.bandCount : spectrum.count
             let source = drawsLevels ? spectrum : Array(repeating: Float(0), count: count)
-            let spokes = OrbitLayout.spokes(spectrum: source, in: bounds, count: count)
+            let spokes = OrbitLayout.spokes(
+                spectrum: source,
+                in: bounds,
+                count: count,
+                innerRatio: CGFloat(innerRatio),
+                amplitude: CGFloat(amplitude)
+            )
             var path = Path()
             for spoke in spokes {
                 path.move(to: spoke.start)
@@ -70,7 +88,7 @@ struct OrbitCanvas: View {
             context.stroke(
                 path,
                 with: .color(color.opacity(opacity)),
-                lineWidth: 2
+                style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
             )
         }
         .accessibilityLabel(drawsLevels ? "Orbit" : "Orbit baseline")

@@ -51,7 +51,36 @@ nonisolated enum SpectrumBands {
         return binRange(band: band, count: count, binHz: binHz, nyquistBin: fftLength / 2, maximumHz: maximumHz)
     }
 
+    /// Studio display mix. `smoothing` 0 follows the new frame; 1 moves slowly.
+    /// The menu bar keeps `smooth`, which uses the fixed attack and release.
+    static func displayMix(current: [Float], toward target: [Float], count: Int, smoothing: Float) -> [Float] {
+        let amount = smoothing.isFinite ? min(max(smoothing, 0), 1) : 0
+        let follow = 1 - amount * 0.85
+        return blend(current: current, toward: target, count: count, follow: follow)
+    }
+
     static func smooth(current: [Float], toward target: [Float], count: Int) -> [Float] {
+        guard count > 0 else { return [] }
+        return blend(current: current, toward: target, count: count) { now, next in
+            next > now ? attack : release
+        }
+    }
+
+    private static func blend(
+        current: [Float],
+        toward target: [Float],
+        count: Int,
+        follow: Float
+    ) -> [Float] {
+        blend(current: current, toward: target, count: count) { _, _ in follow }
+    }
+
+    private static func blend(
+        current: [Float],
+        toward target: [Float],
+        count: Int,
+        coefficient: (Float, Float) -> Float
+    ) -> [Float] {
         guard count > 0 else { return [] }
         var result = [Float]()
         result.reserveCapacity(count)
@@ -60,8 +89,8 @@ nonisolated enum SpectrumBands {
             let next = index < target.count ? target[index] : 0
             let safeNow = now.isFinite ? now : 0
             let safeNext = next.isFinite ? next : 0
-            let coefficient = safeNext > safeNow ? attack : release
-            let mixed = safeNow + (safeNext - safeNow) * coefficient
+            let weight = coefficient(safeNow, safeNext)
+            let mixed = safeNow + (safeNext - safeNow) * weight
             result.append(mixed.isFinite ? min(max(mixed, 0), 1) : 0)
         }
         return result

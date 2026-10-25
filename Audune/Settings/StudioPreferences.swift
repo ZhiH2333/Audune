@@ -10,6 +10,13 @@ nonisolated enum StudioPreferenceKey {
     /// Retired. Old installs may still have this key; saving clears it.
     static let cleanCanvas = "studio.cleanCanvas"
     static let barCount = "studio.barCount"
+    static let lineWidth = "studio.lineWidth"
+    static let amplitude = "studio.amplitude"
+    static let smoothing = "studio.smoothing"
+    static let barGap = "studio.barGap"
+    static let cornerRadius = "studio.cornerRadius"
+    static let spectrumStroke = "studio.spectrumStroke"
+    static let orbitInner = "studio.orbitInner"
 }
 
 nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
@@ -95,15 +102,35 @@ nonisolated struct StudioPreferences: Equatable {
     var backgroundOpacity: Double
     var accent: StudioAccent
     var barCount: Int
+    var lineWidth: Double
+    var amplitude: Double
+    var smoothing: Double
+    var barGap: Double
+    var cornerRadius: Double
+    var spectrumStroke: Bool
+    var orbitInner: Double
 
     static let opacityRange: ClosedRange<Double> = 0.35...1
+    static let lineWidthRange: ClosedRange<Double> = 0.5...4
+    static let amplitudeRange: ClosedRange<Double> = 0.25...3
+    static let smoothingRange: ClosedRange<Double> = 0...1
+    static let barGapRange: ClosedRange<Double> = 0...8
+    static let cornerRadiusRange: ClosedRange<Double> = 0...8
+    static let orbitInnerRange: ClosedRange<Double> = 0.35...0.8
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let standard = StudioPreferences(
         mode: .spectrum,
         windowMode: .onTop,
         backgroundOpacity: 0.92,
         accent: .warm,
-        barCount: 16
+        barCount: 32,
+        lineWidth: 1.5,
+        amplitude: 1,
+        smoothing: 0.35,
+        barGap: 2,
+        cornerRadius: 2,
+        spectrumStroke: false,
+        orbitInner: 0.55
     )
 
     static func load(from defaults: UserDefaults = .standard) -> StudioPreferences {
@@ -124,7 +151,16 @@ nonisolated struct StudioPreferences: Equatable {
             windowMode: windowMode,
             backgroundOpacity: backgroundOpacity,
             accent: accent,
-            barCount: barCount
+            barCount: barCount,
+            lineWidth: stored(StudioPreferenceKey.lineWidth, in: defaults, range: lineWidthRange, fallback: standard.lineWidth),
+            amplitude: stored(StudioPreferenceKey.amplitude, in: defaults, range: amplitudeRange, fallback: standard.amplitude),
+            smoothing: stored(StudioPreferenceKey.smoothing, in: defaults, range: smoothingRange, fallback: standard.smoothing),
+            barGap: stored(StudioPreferenceKey.barGap, in: defaults, range: barGapRange, fallback: standard.barGap),
+            cornerRadius: stored(StudioPreferenceKey.cornerRadius, in: defaults, range: cornerRadiusRange, fallback: standard.cornerRadius),
+            spectrumStroke: defaults.object(forKey: StudioPreferenceKey.spectrumStroke) == nil
+                ? standard.spectrumStroke
+                : defaults.bool(forKey: StudioPreferenceKey.spectrumStroke),
+            orbitInner: stored(StudioPreferenceKey.orbitInner, in: defaults, range: orbitInnerRange, fallback: standard.orbitInner)
         )
     }
 
@@ -136,6 +172,13 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(accent.rawValue, forKey: StudioPreferenceKey.accent)
         defaults.removeObject(forKey: StudioPreferenceKey.cleanCanvas)
         defaults.set(Self.normalizedBarCount(barCount), forKey: StudioPreferenceKey.barCount)
+        defaults.set(Self.clamped(lineWidth, to: Self.lineWidthRange, fallback: Self.standard.lineWidth), forKey: StudioPreferenceKey.lineWidth)
+        defaults.set(Self.clamped(amplitude, to: Self.amplitudeRange, fallback: Self.standard.amplitude), forKey: StudioPreferenceKey.amplitude)
+        defaults.set(Self.clamped(smoothing, to: Self.smoothingRange, fallback: Self.standard.smoothing), forKey: StudioPreferenceKey.smoothing)
+        defaults.set(Self.clamped(barGap, to: Self.barGapRange, fallback: Self.standard.barGap), forKey: StudioPreferenceKey.barGap)
+        defaults.set(Self.clamped(cornerRadius, to: Self.cornerRadiusRange, fallback: Self.standard.cornerRadius), forKey: StudioPreferenceKey.cornerRadius)
+        defaults.set(spectrumStroke, forKey: StudioPreferenceKey.spectrumStroke)
+        defaults.set(Self.clamped(orbitInner, to: Self.orbitInnerRange, fallback: Self.standard.orbitInner), forKey: StudioPreferenceKey.orbitInner)
     }
 
     static func resolvedWindowMode(from defaults: UserDefaults) -> StudioWindowMode {
@@ -157,7 +200,16 @@ nonisolated struct StudioPreferences: Equatable {
     }
 
     static func clampedOpacity(_ value: Double) -> Double {
-        guard value.isFinite else { return standard.backgroundOpacity }
-        return min(max(value, opacityRange.lowerBound), opacityRange.upperBound)
+        clamped(value, to: opacityRange, fallback: standard.backgroundOpacity)
+    }
+
+    static func clamped(_ value: Double, to range: ClosedRange<Double>, fallback: Double) -> Double {
+        guard value.isFinite else { return fallback }
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    private static func stored(_ key: String, in defaults: UserDefaults, range: ClosedRange<Double>, fallback: Double) -> Double {
+        guard defaults.object(forKey: key) != nil else { return fallback }
+        return clamped(defaults.double(forKey: key), to: range, fallback: fallback)
     }
 }
