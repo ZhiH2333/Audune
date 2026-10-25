@@ -48,11 +48,12 @@ struct SpectrumCanvas: View {
     var spectrum: [Float]
     var drawsBars: Bool
     var color: Color
+    var opacity: Double = 1
 
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let shade = GraphicsContext.Shading.color(color)
+            let shade = GraphicsContext.Shading.color(color.opacity(opacity))
             if drawsBars {
                 for rect in SpectrumBars.bars(spectrum: spectrum, in: bounds, count: spectrum.count) {
                     context.fill(Path(rect), with: shade)

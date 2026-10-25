@@ -95,7 +95,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     func setChromeVisible(_ visible: Bool) {
-        panel.hasShadow = visible || model.cleanCanvas == false
+        panel.hasShadow = false
     }
 
     func resetPreferences() {
@@ -116,7 +116,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             isMovable: panel.isMovable,
             isMovableByWindowBackground: panel.isMovableByWindowBackground,
             isResizable: panel.styleMask.contains(.resizable),
-            usesDragHostingView: panel.contentView is StudioHostingView<StudioContentView>
+            usesDragHostingView: panel.contentView is StudioHostingView<StudioContentView>,
+            isOpaque: panel.isOpaque,
+            backgroundAlpha: panel.backgroundColor?.alphaComponent ?? 1,
+            hasShadow: panel.hasShadow,
+            ignoresMouseEvents: panel.ignoresMouseEvents,
+            hostIsOpaque: (panel.contentView as? StudioHostingView<StudioContentView>)?.isOpaque ?? true
         )
     }
 
@@ -128,10 +133,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.title = "Audune Studio"
         panel.isOpaque = false
         panel.backgroundColor = .clear
+        panel.ignoresMouseEvents = false
         panel.minSize = StudioFrame.minimumSize
         panel.contentMinSize = StudioFrame.minimumSize
         applyLevel()

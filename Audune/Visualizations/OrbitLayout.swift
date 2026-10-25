@@ -54,6 +54,7 @@ struct OrbitCanvas: View {
     var spectrum: [Float]
     var drawsLevels: Bool
     var color: Color
+    var opacity: Double = 1
 
     var body: some View {
         Canvas { context, size in
@@ -68,7 +69,7 @@ struct OrbitCanvas: View {
             }
             context.stroke(
                 path,
-                with: .color(color),
+                with: .color(color.opacity(opacity)),
                 lineWidth: 2
             )
         }

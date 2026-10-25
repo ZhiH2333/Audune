@@ -92,5 +92,10 @@ struct StudioWindowInspection: Equatable {
     var isMovableByWindowBackground: Bool
     var isResizable: Bool
     var usesDragHostingView: Bool
+    var isOpaque: Bool
+    var backgroundAlpha: CGFloat
+    var hasShadow: Bool
+    var ignoresMouseEvents: Bool
+    var hostIsOpaque: Bool
 }
 #endif

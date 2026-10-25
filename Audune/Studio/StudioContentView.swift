@@ -45,14 +45,6 @@ struct StudioContentView: View {
                 .allowsHitTesting(showsChrome)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(graphite.opacity(panelOpacity))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(warmWhite.opacity(showsChrome ? 0.12 : 0), lineWidth: 1)
-                }
-        }
         .foregroundStyle(warmWhite)
         .preferredColorScheme(.dark)
         .coordinateSpace(name: StudioCoordinateSpace.name)
@@ -235,11 +227,11 @@ struct StudioContentView: View {
     private var visualization: some View {
         switch model.mode {
         case .spectrum:
-            SpectrumCanvas(spectrum: model.studioSpectrum, drawsBars: drawsBars, color: accentColor)
+            SpectrumCanvas(spectrum: model.studioSpectrum, drawsBars: drawsBars, color: accentColor, opacity: model.backgroundOpacity)
         case .waveform:
-            WaveformCanvas(samples: model.snapshot.waveform, color: accentColor)
+            WaveformCanvas(samples: model.snapshot.waveform, color: accentColor, opacity: model.backgroundOpacity)
         case .orbit:
-            OrbitCanvas(spectrum: model.studioSpectrum, drawsLevels: drawsBars, color: accentColor)
+            OrbitCanvas(spectrum: model.studioSpectrum, drawsLevels: drawsBars, color: accentColor, opacity: model.backgroundOpacity)
         }
     }
 
@@ -252,10 +244,6 @@ struct StudioContentView: View {
             now: now,
             exitedAt: exitedAt
         )
-    }
-
-    private var panelOpacity: Double {
-        model.cleanCanvas && showsChrome == false ? 0 : model.backgroundOpacity
     }
 
     private var chromeAnimation: Animation? {

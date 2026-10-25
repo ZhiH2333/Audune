@@ -89,6 +89,24 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
     var onPointerInside: ((Bool) -> Void)?
     private var pointerTracking: NSTrackingArea?
 
+    override var isOpaque: Bool { false }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        clearLayerBackground()
+    }
+
+    override func layout() {
+        super.layout()
+        clearLayerBackground()
+    }
+
+    private func clearLayerBackground() {
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let pointerTracking {
