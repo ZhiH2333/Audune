@@ -61,8 +61,24 @@ final class SettingsWindowTests: XCTestCase {
     func testSettingsCategoriesMatchTheApprovedSidebar() {
         XCTAssertEqual(
             SettingsCategory.allCases.map(\.title),
-            ["Appearance", "Spectrum", "Waveform", "Orbit", "Window", "Playback"]
+            ["Appearance", "Spectrum", "Waveform", "Orbit", "Window", "Notch Island", "Playback"]
         )
         XCTAssertEqual(SettingsWindowController.initialSize, CGSize(width: 760, height: 600))
+    }
+
+    @MainActor
+    func testShowingSpecificCategorySelectsNotchIslandWithoutChangingWindowLevel() {
+        let spike = ProcessTapSpike()
+        let studio = StudioWindowController(spike: spike)
+        defer { studio.shutdown() }
+        let island = IslandWindowController(spike: spike, allowsOrderFront: false)
+        defer { island.shutdown() }
+        let settings = SettingsWindowController(studio: studio, island: island)
+        defer { settings.shutdown() }
+
+        studio.model.settingsCategory = .island
+        XCTAssertEqual(studio.model.settingsCategory, .island)
+        XCTAssertEqual(settings.window.level, .normal)
+        XCTAssertEqual(spike.phase, .idle)
     }
 }

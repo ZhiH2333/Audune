@@ -7,8 +7,11 @@ final class MenuBarController: NSObject {
     private let spike: ProcessTapSpike
     private let openDebug: () -> Void
     private let toggleStudio: () -> Void
+    private let toggleIsland: () -> Void
     private let openSettings: () -> Void
     private let studioVisible: () -> Bool
+    private let islandEnabled: () -> Bool
+    private let islandSupported: () -> Bool
     private let model = MenuBarModel()
     private let spectrumImage = MenuBarSpectrumImage()
     private let statusItem = NSStatusBar.system.statusItem(withLength: MenuBarSpectrumImage.pointSize.width)
@@ -23,20 +26,27 @@ final class MenuBarController: NSObject {
         spike: ProcessTapSpike,
         openDebug: @escaping () -> Void,
         toggleStudio: @escaping () -> Void,
+        toggleIsland: @escaping () -> Void = {},
         openSettings: @escaping () -> Void,
-        studioVisible: @escaping () -> Bool
+        studioVisible: @escaping () -> Bool,
+        islandEnabled: @escaping () -> Bool = { false },
+        islandSupported: @escaping () -> Bool = { false }
     ) {
         self.spike = spike
         self.openDebug = openDebug
         self.toggleStudio = toggleStudio
+        self.toggleIsland = toggleIsland
         self.openSettings = openSettings
         self.studioVisible = studioVisible
+        self.islandEnabled = islandEnabled
+        self.islandSupported = islandSupported
         super.init()
         let root = MenuBarPopoverView(
             model: model,
             start: { [weak self] in self?.startCapture() },
             stop: { [weak self] in self?.stopCapture() },
             toggleStudio: { [weak self] in self?.toggleStudioWindow() },
+            toggleIsland: { [weak self] in self?.toggleIslandWindow() },
             openSettings: { [weak self] in self?.showSettingsWindow() },
             openDebug: { [weak self] in self?.showDebugWindow() },
             quit: { NSApp.terminate(nil) }
@@ -96,6 +106,12 @@ final class MenuBarController: NSObject {
         toggleStudio()
     }
 
+    private func toggleIslandWindow() {
+        popover.performClose(nil)
+        toggleIsland()
+        publish()
+    }
+
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusItem.button else { return }
         if popover.isShown {
@@ -136,6 +152,10 @@ final class MenuBarController: NSObject {
         if model.stopDisabled != presentation.stopDisabled { model.stopDisabled = presentation.stopDisabled }
         let studioOpen = studioVisible()
         if model.studioVisible != studioOpen { model.studioVisible = studioOpen }
+        let isIslandEnabled = islandEnabled()
+        if model.islandEnabled != isIslandEnabled { model.islandEnabled = isIslandEnabled }
+        let isIslandSupported = islandSupported()
+        if model.islandSupported != isIslandSupported { model.islandSupported = isIslandSupported }
         guard let button = statusItem.button else { return }
         let sequence = presentation.state == .receiving ? snapshot.sequence : nil
         if renderedState == presentation.state && renderedSequence == sequence { return }
@@ -178,6 +198,7 @@ struct MenuBarInstaller: View {
     @Environment(\.openWindow) private var openWindow
     @State private var controller: MenuBarController?
     @State private var studio: StudioWindowController?
+    @State private var island: IslandWindowController?
     @State private var settings: SettingsWindowController?
 
     var body: some View {
@@ -187,9 +208,13 @@ struct MenuBarInstaller: View {
                 guard controller == nil else { return }
                 let studio = StudioWindowController(spike: spike)
                 self.studio = studio
-                let settings = SettingsWindowController(studio: studio)
+                let island = IslandWindowController(spike: spike)
+                self.island = island
+                let settings = SettingsWindowController(studio: studio, island: island)
                 self.settings = settings
                 studio.openSettings = { settings.show() }
+                island.openStudio = { studio.show() }
+                island.openSettings = { settings.show(category: .island) }
                 let openWindow = openWindow
                 controller = MenuBarController(
                     spike: spike,
@@ -198,13 +223,17 @@ struct MenuBarInstaller: View {
                         NSApp.activate()
                     },
                     toggleStudio: { studio.toggle() },
+                    toggleIsland: { island.toggleEnabled() },
                     openSettings: { settings.show() },
-                    studioVisible: { studio.isVisible }
+                    studioVisible: { studio.isVisible },
+                    islandEnabled: { island.model.prefs.isEnabled },
+                    islandSupported: { island.model.isSupported }
                 )
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 controller?.shutdown()
                 studio?.shutdown()
+                island?.shutdown()
                 settings?.shutdown()
             }
     }

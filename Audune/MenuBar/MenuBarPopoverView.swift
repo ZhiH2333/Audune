@@ -11,6 +11,8 @@ final class MenuBarModel {
     var startDisabled = false
     var stopDisabled = true
     var studioVisible = false
+    var islandEnabled = true
+    var islandSupported = false
 }
 
 struct MenuBarPopoverView: View {
@@ -18,6 +20,7 @@ struct MenuBarPopoverView: View {
     var start: () -> Void
     var stop: () -> Void
     var toggleStudio: () -> Void
+    var toggleIsland: () -> Void = {}
     var openSettings: () -> Void
     var openDebug: () -> Void
     var quit: () -> Void
@@ -43,6 +46,8 @@ struct MenuBarPopoverView: View {
                     .disabled(model.stopDisabled)
             }
             Button(model.studioVisible ? "Hide Studio" : "Open Studio", action: toggleStudio)
+            Button(islandButtonTitle, action: toggleIsland)
+                .disabled(model.islandSupported == false)
             Button("Settings\u{2026}", action: openSettings)
             Button("Open Debug Window", action: openDebug)
             Divider()
@@ -51,6 +56,13 @@ struct MenuBarPopoverView: View {
         .padding(12)
         .frame(width: 220)
         .fixedSize(horizontal: true, vertical: true)
+    }
+
+    private var islandButtonTitle: String {
+        guard model.islandSupported else {
+            return "Notch Island (No Notch)"
+        }
+        return model.islandEnabled ? "Hide Notch Island" : "Show Notch Island"
     }
 }
 #endif

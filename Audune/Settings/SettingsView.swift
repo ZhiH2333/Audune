@@ -8,6 +8,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case waveform
     case orbit
     case window
+    case island
     case playback
 
     var id: String { rawValue }
@@ -19,6 +20,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .waveform: return "Waveform"
         case .orbit: return "Orbit"
         case .window: return "Window"
+        case .island: return "Notch Island"
         case .playback: return "Playback"
         }
     }
@@ -30,6 +32,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .waveform: return "waveform"
         case .orbit: return "circle.dotted"
         case .window: return "macwindow"
+        case .island: return "rectangle.topthird.inset.filled"
         case .playback: return "play.circle"
         }
     }
@@ -37,11 +40,15 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     let studio: StudioWindowController
+    let island: IslandWindowController
     @Bindable var model: StudioModel
+    @Bindable var islandModel: IslandModel
 
-    init(studio: StudioWindowController) {
+    init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
+        self.island = island
         self.model = studio.model
+        self.islandModel = island.model
     }
 
     var body: some View {
@@ -63,7 +70,11 @@ struct SettingsView: View {
                     .accessibilityAddTraits(.isHeader)
             Form {
                 Section {
-                    studioPreviewRow
+                    if model.settingsCategory == .island {
+                        islandStatusRow
+                    } else {
+                        studioPreviewRow
+                    }
                 }
                 switch model.settingsCategory {
                 case .appearance: appearancePane
@@ -71,6 +82,7 @@ struct SettingsView: View {
                 case .waveform: waveformPane
                 case .orbit: orbitPane
                 case .window: windowPane
+                case .island: islandPane
                 case .playback: playbackPane
                 }
             }
@@ -78,12 +90,20 @@ struct SettingsView: View {
             }
         }
         .toolbar(removing: .sidebarToggle)
-        .onChange(of: model.prefs) { _, _ in
+        .onChange(of: model.prefs) { _, newValue in
             studio.preferencesDidChange()
+            island.updateAppearance(newValue.appearance)
         }
-        .onChange(of: model.settingsCategory) { _, _ in
+        .onChange(of: islandModel.prefs) { _, _ in
+            island.preferencesDidChange()
+        }
+        .onChange(of: model.settingsCategory) { _, newCategory in
             studio.updatePlaybackTimer()
-            studio.refreshPlaybackNow()
+            if newCategory == .playback {
+                studio.refreshPlaybackNow()
+            } else if newCategory == .island {
+                island.evaluateScreensAndApply(animated: false)
+            }
         }
     }
 
@@ -94,6 +114,19 @@ struct SettingsView: View {
             Spacer()
             Button(model.isShown ? "Hide Studio" : "Show Studio") {
                 studio.toggle()
+            }
+        }
+    }
+
+    private var islandStatusRow: some View {
+        HStack {
+            Text(islandModel.statusSummary)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if islandModel.isSupported {
+                Button(islandModel.prefs.isEnabled ? "Hide Notch Island" : "Show Notch Island") {
+                    island.toggleEnabled()
+                }
             }
         }
     }
@@ -282,7 +315,89 @@ struct SettingsView: View {
                 model.prefs.window = .standard
                 studio.setWindowMode(StudioPreferences.standard.windowMode)
             }
-            Button("Reset All Studio Settings") { studio.resetPreferences() }
+            Button("Reset All Studio Settings") {
+                studio.resetPreferences()
+                island.updateAppearance(StudioPreferences.standard.appearance)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var islandPane: some View {
+        Section("Display & Status") {
+            Toggle("Enable Notch Island", isOn: Binding(
+                get: { islandModel.prefs.isEnabled },
+                set: { island.setEnabled($0) }
+            ))
+            Picker("Display", selection: Binding(
+                get: { islandModel.prefs.targetScreenID },
+                set: { island.setTargetScreenID($0) }
+            )) {
+                Text("Automatic (Notched Display)").tag("")
+                ForEach(islandModel.availableScreens) { screen in
+                    Text(screen.localizedName).tag(screen.id)
+                }
+            }
+            LabeledContent("State") {
+                Text(islandStateDescription)
+                    .foregroundStyle(.secondary)
+            }
+            if islandModel.isSupported == false {
+                Text("Notch Island requires a Mac display with a camera housing and valid top auxiliary areas. Menu Bar and Studio remain available on non-notched displays.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        Section("Visuals") {
+            Picker("Expanded mode", selection: Binding(
+                get: { islandModel.prefs.mode },
+                set: { island.selectMode($0) }
+            )) {
+                ForEach(StudioVisualMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Picker("Compact bars per side", selection: Binding(
+                get: { islandModel.prefs.compactBarCountPerSide },
+                set: { island.setCompactBarCountPerSide($0) }
+            )) {
+                ForEach(IslandPreferences.compactBarCounts, id: \.self) { count in
+                    Text("\(count)").tag(count)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text("Compact mode draws a symmetric live spectrum on both sides of the notch. Colors follow Appearance.")
+                .foregroundStyle(.secondary)
+        }
+        Section("Interaction & Motion") {
+            Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
+            SettingsSlider(
+                title: "Collapse delay (s)",
+                value: $islandModel.prefs.collapseDelaySeconds,
+                range: IslandPreferences.collapseDelayRange,
+                step: 0.05
+            )
+            Toggle("Show in full-screen apps", isOn: $islandModel.prefs.showsInFullScreen)
+            Toggle("Follow system Reduce Motion", isOn: $islandModel.prefs.followsReduceMotion)
+            if islandModel.isSupported && islandModel.prefs.isEnabled {
+                HStack {
+                    Button(islandModel.state.isExpandedOrPinned ? "Collapse Now" : "Expand Now") {
+                        if islandModel.state.isExpandedOrPinned {
+                            island.collapse()
+                        } else {
+                            island.expand()
+                        }
+                    }
+                    Button(islandModel.isPinned ? "Unpin Expanded" : "Pin Expanded") {
+                        island.togglePin()
+                    }
+                }
+            }
+        }
+        Section {
+            Button("Reset Notch Island Settings") {
+                island.resetPreferences()
+            }
         }
     }
 
@@ -363,6 +478,19 @@ struct SettingsView: View {
         case .onDesktop: return "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed."
         case .onTop: return "On Top joins all desktops and is allowed beside full-screen apps."
         case .asWindow: return "As Window stays on its own desktop and full-screen apps can cover it."
+        }
+    }
+
+    private var islandStateDescription: String {
+        switch islandModel.state {
+        case .disabled:
+            return islandModel.isSupported ? "Disabled" : "Unsupported display"
+        case .compact:
+            return "Compact"
+        case .expanded:
+            return "Expanded"
+        case .pinned:
+            return "Pinned Expanded"
         }
     }
 

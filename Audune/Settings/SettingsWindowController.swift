@@ -12,10 +12,19 @@ final class SettingsWindowController: NSObject {
 
     let window: NSWindow
     private let studio: StudioWindowController
+    let island: IslandWindowController
+    private let ownsIsland: Bool
     private var closeObserver: NSObjectProtocol?
 
-    init(studio: StudioWindowController) {
+    init(studio: StudioWindowController, island: IslandWindowController? = nil) {
         self.studio = studio
+        if let island {
+            self.island = island
+            self.ownsIsland = false
+        } else {
+            self.island = IslandWindowController(spike: ProcessTapSpike(), allowsOrderFront: false)
+            self.ownsIsland = true
+        }
         window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.initialSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -31,7 +40,7 @@ final class SettingsWindowController: NSObject {
         window.collectionBehavior = []
         window.hidesOnDeactivate = false
         window.contentMinSize = Self.minimumSize
-        let host = NSHostingView(rootView: SettingsView(studio: studio))
+        let host = NSHostingView(rootView: SettingsView(studio: studio, island: self.island))
         host.sizingOptions = []
         window.contentView = host
         window.setContentSize(Self.initialSize)
@@ -57,7 +66,10 @@ final class SettingsWindowController: NSObject {
 
     var isVisible: Bool { window.isVisible }
 
-    func show() {
+    func show(category: SettingsCategory? = nil) {
+        if let category {
+            studio.model.settingsCategory = category
+        }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
         studio.setSettingsWindowVisible(true)
@@ -66,6 +78,9 @@ final class SettingsWindowController: NSObject {
     func shutdown() {
         window.orderOut(nil)
         studio.setSettingsWindowVisible(false)
+        if ownsIsland {
+            island.shutdown()
+        }
     }
 }
 #endif
