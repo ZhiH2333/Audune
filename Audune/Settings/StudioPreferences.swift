@@ -5,6 +5,8 @@ nonisolated enum StudioPreferenceKey {
     static let alwaysOnTop = "studio.alwaysOnTop"
     static let backgroundOpacity = "studio.backgroundOpacity"
     static let accent = "studio.accent"
+    static let cleanCanvas = "studio.cleanCanvas"
+    static let barCount = "studio.barCount"
 }
 
 nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
@@ -73,13 +75,18 @@ nonisolated struct StudioPreferences: Equatable {
     var alwaysOnTop: Bool
     var backgroundOpacity: Double
     var accent: StudioAccent
+    var cleanCanvas: Bool
+    var barCount: Int
 
     static let opacityRange: ClosedRange<Double> = 0.35...1
+    static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let standard = StudioPreferences(
         mode: .spectrum,
         alwaysOnTop: true,
         backgroundOpacity: 0.92,
-        accent: .warm
+        accent: .warm,
+        cleanCanvas: false,
+        barCount: 16
     )
 
     static func load(from defaults: UserDefaults = .standard) -> StudioPreferences {
@@ -94,11 +101,19 @@ nonisolated struct StudioPreferences: Equatable {
         } else {
             backgroundOpacity = clampedOpacity(defaults.double(forKey: StudioPreferenceKey.backgroundOpacity))
         }
+        let cleanCanvas = defaults.object(forKey: StudioPreferenceKey.cleanCanvas) == nil
+            ? standard.cleanCanvas
+            : defaults.bool(forKey: StudioPreferenceKey.cleanCanvas)
+        let barCount = defaults.object(forKey: StudioPreferenceKey.barCount) == nil
+            ? standard.barCount
+            : normalizedBarCount(defaults.integer(forKey: StudioPreferenceKey.barCount))
         return StudioPreferences(
             mode: mode,
             alwaysOnTop: alwaysOnTop,
             backgroundOpacity: backgroundOpacity,
-            accent: accent
+            accent: accent,
+            cleanCanvas: cleanCanvas,
+            barCount: barCount
         )
     }
 
@@ -107,10 +122,16 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(alwaysOnTop, forKey: StudioPreferenceKey.alwaysOnTop)
         defaults.set(Self.clampedOpacity(backgroundOpacity), forKey: StudioPreferenceKey.backgroundOpacity)
         defaults.set(accent.rawValue, forKey: StudioPreferenceKey.accent)
+        defaults.set(cleanCanvas, forKey: StudioPreferenceKey.cleanCanvas)
+        defaults.set(Self.normalizedBarCount(barCount), forKey: StudioPreferenceKey.barCount)
     }
 
     static func reset(in defaults: UserDefaults = .standard) {
         standard.save(to: defaults)
+    }
+
+    static func normalizedBarCount(_ value: Int) -> Int {
+        barCounts.contains(value) ? value : standard.barCount
     }
 
     static func clampedOpacity(_ value: Double) -> Double {

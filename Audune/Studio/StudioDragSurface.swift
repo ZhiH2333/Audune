@@ -86,6 +86,31 @@ final class StudioDragView: NSView {
 
 final class StudioHostingView<Content: View>: NSHostingView<Content> {
     var hitMap = StudioHitMap()
+    var onPointerInside: ((Bool) -> Void)?
+    private var pointerTracking: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let pointerTracking {
+            removeTrackingArea(pointerTracking)
+        }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect, .enabledDuringMouseDrag],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        pointerTracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onPointerInside?(true)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onPointerInside?(false)
+    }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 

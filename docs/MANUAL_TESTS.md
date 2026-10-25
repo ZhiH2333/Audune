@@ -84,6 +84,18 @@ The v1 `NEEDS REDESIGN` row above stays as the record of the old chrome. The v1.
 - [ ] `NOT TESTED` — Leaving full screen leaves Studio visible on the normal desktop.
 - [ ] `NOT TESTED` — Dragging Studio to another display, then disconnecting that display, returns it to a visible screen.
 
+### Studio v1.2 Clean Canvas
+
+`StudioChromeTests` and `StudioPreferencesTests` cover the hide delay, held controls, Reduce Motion durations, and saved Clean Canvas / Bar Count values. They do not move a real window. These rows stay `NOT TESTED` until a real macOS GUI session.
+
+- [ ] `NOT TESTED` — Clean Canvas off keeps the full Studio interface visible with no auto-hide.
+- [ ] `NOT TESTED` — Clean Canvas on and Waveform: after the pointer leaves, only the real waveform remains. The background, border, shadow, and controls are gone, and the wave does not jump.
+- [ ] `NOT TESTED` — Moving the pointer back fades the same controls in. Opening settings or dragging a slider keeps them visible.
+- [ ] `NOT TESTED` — The menu-bar Clean Canvas switch restores the full interface.
+- [ ] `NOT TESTED` — Hiding or showing the chrome does not stop menu-bar capture.
+- [ ] `NOT TESTED` — Spectrum and Orbit bar counts update immediately across 8, 12, 16, 24, 32, 48, and 64, persist after relaunch, and do not change the menu bar from 16 bars.
+- [ ] `NOT TESTED` — Studio v1.2 visual review. One shared canvas, graphite and warm white, controls appear on demand, and Spectrum, Waveform, and Orbit use that same chrome.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

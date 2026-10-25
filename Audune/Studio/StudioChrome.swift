@@ -1,0 +1,42 @@
+import CoreGraphics
+import Foundation
+
+nonisolated enum StudioChromeMotion {
+    static let revealSeconds = 0.20
+    static let hideDelaySeconds = 0.40
+    static let hideSeconds = 0.25
+
+    static func fadeSeconds(hiding: Bool, reduceMotion: Bool) -> Double {
+        guard reduceMotion == false else { return 0 }
+        return hiding ? hideSeconds : revealSeconds
+    }
+}
+
+nonisolated enum StudioChrome {
+    static let barHeight: CGFloat = 36
+
+    static func isVisible(
+        cleanCanvas: Bool,
+        pointerInside: Bool,
+        pointerDown: Bool,
+        holdsChrome: Bool,
+        now: TimeInterval,
+        exitedAt: TimeInterval?
+    ) -> Bool {
+        if cleanCanvas == false { return true }
+        if pointerInside || pointerDown || holdsChrome { return true }
+        guard let exitedAt else { return true }
+        return now - exitedAt < StudioChromeMotion.hideDelaySeconds
+    }
+
+    static func canvasFrame(in bounds: CGRect) -> CGRect {
+        guard bounds.width.isFinite, bounds.height.isFinite, bounds.width > 0, bounds.height > 0 else { return .zero }
+        return bounds
+    }
+
+    static func chromeFrame(in bounds: CGRect) -> CGRect {
+        guard bounds.width.isFinite, bounds.height.isFinite, bounds.width > 0, bounds.height > 0 else { return .zero }
+        let height = min(barHeight, bounds.height)
+        return CGRect(x: bounds.minX, y: bounds.maxY - height, width: bounds.width, height: height)
+    }
+}

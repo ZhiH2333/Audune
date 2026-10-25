@@ -140,4 +140,24 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertFalse(inspection.collectionBehavior.contains(.fullScreenPrimary))
         XCTAssertFalse(inspection.collectionBehavior.contains(.moveToActiveSpace))
     }
+
+    @MainActor
+    func testBarCountAndCleanCanvasDoNotStartCapture() {
+        let spike = ProcessTapSpike()
+        let controller = StudioWindowController(spike: spike)
+        defer { controller.shutdown() }
+
+        controller.setBarCount(64)
+        controller.setCleanCanvas(true)
+
+        XCTAssertEqual(spike.phase, .idle)
+        XCTAssertEqual(controller.model.barCount, 64)
+        XCTAssertEqual(controller.model.studioSpectrum.count, 64)
+        XCTAssertTrue(controller.model.cleanCanvas)
+        XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior)
+
+        controller.setBarCount(3)
+        XCTAssertEqual(controller.model.barCount, 16)
+        XCTAssertEqual(spike.phase, .idle)
+    }
 }

@@ -10,6 +10,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private let hitMap = StudioHitMap()
     private var timer: Timer?
     private var screenObserver: NSObjectProtocol?
+    private var pointerMonitor: Any?
+    private var smoothedStudio: [Float] = []
     private var didShutdown = false
 
     init(spike: ProcessTapSpike) {
@@ -31,6 +33,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         clampOntoVisibleScreen()
         applyLevel()
+        refreshPointerInside()
         panel.orderFrontRegardless()
         startDisplayTimer()
     }
@@ -56,6 +59,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             NotificationCenter.default.removeObserver(screenObserver)
             self.screenObserver = nil
         }
+        if let pointerMonitor {
+            NSEvent.removeMonitor(pointerMonitor)
+            self.pointerMonitor = nil
+        }
         panel.orderOut(nil)
     }
 
@@ -69,9 +76,33 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         currentPreferences().save()
     }
 
+    func setCleanCanvas(_ enabled: Bool) {
+        model.cleanCanvas = enabled
+        savePreferences()
+        if enabled == false {
+            setChromeVisible(true)
+        }
+    }
+
+    func setBarCount(_ count: Int) {
+        let normalized = StudioPreferences.normalizedBarCount(count)
+        if model.barCount != normalized {
+            smoothedStudio = []
+        }
+        model.barCount = normalized
+        savePreferences()
+        refreshStudioSpectrum()
+    }
+
+    func setChromeVisible(_ visible: Bool) {
+        panel.hasShadow = visible || model.cleanCanvas == false
+    }
+
     func resetPreferences() {
         StudioPreferences.reset()
+        smoothedStudio = []
         apply(StudioPreferences.standard)
+        refreshStudioSpectrum()
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -119,11 +150,30 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             close: { [weak self] in
                 self?.hide()
             },
+            setCleanCanvas: { [weak self] enabled in
+                self?.setCleanCanvas(enabled)
+            },
+            setBarCount: { [weak self] count in
+                self?.setBarCount(count)
+            },
+            setChromeVisible: { [weak self] visible in
+                self?.setChromeVisible(visible)
+            },
             hitMap: hitMap
         )
         let host = StudioHostingView(rootView: root)
         host.hitMap = hitMap
+        host.onPointerInside = { [weak self] inside in
+            self?.model.pointerInside = inside
+        }
         panel.contentView = host
+        pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, event.window === self.panel else { return }
+                self.model.pointerDown = event.type == .leftMouseDown
+            }
+            return event
+        }
         if panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName) == false {
             panel.center()
         }
@@ -148,7 +198,15 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.alwaysOnTop = preferences.alwaysOnTop
         model.backgroundOpacity = preferences.backgroundOpacity
         model.accent = preferences.accent
+        model.cleanCanvas = preferences.cleanCanvas
+        model.barCount = preferences.barCount
+        if model.studioSpectrum.count != preferences.barCount {
+            model.studioSpectrum = Array(repeating: 0, count: preferences.barCount)
+        }
         applyLevel()
+        if preferences.cleanCanvas == false {
+            setChromeVisible(true)
+        }
     }
 
     private func currentPreferences() -> StudioPreferences {
@@ -156,8 +214,25 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             mode: model.mode,
             alwaysOnTop: model.alwaysOnTop,
             backgroundOpacity: model.backgroundOpacity,
-            accent: model.accent
+            accent: model.accent,
+            cleanCanvas: model.cleanCanvas,
+            barCount: model.barCount
         )
+    }
+
+    private func refreshPointerInside() {
+        model.pointerInside = panel.frame.contains(NSEvent.mouseLocation)
+    }
+
+    private func refreshStudioSpectrum() {
+        let count = model.barCount
+        let levels = SpectrumBands.levels(
+            binMagnitudes: model.snapshot.binMagnitudes,
+            sampleRate: model.snapshot.sampleRate,
+            count: count
+        )
+        smoothedStudio = SpectrumBands.smooth(current: smoothedStudio, toward: levels, count: count)
+        model.studioSpectrum = smoothedStudio
     }
 
     private func clampOntoVisibleScreen() {
@@ -192,6 +267,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func tick() {
         model.snapshot = spike.snapshots.load()
+        refreshStudioSpectrum()
     }
 }
 #endif

@@ -21,6 +21,8 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(StudioPreferences.standard.mode, .spectrum)
         XCTAssertEqual(StudioPreferences.standard.accent, .warm)
         XCTAssertEqual(StudioPreferences.standard.backgroundOpacity, 0.92)
+        XCTAssertFalse(StudioPreferences.standard.cleanCanvas)
+        XCTAssertEqual(StudioPreferences.standard.barCount, 16)
     }
 
     func testInvalidValuesNormalize() {
@@ -45,7 +47,14 @@ final class StudioPreferencesTests: XCTestCase {
     }
 
     func testSaveRoundTrip() {
-        let stored = StudioPreferences(mode: .orbit, alwaysOnTop: false, backgroundOpacity: 0.5, accent: .sea)
+        let stored = StudioPreferences(
+            mode: .orbit,
+            alwaysOnTop: false,
+            backgroundOpacity: 0.5,
+            accent: .sea,
+            cleanCanvas: true,
+            barCount: 48
+        )
         stored.save(to: defaults)
         XCTAssertEqual(StudioPreferences.load(from: defaults), stored)
     }
@@ -61,5 +70,20 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(StudioPreferences.load(from: defaults), .standard)
         XCTAssertEqual(defaults.string(forKey: "unrelated"), "leave-me")
         XCTAssertNil(defaults.string(forKey: "studio.frame"))
+    }
+
+    func testInvalidBarCountFallsBackToSixteen() {
+        defaults.set(7, forKey: StudioPreferenceKey.barCount)
+        defaults.set(true, forKey: StudioPreferenceKey.cleanCanvas)
+        var loaded = StudioPreferences.load(from: defaults)
+
+        XCTAssertEqual(loaded.barCount, 16)
+        XCTAssertTrue(loaded.cleanCanvas)
+
+        defaults.set("many", forKey: StudioPreferenceKey.barCount)
+        loaded = StudioPreferences.load(from: defaults)
+        XCTAssertEqual(loaded.barCount, 16)
+        XCTAssertEqual(StudioPreferences.normalizedBarCount(64), 64)
+        XCTAssertEqual(StudioPreferences.normalizedBarCount(0), 16)
     }
 }
