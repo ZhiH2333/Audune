@@ -361,6 +361,16 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 存储键集中定义，避免到处使用字符串字面值。
 - 首版不需要数据库、网络同步或复杂状态管理框架。
 
+### 可视化预设 v1
+
+- Spectrum、Waveform、Orbit 的设置页顶部各有一组 Visual preset。从菜单选择后立即写入 `StudioPreferences` 中对应模式的结构体，并刷新已经打开的 Studio。不切换 Studio 或 Notch Island 当前正在显示的模式。
+- 内置预设写在代码里，不依赖用户数据，也不能被重命名、覆盖或删除。Spectrum 是 Clean、Dense、Dynamic。Waveform 是 Fine Line、Soft Fill、Mirror；Mirror 使用现有 Filled 样式的中线镜像填充。Orbit 是 Compact、Halo、Dense Ring。它们改的是柱数、间距、振幅、平滑、攻击释放或半径等真实参数。
+- 自定义预设可以保存当前模式、复制、重命名和删除。复制内置预设会得到一个新的自定义副本，内置定义不变。名称去掉首尾空白后不能为空，最多 40 个字符，同一模式内大小写不敏感地不能重名。每个模式最多 24 个。删除前要确认；删除后现场参数保留，只是不再标成这个预设。
+- 应用预设只替换该模式的全部字段。Waveform 和 Orbit 的自定义颜色属于该模式，会被这份预设替换；内置预设不带自定义颜色，所以继续跟随 Appearance。Appearance 的填充色、描边色、透明度和线宽是全局的，预设不改它们。另一模式、窗口、播放，以及 Island 的开关、屏幕、悬停、收起和 Compact 每侧柱数也不改。
+- 状态会显示 Built-in、Custom 或 Modified。继续改该模式的参数后显示 Modified。只改 Appearance 不会把当前模式预设标成 Modified。
+- 自定义预设和每个模式最后应用的 id 存在 UserDefaults 键 `studio.visualPresets`，是 schema version 1 的 JSON。读取失败或 schema 更高时保留原数据，不自动覆盖；设置页可以显式 Reset Preset Library。分类 Reset 会恢复该模式的出厂参数并清掉它的已应用标记，不删除自定义预设。
+- Studio 和 Notch Island 的展开视图读取同一份模式参数。两个窗口各自记住自己正在显示的模式。Island Compact 侧翼仍使用 Island 的每侧柱数和 Appearance 颜色，不跟随 Spectrum 预设的柱数。预设不创建或重启 Process Tap。Appearance 页原有的 Warm / Amber / Sea / Mist 只改全局颜色，不属于这套可视化预设。
+
 ---
 
 ## 7. 技术栈与架构

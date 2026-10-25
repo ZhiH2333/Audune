@@ -561,6 +561,7 @@ Core MVP released.
 **Milestone:** Future
 
 ### Tasks
+- [ ] Visual presets v1 already stores custom presets in UserDefaults. File import and export stay in this issue and are not part of v1.
 - [ ] Evaluate Ribbon, Particles and Spectrogram only after profiling basic views.
 - [ ] Design a versioned, validated JSON preset format if user demand justifies it.
 - [ ] Import presets safely without executing code or loading arbitrary shaders.

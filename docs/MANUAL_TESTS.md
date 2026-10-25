@@ -217,6 +217,15 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Real playback moves the bars; silence settles to a ring of dots and does not rotate; resizing keeps the ring centered and inside the window.
 - [ ] `NOT TESTED` — Bars 8 to 64, mirror, inner and outer radius, angular gap, stroke, custom color, amplitude, and smoothing apply immediately, survive relaunch, and Reset Orbit restores them.
 
+### Visual presets v1
+
+`VisualPresetStoreTests`, `VisualPresetApplyTests`, `VisualPresetSelectorTests`, `VisualPresetCustomTests`, and `VisualPresetIslandTests` check encoding, corrupt data, mode isolation, built-in values, custom save/rename/delete, and that Studio and Notch Island hold the same mode structs. They do not judge how the presets look or how the settings window sits on a desktop. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Spectrum, Waveform, and Orbit each show a Visual preset control at the top. Choosing Clean, Dense, Dynamic, Fine Line, Soft Fill, Mirror, Compact, Halo, or Dense Ring changes that mode immediately in an open Studio. The other mode, Appearance colors, and the window mode stay as they were.
+- [ ] `NOT TESTED` — Saving the current settings asks for a name, then shows that custom preset. Duplicate, Rename, and Delete work on custom presets. Built-in presets cannot be renamed or deleted. Delete asks first and leaves the current sliders where they are.
+- [ ] `NOT TESTED` — After a preset is applied, moving one of that mode's sliders changes the status to Modified. Changing only Appearance does not. Quit and relaunch keeps the custom preset.
+- [ ] `NOT TESTED` — With Notch Island expanded on the same mode, the graphic follows the preset. Compact wings keep their own bar count. Studio and Island can show different modes at the same time. Applying a preset does not start a second Process Tap.
+
 ### Studio v1.4 Window settings
 
 `StudioChromeTests`, `StudioPreferencesTests`, and `StudioWindowBehaviorTests` check hide-delay math, Reduce Motion rules, ranges, style-mask and drag flags, and the centered default frame. None of them moves a window, shows a Space, or touches a real pointer. These rows stay `NOT TESTED`.
