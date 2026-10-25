@@ -156,6 +156,16 @@ Geometry tests cover bar gap, waveform display gain, orbit inner ring, and displ
 - [ ] `NOT TESTED` — Waveform follows real playback, including quiet passages. Orbit follows frequency energy and rests on its ring during silence.
 - [ ] `NOT TESTED` — Changing these settings does not create a second Process Tap.
 
+### Studio v1.3 Apple Music playback
+
+`PlayerControlTests` checks state text, Apple Event status codes, and that the button stays disabled without a ready target. `MusicPlayerController.availability()` only looks up the installed app and running processes. It does not send an Apple Event. These rows stay `NOT TESTED`. Debug macOS builds have the sandbox off. Release sandbox is unchanged and has no Apple Events entitlement, so playback is not expected to succeed there.
+
+- [ ] `NOT TESTED` — With no player selected, Play/Pause is disabled and no player receives a command.
+- [ ] `NOT TESTED` — Selecting Music while it is running requests Automation if needed, then Play/Pause changes Music's actual playback. The button title follows `player state`.
+- [ ] `NOT TESTED` — Denying Automation leaves the button disabled and shows the denial. It does not pretend the command succeeded.
+- [ ] `NOT TESTED` — Quitting Music disables the button until Music is running again.
+- [ ] `NOT TESTED` — A failed command does not flip the button to the opposite playback state.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

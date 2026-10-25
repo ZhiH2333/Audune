@@ -19,6 +19,11 @@ final class StudioModel {
     var spectrumStroke = StudioPreferences.standard.spectrumStroke
     var orbitInner = StudioPreferences.standard.orbitInner
     var displayWaveform = AudioSnapshot.zero.waveform
+    var playerID = ""
+    var playbackAvailability: PlayerAvailability = .noSelection
+    var playbackState: PlayerPlaybackState = .unknown
+    var playbackDetail = "Choose a player"
+    var playbackBusy = false
     var pointerInside = false
     var pointerDown = false
 }
@@ -32,6 +37,9 @@ struct StudioContentView: View {
     var close: () -> Void
     var setBarCount: (Int) -> Void
     var setChromeVisible: (Bool) -> Void
+    var playerChoices: [PlayerChoice]
+    var setPlayerID: (String) -> Void
+    var togglePlayback: () -> Void
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsAppearance = false
@@ -137,6 +145,25 @@ struct StudioContentView: View {
             .fixedSize()
             .accessibilityLabel("Mode")
             .studioControlRegion()
+            Picker("Player", selection: Binding(get: { model.playerID }, set: setPlayerID)) {
+                Text("None").tag("")
+                ForEach(playerChoices) { choice in
+                    Text(choice.title).tag(choice.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityLabel("Player")
+            .studioControlRegion()
+            StudioTextButton(
+                title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
+                disabled: playbackDisabled,
+                accessibilityLabel: "Play or pause",
+                accessibilityValue: model.playbackDetail
+            ) {
+                togglePlayback()
+            }
             StudioTextButton(title: showsAppearance ? "Done" : "Settings") {
                 showsAppearance.toggle()
             }
@@ -368,6 +395,14 @@ struct StudioContentView: View {
 
     private var stopDisabled: Bool {
         spike.phase == .idle
+    }
+
+    private var playbackDisabled: Bool {
+        PlaybackButton.isEnabled(
+            selection: model.playerID,
+            availability: model.playbackAvailability,
+            busy: model.playbackBusy
+        ) == false
     }
 
     private var drawsBars: Bool {

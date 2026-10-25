@@ -9,6 +9,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private let panel: NSPanel
     private let hitMap = StudioHitMap()
     private var timer: Timer?
+    private var playbackTimer: Timer?
+    private let players: [any PlayerControlling] = [MusicPlayerController()]
     private var screenObserver: NSObjectProtocol?
     private var pointerMonitor: Any?
     private var smoothedStudio: [Float] = []
@@ -36,10 +38,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         refreshPointerInside()
         panel.orderFrontRegardless()
         startDisplayTimer()
+        startPlaybackTimer()
     }
 
     func hide() {
         stopDisplayTimer()
+        stopPlaybackTimer()
         panel.orderOut(nil)
     }
 
@@ -63,7 +67,30 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             NSEvent.removeMonitor(pointerMonitor)
             self.pointerMonitor = nil
         }
+        stopPlaybackTimer()
         panel.orderOut(nil)
+    }
+
+    func setPlayerID(_ id: String) {
+        let stored = id.isEmpty || players.contains(where: { $0.id == id }) ? id : ""
+        model.playerID = stored
+        UserDefaults.standard.set(stored, forKey: PlayerSelectionKey.selected)
+        model.playbackState = .unknown
+        if stored.isEmpty {
+            model.playbackAvailability = .noSelection
+            model.playbackDetail = "Choose a player"
+            model.playbackBusy = false
+            return
+        }
+        refreshPlayback()
+    }
+
+    func togglePlayback() {
+        guard model.playbackBusy == false, let player = selectedPlayer() else { return }
+        model.playbackBusy = true
+        let result = player.togglePlayPause()
+        applyPlayback(result)
+        model.playbackBusy = false
     }
 
     func setWindowMode(_ mode: StudioWindowMode) {
@@ -157,6 +184,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             setChromeVisible: { [weak self] visible in
                 self?.setChromeVisible(visible)
             },
+            playerChoices: players.map { PlayerChoice(id: $0.id, title: $0.displayName) },
+            setPlayerID: { [weak self] id in
+                self?.setPlayerID(id)
+            },
+            togglePlayback: { [weak self] in
+                self?.togglePlayback()
+            },
             hitMap: hitMap
         )
         let host = StudioHostingView(rootView: root)
@@ -177,6 +211,16 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
         clampOntoVisibleScreen()
         applyWindowMode()
+        let storedPlayer = UserDefaults.standard.string(forKey: PlayerSelectionKey.selected) ?? ""
+        model.playerID = players.contains(where: { $0.id == storedPlayer }) ? storedPlayer : ""
+        if let player = selectedPlayer() {
+            let gate = player.availability()
+            model.playbackAvailability = gate
+            model.playbackDetail = playbackDetail(gate)
+        } else {
+            model.playbackAvailability = .noSelection
+            model.playbackDetail = "Choose a player"
+        }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -260,6 +304,82 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             smoothing: Float(model.smoothing)
         )
         model.studioSpectrum = smoothedStudio
+    }
+
+    private func selectedPlayer() -> (any PlayerControlling)? {
+        players.first { $0.id == model.playerID }
+    }
+
+    private func startPlaybackTimer() {
+        guard playbackTimer == nil else { return }
+        refreshPlayback()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshPlayback()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        playbackTimer = timer
+    }
+
+    private func stopPlaybackTimer() {
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+    }
+
+    private func refreshPlayback() {
+        guard model.playbackBusy == false else { return }
+        guard let player = selectedPlayer() else {
+            model.playbackAvailability = .noSelection
+            model.playbackState = .unknown
+            model.playbackDetail = "Choose a player"
+            return
+        }
+        let gate = player.availability()
+        guard gate == .ready else {
+            model.playbackAvailability = gate
+            model.playbackState = .unknown
+            model.playbackDetail = playbackDetail(gate)
+            return
+        }
+        model.playbackBusy = true
+        let result = player.playbackState()
+        applyPlayback(result)
+        model.playbackBusy = false
+    }
+
+    private func applyPlayback(_ result: PlayerCommandResult) {
+        switch result {
+        case .state(let state):
+            model.playbackAvailability = .ready
+            model.playbackState = state
+            model.playbackDetail = ""
+        case .unavailable(let availability):
+            model.playbackAvailability = availability
+            model.playbackState = .unknown
+            model.playbackDetail = playbackDetail(availability)
+        case .failed(let message):
+            model.playbackAvailability = .failed(message)
+            model.playbackState = .unknown
+            model.playbackDetail = message
+        }
+    }
+
+    private func playbackDetail(_ availability: PlayerAvailability) -> String {
+        switch availability {
+        case .noSelection:
+            return "Choose a player"
+        case .ready:
+            return ""
+        case .notInstalled:
+            return "The selected player is not installed."
+        case .notRunning:
+            return "The selected player is not running."
+        case .automationDenied:
+            return "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation."
+        case .failed(let message):
+            return message
+        }
     }
 
     private func refreshWaveform() {
