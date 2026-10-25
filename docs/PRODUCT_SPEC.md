@@ -196,12 +196,12 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 关闭/隐藏 Studio 不停止音频捕获，也不关闭菜单栏应用。
 - 记忆窗口位置、大小、所选可视化模式和窗口层级选项。
 - 屏幕断开、分辨率变化、保存坐标在屏幕之外时，窗口恢复到当前可见屏幕。
-- 首版不做鼠标穿透。空白区域的点击落到 Studio 的 hosting view 上，不开始拖动，也不挖给下层应用。窗口边缘仍把命中交回系统以便缩放。公开 API 没有按区域挖洞的鼠标遮罩。`ignoresMouseEvents` 是整窗开关，打开后会同时失去按钮、把手和缩放，因此不使用。以后若要穿透，需要单独的可视化窗口和控件窗口，并提供显式开关和恢复交互的办法。
+- 鼠标穿透默认关闭（`studio.window.passesMouseThrough`）。关闭时，空白区域的点击仍落到 Studio 的 hosting view 上，不开始拖动，也不交给下层应用；窗口边缘仍把命中交回系统以便缩放。公开 API 没有按区域挖洞的鼠标遮罩，`NSView.hitTest` 返回 `nil` 只表示这个窗口不接收该事件，并不会把点击交给下层应用。`ignoresMouseEvents` 是整窗开关。穿透打开后，可视化 `NSPanel` 才设为忽略鼠标；控件放在同级（不是 child window）的交互 `NSPanel` 上，缩放则是四条 6 pt 的边缘 `NSPanel`，且只在允许缩放时存在。不用 `addChildWindow`，以免子窗口被抬到父窗口之上并破坏 On Desktop。不申请 Accessibility 或 Input Monitoring，也不另起高频轮询。交互面板只盖住真实控件或唤出区域，不盖住整块画布，因此按钮仍可点击，画布空白点由窗口服务器交给更下层的窗口。隐藏 Studio 或关闭穿透时，交互面板和边缘面板 `orderOut`，不留下点击层。另一进程里更高的窗口仍可能先接到点击，这是窗口服务器的正常叠放，不是穿透失败。
 - Studio 窗口始终透明。不绘制整窗背景、暗色遮罩、大卡片、毛玻璃、整窗矩形描边或窗口阴影。透明来自 `isOpaque = false` 和清除的窗口背景，不是把填充色调成接近桌面。
 - 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、播放/暂停、三个可视化模式按钮和 Settings 按钮。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
 - Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Spectrum、Waveform、Orbit、Window、Playback，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
 - 只有把手调用屏幕坐标的 `setFrameOrigin` 拖动。控件隐藏后仍保留把手矩形，隐藏只关闭命中。拖动在 `.eventTracking` 中读取鼠标屏幕位置；同一次按下还会用 local monitor 接住拖动事件。空白区域、按钮和设置滑块不拖动窗口。不使用 `performDrag(with:)` 或 `isMovableByWindowBackground`。`performDrag(with:)` 在这个无边框 nonactivating panel 上会立刻结束，并留下 `Window move completed without beginning`，窗口并不移动。
-- 鼠标进入窗口后只淡入这些控件，淡入约 200ms。离开窗口并离开 8pt 边缘后，等待约 400ms（Window 设置里可在 0.1–2 秒间调整）再以约 250ms 淡出。光标仍在窗口内或正在移向控件时不开始隐藏。鼠标按下时不隐藏。显示定时器会按鼠标屏幕位置纠正误报的离开。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，离开延迟仍保留；也可以在设置里关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
+- 自动隐藏控件默认开启（`studio.window.autoHidesControls`）。关闭后控件保持显示。开启时，淡入约 200ms，离开后等待隐藏延迟再以约 250ms 淡出。隐藏延迟默认 0.8 秒，范围 0.2–3.0 秒，步长 0.1 秒（`studio.window.hideDelaySeconds`）。已保存的延迟仍在新范围内则原样保留；缺失该键时用 0.8 秒，不重置其他窗口设置。穿透关闭时，鼠标进入窗口（含 8 pt 边缘）即显示控件。穿透打开时，不能靠悬停已经隐藏的按钮唤出：默认唤出区域是窗口底部一条不盖住画布中心的边（`bottomEdge`），也可改成只保留 28×22 pt 的把手（`grip`）。指针进入这块区域才显示控件；把手在控件隐藏时被点击只唤出，不拖动。延迟期间指针回来、再次进入、或自动隐藏被关掉，都会取消这次隐藏。鼠标按下、拖动、缩放，以及系统菜单正在跟踪时不隐藏。隐藏后的按钮不再接收点击；画布仍按原尺寸绘制。窗口隐藏或关闭时清掉指针、按下和菜单跟踪状态。显示定时器在穿透关闭时按整个窗口纠正误报的离开，穿透打开时只看交互面板。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，离开延迟仍保留；也可以单独关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
 - 已保存的 `studio.cleanCanvas` 不再改变外观。保存偏好时清除该键。没有整块背景可恢复。
 - Studio 的 Spectrum 和 Orbit 可选 8、12、16、24、32、48、64 根柱，默认 32。Spectrum 与 Orbit 各自保存柱数。柱数来自同一次 FFT 的 512 个 bin 幅度，按对数或线性分带聚合，不把菜单栏的 16 个值复制或插值成更多柱。宽于一个 bin 的柱对其 bin 取平均；窄于一个 bin 的低端柱读取其中心两侧真实 bin 的线性插值，因此相邻低端柱不会出现重复的值；最低一根柱不低于第一个 FFT bin（bin 0 不是频带）。Spectrum 可设置频率范围（最低 20–500 Hz、最高 2–20 kHz）、灵敏度（移动安静端的 dB 下限，默认下限 -60 dB）、振幅、邻柱平滑、攻击/释放（毫秒，按帧时间计算）和峰值保持（默认关闭）。菜单栏保持 16 柱，仍读取分析器平滑后的 `spectrum`。调整这些参数不重建 Process Tap，也不在实时回调里做 FFT。
 - Waveform 使用真实 PCM。默认再乘约 3 的显示增益和用户振幅，使常见音量离开中线；平滑只混合相邻样本和前后帧。默认形态是一条居中的平滑曲线加淡基线，两端各约 12% 渐隐到基线；可选 Line 或 Filled（以中线镜像填充）。样本密度可选 32、64、128，是对快照里 128 个真实点按峰值降采样，绝不插值出更多点。线条颜色默认跟随 Appearance，可单独指定。Orbit 使用同一份真实频带，画成一圈从内环向外的圆角径向条；默认 48 根、内半径约 0.55、角间距 2.5°，并左右镜像（读取一半数量的真实频带，各画两次，低频在顶部、高频在底部，可关闭）。静音时停在一圈圆点和细环上，不自转。可设置柱数、内外半径、角间距、描边、颜色、线宽、振幅和平滑。
@@ -245,8 +245,10 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 - **刘海几何校验**：同时检查 `NSScreen.safeAreaInsets.top`（16–64 pt）和左右 `auxiliaryTopLeftArea`、`auxiliaryTopRightArea` 的有效性、顶边对齐与中心对称性。缺少辅助区域或无刘海屏幕一律判定为不支持（`.noNotch` / `.invalidGeometry`），隐藏窗口并停止 Island 刷新计时器。
 - **窗口与鼠标命中架构**：使用无边框 `NSPanel`（`.borderless, .nonactivatingPanel`，`level = .statusBar`）。Compact 状态下窗口 frame 仅包裹物理刘海及左右各约 34 pt 的窄侧翼，外侧菜单栏完全不在窗口 frame 内，因此不拦截正常菜单栏点击，也不需要 Accessibility 或 Input Monitoring 权限。
-- **悬停展开与防抖收起**：通过视图级 `NSTrackingArea` 检测鼠标进入 Compact 窗口并平滑扩展窗口 frame 至 Expanded 尺寸（Expanded frame 严格包含 Compact frame，避免尺寸切换引发瞬时 `mouseExited` 抖动）。鼠标离开窗口（含 6 pt 边缘容差）后按配置的延迟（0.15–1.5s，默认 0.35s）自动收起，延时内重新进入立即取消收起。
-- **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。展开/收起动画默认 200ms/180ms，遵守系统 Reduce Motion 设置。
+- **悬停展开与防抖收起**：通过视图级 `NSTrackingArea` 检测鼠标进入 Compact 窗口。进入后先做内容预反馈，不改变窗口 frame：频谱最多放大到 1.03，并可以立刻出现描边，动画时长为 `min(0.12, 展开延迟)`。展开延迟独立于收起延迟，默认 0.35 秒，范围 0.1–1.0 秒，步长 0.05 秒（`island.expandDelaySeconds`）。延迟结束时若仍是 Compact、指针仍在有效区域且没有按下，才把窗口 frame 扩到 Expanded（Expanded frame 严格包含 Compact frame）。指针离开、按下、Pin、Escape、禁用或屏幕变化都会作废这一次等待；重新进入会重新计时。鼠标离开窗口（含 6 pt 边缘容差）后按收起延迟（0.15–1.5 秒，默认 0.35 秒）自动收起，延时内重新进入立即取消收起。
+- **触觉反馈**：默认关闭（`island.hapticStrength`）。Light、Medium、Strong 分别映射到公开 `NSHapticFeedbackManager` 的 Alignment、Generic、Level Change。这是三种系统触感模式，不是硬件振幅。只在一次真正完成的 Compact → Expanded 后触发一次；悬停、取消、重复进入、Pin，或已经处于 Expanded，都不触发。没有 Force Touch 触控板时调用安全空操作。
+- **动画速度**：默认 1.0×，范围 0.5×–2.0×，步长 0.1×（`island.animationSpeed`）。展开基准 200ms、收起基准 180ms，实际时长为基准除以速度。展开用控制点 `(0.22, 0.90, 0.20, 1)` 的缓出，四个分量都在 0...1，窗口 frame 不会越过目标；收起用 ease-in。系统 Reduce Motion 且“Follow system Reduce Motion”打开时，时长为 0，速度设置不能把它改回动画。预反馈同样在 Reduce Motion 下取消缩放。
+- **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。从 Compact 直接 Pin 不经过悬停展开，也不触发触觉。
 - **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 绝不擅自启动或停止系统音频捕获。
 
 #### 验收
@@ -340,7 +342,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - Studio 可视化透明度：0.35–1，默认 0.92。只改变 Studio 图形颜色，不绘制窗口背景。
 - Studio 窗口模式（On Desktop / On Top / As Window，见 §4.2）。
 - Studio Spectrum 与 Orbit 各自的柱数：8、12、16、24、32、48、64。Spectrum 默认 32，Orbit 默认 48（镜像时读取一半数量的真实频带）。Waveform 不使用该设置。
-- Studio 窗口行为：允许拖动、允许缩放、启动时恢复位置和大小、重置位置和大小、控件隐藏延迟、淡入淡出开关、是否遵守系统 Reduce Motion。
+- Studio 窗口行为：允许拖动、允许缩放、启动时恢复位置和大小、重置位置和大小、画布鼠标穿透（默认关闭）、自动隐藏控件（默认开启）、隐藏延迟（默认 0.8 秒，0.2–3.0 秒）、唤出区域（默认底部边缘，或仅把手）、淡入淡出开关、是否遵守系统 Reduce Motion。
 - 所有 Studio 参数都在单独的 Settings 窗口中调整，立即生效、写入 UserDefaults，并有分类 Reset 与 Reset All。
 - Studio 显示/隐藏。
 - 音频分析启用/停止与捕获状态。
@@ -348,7 +350,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### Island / Magnet 上线后的设置
 
-- Island 开启/关闭、目标屏幕、悬停展开开关、收起延迟、默认展开行为。
+- Island 开启/关闭、目标屏幕、悬停展开开关、展开延迟（默认 0.35 秒，0.1–1.0 秒）、收起延迟、触觉反馈（默认关闭；Light / Medium / Strong 只选择系统触感模式）、动画速度（默认 1.0×，0.5×–2.0×；Reduce Motion 优先于速度）、默认展开行为。
 - Magnet 开启/关闭、显示器选择（若多屏需求明确）、透明度、位置恢复。
 - 每个 surface 独立保存视觉模式、尺寸和局部显示状态。
 - 全局设置与 surface 设置要分开，避免一个窗口改尺寸影响其他窗口。
@@ -590,7 +592,7 @@ Core Audio Process Tap + Aggregate Device
 ### 动效
 
 - 可视化应随最新音频样本平滑更新；不得通过动画曲线假装有声音。
-- Island 收起/展开目标 150–250ms；遵守 Reduce Motion。
+- Island 收起/展开基准 180ms/200ms，再除以动画速度（默认 1.0×，0.5×–2.0×）。Reduce Motion 优先于速度，打开时时长为 0。
 - 菜单栏图标不播放无意义的开场动画或持续 pulse；真实输入静音时图形稳定。
 - 快速切换模式不得重建音频服务，也不得卡住主线程。
 

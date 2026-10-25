@@ -256,6 +256,17 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `NOT TESTED` — With only a browser playing, Audune does not claim it can pause it; the Playback page says only Music and Spotify are supported.
 - [ ] `NOT TESTED` — The first launch with a saved player does not hang, and the Studio window opens normally.
 
+### Studio mouse passthrough and auto-hide
+
+`StudioPassthroughTests` checks separate-panel frames, that the visual panel ignores mouse events only while passthrough is on, and that a canvas point is absent from that panel's window-server hit list. `StudioChromeTests` checks hide timing, cancellation, and summon-region geometry. `StudioPreferencesTests` checks defaults and clamping. None of these is a click in another app. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — With mouse passthrough off, a click on the blank canvas stays in Studio and does not reach the app underneath. Dragging the grip, resizing the edges, and the three window modes still work.
+- [ ] `NOT TESTED` — With mouse passthrough on, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
+- [ ] `NOT TESTED` — Turning passthrough off restores the old full-window hit behavior. Hiding Studio, or switching away, leaves no invisible control or resize overlay.
+- [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves, the controls fade following the hide delay (default 0.8 seconds). Returning before the delay cancels the hide. Clicks, dragging, resizing, and an open menu keep the controls up.
+- [ ] `NOT TESTED` — Hidden controls do not receive clicks. With passthrough on, moving into the bottom-edge summon region (or the grip, if that option is selected) shows the controls again. Hovering where a hidden button used to be is not required. Clicking the grip while the controls are hidden shows them and does not drag.
+- [ ] `NOT TESTED` — Auto-hide off keeps the controls visible. Reduce Motion removes the fade and does not remove the hide delay. A missing preference key does not reset the other window settings.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.
@@ -279,6 +290,15 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `NOT TESTED` — On a non-notched display (or clamshell mode with an external monitor only), Notch Island is disabled, hides its window, stops its display timer, and explains the requirement in the menu bar popover and Settings > Notch Island without covering the menu bar.
 - [ ] `NOT TESTED` — Switching desktop Spaces and entering/leaving full-screen applications (with "Show in full-screen apps" both off and on) do not leave stuck, invisible, or click-blocking windows.
 - [ ] `NOT TESTED` — Reduce Motion removes the expand/collapse frame animation when "Follow system Reduce Motion" is enabled while preserving the collapse delay.
+
+### Notch Island interaction v1.1
+
+`IslandStateMachineTests`, `IslandPreferencesTests`, and `IslandWindowControllerTests` cover the expand delay, prefeedback scale, haptic trigger rules, animation-speed math, and Reduce Motion priority. They do not move a physical pointer or vibrate a trackpad. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Hovering the compact island shows a small content change immediately and does not move the window frame. The island expands only after the expand delay (default 0.35 seconds) if the pointer is still inside. Leaving before that cancels the expand; entering again starts the delay over. The collapse delay stays independent.
+- [ ] `NOT TESTED` — Pin, Escape, disabling Island, or changing screens does not leave a late expand or collapse. Pinning from the compact island does not play a haptic.
+- [ ] `NOT TESTED` — Haptic feedback off does nothing. Light, Medium, and Strong each fire once when a hover expand finishes, and not again on a cancelled hover, a repeated enter, or an island that is already expanded. A Mac without Force Touch does not vibrate. The three settings are system patterns, not an amplitude slider.
+- [ ] `NOT TESTED` — Animation speed changes both expand and collapse. Expand eases out without passing the target frame; collapse eases in. Reduce Motion still removes the frame animation when its follow setting is on, at every speed, including 2.0×.
 
 ## G. Desktop Magnet (only after the Magnet milestone)
 
