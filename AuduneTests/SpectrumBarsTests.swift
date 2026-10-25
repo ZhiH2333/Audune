@@ -41,6 +41,18 @@ final class SpectrumBarsTests: XCTestCase {
         XCTAssertEqual(bars[0].height, 1, accuracy: 0.001)
     }
 
+    func testSixtyFourBarsFitMinimumStudio() {
+        let bounds = CGRect(origin: .zero, size: StudioFrame.minimumSize)
+        let bars = SpectrumBars.bars(
+            spectrum: Array(repeating: 0.5, count: 64),
+            in: bounds,
+            count: 64
+        )
+
+        XCTAssertEqual(bars.count, 64)
+        assertInside(bars, bounds: bounds)
+    }
+
     func testEmptyOrInvalidBoundsProduceNoBars() {
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .zero).isEmpty)
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .null).isEmpty)

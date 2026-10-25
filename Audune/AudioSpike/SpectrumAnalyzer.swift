@@ -49,16 +49,17 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
         }
     }
 
-    /// Band that should contain `frequency` for this analyzer's mapping.
-    static func bandIndex(sampleRate: Double, frequency: Double) -> Int {
+    /// Band that should contain `frequency` for a log mapping of `count` bands.
+    static func bandIndex(sampleRate: Double, frequency: Double, count: Int = bandCount) -> Int {
+        let bands = count > 0 ? count : bandCount
         let minimumHz = 40.0
         let maximumHz = min(16_000.0, sampleRate / 2)
         guard frequency.isFinite, maximumHz > minimumHz else { return 0 }
         if frequency <= minimumHz { return 0 }
-        if frequency >= maximumHz { return bandCount - 1 }
+        if frequency >= maximumHz { return bands - 1 }
         let position = log(frequency / minimumHz) / log(maximumHz / minimumHz)
-        let index = Int(position * Double(bandCount))
-        return min(max(index, 0), bandCount - 1)
+        let index = Int(position * Double(bands))
+        return min(max(index, 0), bands - 1)
     }
 
     func process(_ samples: [Float]) -> AudioSnapshot {
@@ -69,6 +70,8 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
                 sequence: sequence,
                 timestampNanoseconds: timestamp,
                 spectrum: Array(repeating: 0, count: Self.bandCount),
+                binMagnitudes: Array(repeating: 0, count: AudioSnapshot.binCount),
+                sampleRate: 0,
                 waveform: Array(repeating: 0, count: AudioSnapshot.waveformCount),
                 rms: 0,
                 peak: 0,
@@ -83,6 +86,8 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
             sequence: sequence,
             timestampNanoseconds: timestamp,
             spectrum: smoothed.map(unit),
+            binMagnitudes: magnitudes,
+            sampleRate: sampleRate,
             waveform: Array(repeating: 0, count: AudioSnapshot.waveformCount),
             rms: unit(frame.rms),
             peak: unit(frame.peak),

@@ -54,7 +54,7 @@ struct SpectrumCanvas: View {
             let bounds = CGRect(origin: .zero, size: size)
             let shade = GraphicsContext.Shading.color(color)
             if drawsBars {
-                for rect in SpectrumBars.bars(spectrum: spectrum, in: bounds) {
+                for rect in SpectrumBars.bars(spectrum: spectrum, in: bounds, count: spectrum.count) {
                     context.fill(Path(rect), with: shade)
                 }
             } else {

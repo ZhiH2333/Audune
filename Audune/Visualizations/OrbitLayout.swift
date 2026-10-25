@@ -58,8 +58,9 @@ struct OrbitCanvas: View {
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let source = drawsLevels ? spectrum : Array(repeating: Float(0), count: AudioSnapshot.bandCount)
-            let spokes = OrbitLayout.spokes(spectrum: source, in: bounds)
+            let count = spectrum.isEmpty ? AudioSnapshot.bandCount : spectrum.count
+            let source = drawsLevels ? spectrum : Array(repeating: Float(0), count: count)
+            let spokes = OrbitLayout.spokes(spectrum: source, in: bounds, count: count)
             var path = Path()
             for spoke in spokes {
                 path.move(to: spoke.start)

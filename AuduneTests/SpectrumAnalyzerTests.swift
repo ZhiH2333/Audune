@@ -73,6 +73,8 @@ final class SpectrumAnalyzerTests: XCTestCase {
         let snapshot = SpectrumAnalyzer(sampleRate: 0).process(sine(frequency: 440, amplitude: 0.8))
 
         XCTAssertEqual(snapshot.spectrum, Array(repeating: 0, count: AudioSnapshot.bandCount))
+        XCTAssertEqual(snapshot.binMagnitudes, Array(repeating: 0, count: AudioSnapshot.binCount))
+        XCTAssertEqual(snapshot.sampleRate, 0)
         XCTAssertEqual(snapshot.rms, 0)
         XCTAssertTrue(snapshot.isSilent)
         XCTAssertGreaterThan(snapshot.timestampNanoseconds, 0)
@@ -132,6 +134,11 @@ final class SpectrumAnalyzerTests: XCTestCase {
         XCTAssertEqual(snapshot.spectrum.count, AudioSnapshot.bandCount, file: file, line: line)
         for value in snapshot.spectrum {
             XCTAssertTrue(value.isFinite && value >= 0 && value <= 1, file: file, line: line)
+        }
+        XCTAssertEqual(snapshot.binMagnitudes.count, AudioSnapshot.binCount, file: file, line: line)
+        XCTAssertTrue(snapshot.sampleRate.isFinite && snapshot.sampleRate >= 0, file: file, line: line)
+        for value in snapshot.binMagnitudes {
+            XCTAssertTrue(value.isFinite && value >= 0, file: file, line: line)
         }
         XCTAssertEqual(snapshot.waveform.count, AudioSnapshot.waveformCount, file: file, line: line)
         for value in snapshot.waveform {

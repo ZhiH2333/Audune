@@ -40,6 +40,18 @@ final class OrbitLayoutTests: XCTestCase {
         XCTAssertGreaterThan(distance(spokes[0].end, center), distance(spokes[8].end, center) + 10)
     }
 
+    func testThirtyTwoSpokesStayInside() {
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 400)
+        let spectrum = (0..<32).map { Float($0) / 31 }
+        let spokes = OrbitLayout.spokes(spectrum: spectrum, in: bounds, count: 32)
+
+        XCTAssertEqual(spokes.count, 32)
+        for spoke in spokes {
+            assertInside(spoke.start, bounds)
+            assertInside(spoke.end, bounds)
+        }
+    }
+
     func testInvalidBoundsProduceNoSpokes() {
         XCTAssertTrue(OrbitLayout.spokes(spectrum: [1], in: .zero).isEmpty)
         XCTAssertTrue(OrbitLayout.spokes(spectrum: [1], in: CGRect(x: 0, y: 0, width: CGFloat.nan, height: 80)).isEmpty)
