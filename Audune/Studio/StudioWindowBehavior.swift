@@ -104,6 +104,8 @@ final class StudioHitMap {
     var gripFramesTopLeft: [CGRect] = []
     /// Hidden controls keep their rectangles. Routing ignores them until this is true.
     var chromeVisible = true
+    /// The Window setting that turns dragging off. The grip stays visible but does not move the window.
+    var allowsDrag = true
 }
 
 enum StudioWindowDrag {

@@ -6,8 +6,15 @@ nonisolated enum StudioChromeMotion {
     static let hideDelaySeconds = 0.40
     static let hideSeconds = 0.25
 
-    static func fadeSeconds(hiding: Bool, reduceMotion: Bool) -> Double {
-        guard reduceMotion == false else { return 0 }
+    /// `reduceMotion` is the system setting. It only matters while `followsReduceMotion` is on.
+    static func fadeSeconds(
+        hiding: Bool,
+        reduceMotion: Bool,
+        animates: Bool = true,
+        followsReduceMotion: Bool = true
+    ) -> Double {
+        guard animates else { return 0 }
+        guard reduceMotion == false || followsReduceMotion == false else { return 0 }
         return hiding ? hideSeconds : revealSeconds
     }
 }
@@ -31,11 +38,13 @@ nonisolated enum StudioChrome {
         pointerDown: Bool,
         holdsChrome: Bool,
         now: TimeInterval,
-        exitedAt: TimeInterval?
+        exitedAt: TimeInterval?,
+        hideDelay: TimeInterval = StudioChromeMotion.hideDelaySeconds
     ) -> Bool {
         if pointerInside || pointerDown || holdsChrome { return true }
         guard let exitedAt else { return true }
-        return now - exitedAt < StudioChromeMotion.hideDelaySeconds
+        let delay = hideDelay.isFinite ? max(hideDelay, 0) : StudioChromeMotion.hideDelaySeconds
+        return now - exitedAt < delay
     }
 
     static func canvasFrame(in bounds: CGRect) -> CGRect {

@@ -6,6 +6,16 @@ nonisolated enum StudioFrame {
     static let minimumSize = CGSize(width: 360, height: 240)
     static let defaultSize = CGSize(width: 640, height: 400)
 
+    /// The default size centered in `visible`. Falls back to the minimum size on tiny or invalid areas.
+    static func centeredDefault(in visible: CGRect) -> CGRect {
+        guard visible.width.isFinite, visible.height.isFinite, visible.width > 0, visible.height > 0 else {
+            return CGRect(origin: .zero, size: defaultSize)
+        }
+        let width = min(max(defaultSize.width, minimumSize.width), visible.width)
+        let height = min(max(defaultSize.height, minimumSize.height), visible.height)
+        return CGRect(x: visible.midX - width / 2, y: visible.midY - height / 2, width: width, height: height)
+    }
+
     static func clamped(_ frame: CGRect, to visibleFrames: [CGRect], fallback: CGRect) -> CGRect {
         let home = visibleFrames.first { $0.intersects(frame) && $0.width > 0 && $0.height > 0 }
             ?? visibleFrames.first { $0.width > 0 && $0.height > 0 }

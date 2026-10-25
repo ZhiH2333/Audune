@@ -201,7 +201,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、播放/暂停、三个可视化模式按钮和 Settings 按钮。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
 - Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Spectrum、Waveform、Orbit、Window、Playback，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
 - 只有把手调用屏幕坐标的 `setFrameOrigin` 拖动。控件隐藏后仍保留把手矩形，隐藏只关闭命中。拖动在 `.eventTracking` 中读取鼠标屏幕位置；同一次按下还会用 local monitor 接住拖动事件。空白区域、按钮和设置滑块不拖动窗口。不使用 `performDrag(with:)` 或 `isMovableByWindowBackground`。`performDrag(with:)` 在这个无边框 nonactivating panel 上会立刻结束，并留下 `Window move completed without beginning`，窗口并不移动。
-- 鼠标进入窗口后只淡入这些控件，淡入约 200ms。离开窗口并离开 8pt 边缘后，等待约 400ms 再以约 250ms 淡出。光标仍在窗口内或正在移向控件时不开始隐藏。鼠标按下或设置展开时不隐藏。显示定时器会按鼠标屏幕位置纠正误报的离开。系统开启 Reduce Motion 时，淡入淡出改为即时，离开延迟仍保留。控件显隐不移动可视化，也不停止音频分析。
+- 鼠标进入窗口后只淡入这些控件，淡入约 200ms。离开窗口并离开 8pt 边缘后，等待约 400ms（Window 设置里可在 0.1–2 秒间调整）再以约 250ms 淡出。光标仍在窗口内或正在移向控件时不开始隐藏。鼠标按下时不隐藏。显示定时器会按鼠标屏幕位置纠正误报的离开。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，离开延迟仍保留；也可以在设置里关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
 - 已保存的 `studio.cleanCanvas` 不再改变外观。保存偏好时清除该键。没有整块背景可恢复。
 - Studio 的 Spectrum 和 Orbit 可选 8、12、16、24、32、48、64 根柱，默认 32。Spectrum 与 Orbit 各自保存柱数。柱数来自同一次 FFT 的 512 个 bin 幅度，按对数或线性分带聚合，不把菜单栏的 16 个值复制或插值成更多柱。宽于一个 bin 的柱对其 bin 取平均；窄于一个 bin 的低端柱读取其中心两侧真实 bin 的线性插值，因此相邻低端柱不会出现重复的值；最低一根柱不低于第一个 FFT bin（bin 0 不是频带）。Spectrum 可设置频率范围（最低 20–500 Hz、最高 2–20 kHz）、灵敏度（移动安静端的 dB 下限，默认下限 -60 dB）、振幅、邻柱平滑、攻击/释放（毫秒，按帧时间计算）和峰值保持（默认关闭）。菜单栏保持 16 柱，仍读取分析器平滑后的 `spectrum`。调整这些参数不重建 Process Tap，也不在实时回调里做 FFT。
 - Waveform 使用真实 PCM。默认再乘约 3 的显示增益和用户振幅，使常见音量离开中线；平滑只混合相邻样本和前后帧。默认形态是一条居中的平滑曲线加淡基线，两端各约 12% 渐隐到基线；可选 Line 或 Filled（以中线镜像填充）。样本密度可选 32、64、128，是对快照里 128 个真实点按峰值降采样，绝不插值出更多点。线条颜色默认跟随 Appearance，可单独指定。Orbit 使用同一份真实频带，画成一圈从内环向外的圆角径向条；默认 48 根、内半径约 0.55、角间距 2.5°，并左右镜像（读取一半数量的真实频带，各画两次，低频在顶部、高频在底部，可关闭）。静音时停在一圈圆点和细环上，不自转。可设置柱数、内外半径、角间距、描边、颜色、线宽、振幅和平滑。
@@ -339,8 +339,10 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 灵敏度：有限范围的滑块，默认中等。
 - 平滑度：有限范围的滑块，默认中等。
 - Studio 可视化透明度：0.35–1，默认 0.92。只改变 Studio 图形颜色，不绘制窗口背景。
-- Studio 置顶开关。
-- Studio Spectrum / Orbit 柱数：8、12、16、24、32、48、64，默认 16。Waveform 不使用该设置。
+- Studio 窗口模式（On Desktop / On Top / As Window，见 §4.2）。
+- Studio Spectrum 与 Orbit 各自的柱数：8、12、16、24、32、48、64。Spectrum 默认 32，Orbit 默认 48（镜像时读取一半数量的真实频带）。Waveform 不使用该设置。
+- Studio 窗口行为：允许拖动、允许缩放、启动时恢复位置和大小、重置位置和大小、控件隐藏延迟、淡入淡出开关、是否遵守系统 Reduce Motion。
+- 所有 Studio 参数都在单独的 Settings 窗口中调整，立即生效、写入 UserDefaults，并有分类 Reset 与 Reset All。
 - Studio 显示/隐藏。
 - 音频分析启用/停止与捕获状态。
 - 恢复默认值。

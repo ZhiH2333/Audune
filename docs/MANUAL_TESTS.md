@@ -217,6 +217,16 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Real playback moves the bars; silence settles to a ring of dots and does not rotate; resizing keeps the ring centered and inside the window.
 - [ ] `NOT TESTED` — Bars 8 to 64, mirror, inner and outer radius, angular gap, stroke, custom color, amplitude, and smoothing apply immediately, survive relaunch, and Reset Orbit restores them.
 
+### Studio v1.4 Window settings
+
+`StudioChromeTests`, `StudioPreferencesTests`, and `StudioWindowBehaviorTests` check hide-delay math, Reduce Motion rules, ranges, style-mask and drag flags, and the centered default frame. None of them moves a window, shows a Space, or touches a real pointer. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Turning off "Allow dragging by the grip" stops the grip from moving the window; turning it on restores dragging.
+- [ ] `NOT TESTED` — Turning off "Allow resizing from the edges" stops edge resizing; turning it on restores it.
+- [ ] `NOT TESTED` — "Restore position and size at launch" off opens Studio centered at the default size; on restores the last frame. Reset Position and Size recenters at the default size on a visible screen.
+- [ ] `NOT TESTED` — Hide delay, fade on/off, and Follow system Reduce Motion change the control fade as described. Studio never gets a window background.
+- [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

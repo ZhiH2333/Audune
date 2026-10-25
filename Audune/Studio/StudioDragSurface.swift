@@ -100,7 +100,7 @@ final class StudioDragView: NSView {
             point: point,
             bounds: content.bounds,
             controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height, isFlipped: content.isFlipped),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height, isFlipped: content.isFlipped),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.allowsDrag ? hitMap.gripFramesTopLeft : [], containerHeight: height, isFlipped: content.isFlipped),
             chromeVisible: hitMap.chromeVisible
         )
     }
@@ -185,7 +185,7 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
             point: point,
             bounds: bounds,
             controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height, isFlipped: isFlipped),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height, isFlipped: isFlipped),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.allowsDrag ? hitMap.gripFramesTopLeft : [], containerHeight: height, isFlipped: isFlipped),
             chromeVisible: hitMap.chromeVisible
         )
     }

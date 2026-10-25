@@ -309,6 +309,43 @@ final class StudioWindowBehaviorTests: XCTestCase {
     }
 
     @MainActor
+    func testWindowSettingsToggleResizeAndDragWithoutMovingTheWindow() {
+        let controller = StudioWindowController(spike: ProcessTapSpike())
+        defer { controller.shutdown() }
+        let before = controller.inspectWindowForTests()
+
+        controller.model.prefs.window.allowsResize = false
+        controller.model.prefs.window.allowsDrag = false
+        controller.applyWindowPreferences()
+        let locked = controller.inspectWindowForTests()
+        XCTAssertFalse(locked.isResizable)
+        XCTAssertEqual(locked.frame, before.frame)
+        XCTAssertEqual(locked.level, before.level)
+        XCTAssertFalse(locked.ignoresMouseEvents)
+        XCTAssertFalse(controller.allowsDragForTests)
+
+        controller.model.prefs.window.allowsResize = true
+        controller.model.prefs.window.allowsDrag = true
+        controller.applyWindowPreferences()
+        XCTAssertTrue(controller.inspectWindowForTests().isResizable)
+        XCTAssertTrue(controller.allowsDragForTests)
+    }
+
+    func testCenteredDefaultFrameStaysInsideTheVisibleArea() {
+        let visible = CGRect(x: 100, y: 50, width: 1_440, height: 800)
+        let frame = StudioFrame.centeredDefault(in: visible)
+
+        XCTAssertEqual(frame.size, StudioFrame.defaultSize)
+        XCTAssertEqual(frame.midX, visible.midX, accuracy: 0.001)
+        XCTAssertEqual(frame.midY, visible.midY, accuracy: 0.001)
+
+        let tiny = StudioFrame.centeredDefault(in: CGRect(x: 0, y: 0, width: 300, height: 200))
+        XCTAssertLessThanOrEqual(tiny.width, 300)
+        XCTAssertLessThanOrEqual(tiny.height, 200)
+        XCTAssertEqual(StudioFrame.centeredDefault(in: CGRect(x: 0, y: 0, width: CGFloat.nan, height: 5)).size, StudioFrame.defaultSize)
+    }
+
+    @MainActor
     func testBarCountAndChromeDoNotStartCapture() {
         let spike = ProcessTapSpike()
         let controller = StudioWindowController(spike: spike)

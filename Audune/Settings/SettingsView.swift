@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import SwiftUI
 
 enum SettingsCategory: String, CaseIterable, Identifiable {
@@ -246,10 +247,29 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
             Text(windowModeDescription)
                 .foregroundStyle(.secondary)
-            Text("Multi-desktop and full-screen behavior has not been verified on a real Mac yet.")
+            Text(windowSpacesDescription)
+                .foregroundStyle(.secondary)
+            Text("Window levels, multiple desktops, and full-screen behavior have not been verified on a real Mac yet.")
+                .foregroundStyle(.secondary)
+        }
+        Section("Move and resize") {
+            Toggle("Allow dragging by the grip", isOn: $model.prefs.window.allowsDrag)
+            Toggle("Allow resizing from the edges", isOn: $model.prefs.window.allowsResize)
+            Toggle("Restore position and size at launch", isOn: $model.prefs.window.restorePosition)
+            Button("Reset Position and Size") { studio.resetWindowFrame() }
+        }
+        Section("Controls") {
+            SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)
+            Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
+            Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
+            Text(reduceMotion ? "Reduce Motion is on in System Settings." : "Reduce Motion is off in System Settings.")
                 .foregroundStyle(.secondary)
         }
         Section {
+            Button("Reset Window Settings") {
+                model.prefs.window = .standard
+                studio.setWindowMode(StudioPreferences.standard.windowMode)
+            }
             Button("Reset All Studio Settings") { studio.resetPreferences() }
         }
     }
@@ -306,6 +326,18 @@ struct SettingsView: View {
         case .onTop: return "On Top stays above ordinary windows and can sit beside a full-screen app."
         case .asWindow: return "As Window behaves like an ordinary window and can be covered by others."
         }
+    }
+
+    private var windowSpacesDescription: String {
+        switch model.prefs.windowMode {
+        case .onDesktop: return "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed."
+        case .onTop: return "On Top joins all desktops and is allowed beside full-screen apps."
+        case .asWindow: return "As Window stays on its own desktop and full-screen apps can cover it."
+        }
+    }
+
+    private var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
     private var playbackStatus: String {

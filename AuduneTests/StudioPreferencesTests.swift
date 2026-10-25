@@ -59,6 +59,14 @@ final class StudioPreferencesTests: XCTestCase {
         var stored = StudioPreferences.standard
         stored.mode = .orbit
         stored.windowMode = .onDesktop
+        stored.window = WindowPreferences(
+            allowsDrag: false,
+            allowsResize: false,
+            restorePosition: false,
+            hideDelaySeconds: 1.2,
+            animatesChrome: false,
+            followsReduceMotion: false
+        )
         stored.appearance = AppearancePreferences(
             color: StudioColor(red: 0.2, green: 0.4, blue: 0.6),
             strokeColor: StudioColor(red: 0.9, green: 0.1, blue: 0.3),
@@ -207,6 +215,23 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.gapDegrees, 0)
         XCTAssertFalse(loaded.mirrored)
         XCTAssertEqual(loaded.bandCount, loaded.barCount)
+    }
+
+    func testWindowDefaultsAndRangesNormalize() {
+        let standard = StudioPreferences.standard.window
+        XCTAssertTrue(standard.allowsDrag)
+        XCTAssertTrue(standard.allowsResize)
+        XCTAssertTrue(standard.restorePosition)
+        XCTAssertEqual(standard.hideDelaySeconds, 0.4, accuracy: 0.000_1)
+        XCTAssertTrue(standard.animatesChrome)
+        XCTAssertTrue(standard.followsReduceMotion)
+
+        defaults.set(99.0, forKey: StudioPreferenceKey.windowHideDelay)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 2)
+        defaults.set(0.0, forKey: StudioPreferenceKey.windowHideDelay)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.1, accuracy: 0.000_1)
+        defaults.set(Double.nan, forKey: StudioPreferenceKey.windowHideDelay)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 0.4, accuracy: 0.000_1)
     }
 
     func testStudioColorRoundTripsThroughHex() {

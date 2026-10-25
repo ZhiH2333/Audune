@@ -198,12 +198,18 @@ struct StudioContentView: View {
             pointerDown: model.pointerDown,
             holdsChrome: false,
             now: now,
-            exitedAt: exitedAt
+            exitedAt: exitedAt,
+            hideDelay: model.prefs.window.hideDelaySeconds
         )
     }
 
     private var chromeAnimation: Animation? {
-        let duration = StudioChromeMotion.fadeSeconds(hiding: showsChrome == false, reduceMotion: reduceMotion)
+        let duration = StudioChromeMotion.fadeSeconds(
+            hiding: showsChrome == false,
+            reduceMotion: reduceMotion,
+            animates: model.prefs.window.animatesChrome,
+            followsReduceMotion: model.prefs.window.followsReduceMotion
+        )
         guard duration > 0 else { return nil }
         return .easeOut(duration: duration)
     }
@@ -213,7 +219,7 @@ struct StudioContentView: View {
         let exit = Date().timeIntervalSinceReferenceDate
         exitedAt = exit
         now = exit
-        let delay = StudioChromeMotion.hideDelaySeconds
+        let delay = model.prefs.window.hideDelaySeconds
         hideTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(delay))
             guard Task.isCancelled == false else { return }

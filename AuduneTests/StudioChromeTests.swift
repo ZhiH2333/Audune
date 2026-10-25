@@ -44,6 +44,28 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertEqual(StudioChromeMotion.hideSeconds, 0.25, accuracy: 0.000_1)
     }
 
+    func testHideDelayAndFadeFollowTheWindowSettings() {
+        XCTAssertTrue(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 11.5, exitedAt: 10, hideDelay: 2
+        ))
+        XCTAssertFalse(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.2, exitedAt: 10, hideDelay: 0.1
+        ))
+        XCTAssertFalse(StudioChrome.isVisible(
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.5, exitedAt: 10, hideDelay: .nan
+        ))
+        XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: false, animates: false), 0)
+        XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true, animates: true, followsReduceMotion: true), 0)
+        XCTAssertEqual(
+            StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true, animates: true, followsReduceMotion: false),
+            StudioChromeMotion.hideSeconds
+        )
+        XCTAssertEqual(
+            StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: false, animates: true, followsReduceMotion: true),
+            StudioChromeMotion.revealSeconds
+        )
+    }
+
     func testPointerNearTheEdgeStillCountsAsInside() {
         let frame = CGRect(x: 100, y: 80, width: 240, height: 160)
         XCTAssertTrue(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: 200, y: 140)))

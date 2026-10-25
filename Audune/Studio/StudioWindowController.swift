@@ -123,6 +123,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     /// Slider drags call this on every tick; the write happens once the value settles.
     func preferencesDidChange() {
+        applyWindowPreferences()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
@@ -160,6 +161,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         stopDisplayTimer()
         return true
     }
+
+    var allowsDragForTests: Bool { hitMap.allowsDrag }
 
     func inspectWindowForTests() -> StudioWindowInspection {
         StudioWindowInspection(
@@ -224,9 +227,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             }
             return event
         }
-        if panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName) == false {
+        if model.prefs.window.restorePosition == false {
+            NSWindow.removeFrame(usingName: StudioWindowStorage.frameAutosaveName)
+        }
+        if panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName) == false || model.prefs.window.restorePosition == false {
             panel.center()
         }
+        applyWindowPreferences()
         clampOntoVisibleScreen()
         applyWindowMode()
         let storedPlayer = UserDefaults.standard.string(forKey: PlayerSelectionKey.selected) ?? ""
@@ -248,6 +255,25 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
                 self?.clampOntoVisibleScreen()
             }
         }
+    }
+
+    /// Applies drag and resize permissions right away. The window mode has its own path.
+    func applyWindowPreferences() {
+        let window = model.prefs.window
+        hitMap.allowsDrag = window.allowsDrag
+        if window.allowsResize {
+            panel.styleMask.insert(.resizable)
+        } else {
+            panel.styleMask.remove(.resizable)
+        }
+    }
+
+    /// Back to the default size, centered on the screen the window is on.
+    func resetWindowFrame() {
+        let visible = (panel.screen ?? NSScreen.main)?.visibleFrame
+            ?? NSRect(origin: .zero, size: StudioFrame.defaultSize)
+        panel.setFrame(StudioFrame.centeredDefault(in: visible), display: panel.isVisible)
+        clampOntoVisibleScreen()
     }
 
     private func applyWindowMode() {
@@ -272,6 +298,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.studioSpectrum = Array(repeating: 0, count: count)
         }
         applyWindowMode()
+        applyWindowPreferences()
     }
 
     func currentPreferences() -> StudioPreferences {

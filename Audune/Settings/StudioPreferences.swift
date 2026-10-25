@@ -51,6 +51,13 @@ nonisolated enum StudioPreferenceKey {
     static let orbitMirrored = "studio.orbit.mirrored"
     static let orbitStroke = "studio.orbit.stroke"
     static let orbitColor = "studio.orbit.color"
+
+    static let windowAllowsDrag = "studio.window.allowsDrag"
+    static let windowAllowsResize = "studio.window.allowsResize"
+    static let windowRestorePosition = "studio.window.restorePosition"
+    static let windowHideDelay = "studio.window.hideDelaySeconds"
+    static let windowAnimatesChrome = "studio.window.animatesChrome"
+    static let windowFollowsReduceMotion = "studio.window.followsReduceMotion"
 }
 
 nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
@@ -324,9 +331,31 @@ nonisolated struct OrbitPreferences: Equatable {
     }
 }
 
+/// Window behavior that is not the level. The level and Spaces behavior come from `StudioWindowMode`.
+nonisolated struct WindowPreferences: Equatable {
+    var allowsDrag: Bool
+    var allowsResize: Bool
+    var restorePosition: Bool
+    /// Wait after the pointer leaves before the controls fade out.
+    var hideDelaySeconds: Double
+    var animatesChrome: Bool
+    /// When true, the system Reduce Motion setting removes the fade.
+    var followsReduceMotion: Bool
+
+    static let standard = WindowPreferences(
+        allowsDrag: true,
+        allowsResize: true,
+        restorePosition: true,
+        hideDelaySeconds: 0.4,
+        animatesChrome: true,
+        followsReduceMotion: true
+    )
+}
+
 nonisolated struct StudioPreferences: Equatable {
     var mode: StudioVisualMode
     var windowMode: StudioWindowMode
+    var window: WindowPreferences
     var appearance: AppearancePreferences
     var spectrum: SpectrumPreferences
     var waveform: WaveformPreferences
@@ -341,6 +370,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let orbitInnerRange: ClosedRange<Double> = 0.35...0.8
     static let orbitOuterRange: ClosedRange<Double> = 0.6...1
     static let orbitGapRange: ClosedRange<Double> = 0...10
+    static let hideDelayRange: ClosedRange<Double> = 0.1...2
     static let minHzRange: ClosedRange<Double> = 20...500
     static let maxHzRange: ClosedRange<Double> = 2_000...20_000
     static let sensitivityRange: ClosedRange<Double> = 0...1
@@ -353,6 +383,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let standard = StudioPreferences(
         mode: .spectrum,
         windowMode: .onTop,
+        window: .standard,
         appearance: .standard,
         spectrum: .standard,
         waveform: .standard,
@@ -377,6 +408,14 @@ nonisolated struct StudioPreferences: Equatable {
         return StudioPreferences(
             mode: mode,
             windowMode: resolvedWindowMode(from: defaults),
+            window: WindowPreferences(
+                allowsDrag: reader.bool(StudioPreferenceKey.windowAllowsDrag, fallback: standard.window.allowsDrag),
+                allowsResize: reader.bool(StudioPreferenceKey.windowAllowsResize, fallback: standard.window.allowsResize),
+                restorePosition: reader.bool(StudioPreferenceKey.windowRestorePosition, fallback: standard.window.restorePosition),
+                hideDelaySeconds: reader.double(StudioPreferenceKey.windowHideDelay, range: hideDelayRange, fallback: standard.window.hideDelaySeconds),
+                animatesChrome: reader.bool(StudioPreferenceKey.windowAnimatesChrome, fallback: standard.window.animatesChrome),
+                followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion)
+            ),
             appearance: AppearancePreferences(
                 color: color,
                 strokeColor: strokeColor,
@@ -426,6 +465,7 @@ nonisolated struct StudioPreferences: Equatable {
     func normalized() -> StudioPreferences {
         var result = self
         let standard = Self.standard
+        result.window.hideDelaySeconds = Self.clamped(window.hideDelaySeconds, to: Self.hideDelayRange, fallback: standard.window.hideDelaySeconds)
         result.appearance.opacity = Self.clamped(appearance.opacity, to: Self.opacityRange, fallback: standard.appearance.opacity)
         result.appearance.lineWidth = Self.clamped(appearance.lineWidth, to: Self.lineWidthRange, fallback: standard.appearance.lineWidth)
         result.spectrum.barCount = Self.normalizedBarCount(spectrum.barCount)
@@ -460,6 +500,13 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.windowMode == .onTop, forKey: StudioPreferenceKey.alwaysOnTop)
         defaults.removeObject(forKey: StudioPreferenceKey.cleanCanvas)
         defaults.removeObject(forKey: StudioPreferenceKey.accent)
+
+        defaults.set(p.window.allowsDrag, forKey: StudioPreferenceKey.windowAllowsDrag)
+        defaults.set(p.window.allowsResize, forKey: StudioPreferenceKey.windowAllowsResize)
+        defaults.set(p.window.restorePosition, forKey: StudioPreferenceKey.windowRestorePosition)
+        defaults.set(p.window.hideDelaySeconds, forKey: StudioPreferenceKey.windowHideDelay)
+        defaults.set(p.window.animatesChrome, forKey: StudioPreferenceKey.windowAnimatesChrome)
+        defaults.set(p.window.followsReduceMotion, forKey: StudioPreferenceKey.windowFollowsReduceMotion)
 
         defaults.set(p.appearance.color.hex, forKey: StudioPreferenceKey.color)
         defaults.set(p.appearance.strokeColor.hex, forKey: StudioPreferenceKey.strokeColor)
