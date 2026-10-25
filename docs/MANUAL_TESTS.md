@@ -74,7 +74,7 @@ The v1 `NEEDS REDESIGN` row above stays as the record of the old chrome. The v1.
 
 `StudioWindowBehaviorTests` checks collection-behavior flags, drag-route geometry, and screen-coordinate origin math. Calling `performDrag(with:)` previously logged `Window move completed without beginning` and is not treated as a successful drag. These rows stay `NOT TESTED` until a real macOS GUI session sees the window move. Do not mark them `PASS` from a unit test, a synthetic mouse event, or a successful build.
 
-- [ ] `NOT TESTED` — Dragging the canvas blank area moves the Studio window.
+- [ ] `SUPERSEDED` — Dragging the canvas blank area moves the Studio window. Blank clicks do not drag. Use the grip check in Studio Transparent Canvas, which stays `NOT TESTED`.
 - [ ] `NOT TESTED` — Start, Stop, mode, color, opacity, Always on Top, Reset, and Close do not move the window.
 - [ ] `NOT TESTED` — Resizing from the window edges does not clip the graphic.
 - [ ] `NOT TESTED` — Position and size restore after relaunch.
@@ -86,15 +86,34 @@ The v1 `NEEDS REDESIGN` row above stays as the record of the old chrome. The v1.
 
 ### Studio v1.2 Clean Canvas
 
-`StudioChromeTests` and `StudioPreferencesTests` cover the hide delay, held controls, Reduce Motion durations, and saved Clean Canvas / Bar Count values. They do not move a real window. These rows stay `NOT TESTED` until a real macOS GUI session.
+Superseded by Studio Transparent Canvas. Do not mark these rows `PASS`. The full-window plate, border, shadow, and Clean Canvas toggle were removed. `StudioChromeTests` still checks the hide delay, held controls, and Reduce Motion durations. `StudioPreferencesTests` checks that saving clears the old `studio.cleanCanvas` key. Neither test moves a window.
 
-- [ ] `NOT TESTED` — Clean Canvas off keeps the full Studio interface visible with no auto-hide.
-- [ ] `NOT TESTED` — Clean Canvas on and Waveform: after the pointer leaves, only the real waveform remains. The background, border, shadow, and controls are gone, and the wave does not jump.
-- [ ] `NOT TESTED` — Moving the pointer back fades the same controls in. Opening settings or dragging a slider keeps them visible.
-- [ ] `NOT TESTED` — The menu-bar Clean Canvas switch restores the full interface.
+- [ ] `SUPERSEDED` — Clean Canvas off keeps the full Studio interface visible with no auto-hide.
+- [ ] `SUPERSEDED` — Clean Canvas on and Waveform: after the pointer leaves, only the real waveform remains. The background, border, shadow, and controls are gone, and the wave does not jump.
+- [ ] `SUPERSEDED` — Moving the pointer back fades the same controls in. Opening settings or dragging a slider keeps them visible.
+- [ ] `SUPERSEDED` — The menu-bar Clean Canvas switch restores the full interface.
 - [ ] `NOT TESTED` — Hiding or showing the chrome does not stop menu-bar capture.
 - [ ] `NOT TESTED` — Spectrum and Orbit bar counts update immediately across 8, 12, 16, 24, 32, 48, and 64, persist after relaunch, and do not change the menu bar from 16 bars.
-- [ ] `NOT TESTED` — Studio v1.2 visual review. One shared canvas, graphite and warm white, controls appear on demand, and Spectrum, Waveform, and Orbit use that same chrome.
+- [ ] `SUPERSEDED` — Studio v1.2 visual review. One shared canvas, graphite and warm white, controls appear on demand, and Spectrum, Waveform, and Orbit use that same chrome.
+
+### Studio Transparent Canvas
+
+`StudioWindowBehaviorTests` checks that the panel is non-opaque, has no shadow, does not ignore mouse events, and that only the grip rectangle routes to drag. That is not a visual or window-movement pass. These rows stay `NOT TESTED` until a real macOS GUI session. Do not mark them `PASS` from a unit test, a synthetic mouse event, or a successful build.
+
+- [ ] `NOT TESTED` — Studio has no full-window plate, mask, card, border, or window shadow. Desktop content is visible around Spectrum, Waveform, and Orbit, including after the controls fade out.
+- [ ] `NOT TESTED` — Spectrum, Waveform, and Orbit follow the shared audio snapshot. Opacity changes the graphic only. The menu bar stays at 16 bars.
+- [ ] `NOT TESTED` — Mode, Settings, Pin / On Top, and Hide work. Clicking them does not move the window. Start, Stop, color, opacity, bar count, and Reset inside Settings do not move the window.
+- [ ] `NOT TESTED` — Dragging the grip moves the Studio window. Dragging the blank area does not.
+- [ ] `NOT TESTED` — Resizing from the window edges does not clip the graphic.
+- [ ] `NOT TESTED` — Position, size, mode, opacity, color, bar count, and Always on Top restore after relaunch.
+- [ ] `NOT TESTED` — With Studio open, switching to another desktop Space still shows Studio without reopening it.
+- [ ] `NOT TESTED` — A full-screen app shows Studio on that Space while Always on Top is on.
+- [ ] `NOT TESTED` — With Always on Top off, a full-screen app can cover Studio.
+- [ ] `NOT TESTED` — Leaving full screen leaves Studio visible on the normal desktop.
+- [ ] `NOT TESTED` — Dragging Studio to another display, then disconnecting that display, returns it to a visible screen.
+- [ ] `NOT TESTED` — After the pointer leaves, the controls fade and no full background appears. Moving the pointer back shows the same controls.
+- [ ] `NOT TESTED` — Clicking the transparent area around the visualization. Record whether the app underneath receives the click. The panel does not set `ignoresMouseEvents`; this row is not click-through success.
+- [ ] `NOT TESTED` — Showing or hiding Studio, or changing bar count, does not restart menu-bar capture.
 
 ## E. Visualizers
 
