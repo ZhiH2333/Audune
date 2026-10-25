@@ -104,6 +104,28 @@ final class StudioWindowBehaviorTests: XCTestCase {
         )
     }
 
+    func testScreenDeltaMovesWindowOrigin() {
+        XCTAssertEqual(
+            StudioWindowDrag.origin(
+                startOrigin: CGPoint(x: 100, y: 200),
+                startMouse: CGPoint(x: 10, y: 20),
+                currentMouse: CGPoint(x: 40, y: 5)
+            ),
+            CGPoint(x: 130, y: 185)
+        )
+    }
+
+    func testNonFiniteDragKeepsTheStartOrigin() {
+        XCTAssertEqual(
+            StudioWindowDrag.origin(
+                startOrigin: CGPoint(x: 12, y: 18),
+                startMouse: CGPoint(x: CGFloat.nan, y: 4),
+                currentMouse: CGPoint(x: 8, y: 9)
+            ),
+            CGPoint(x: 12, y: 18)
+        )
+    }
+
     @MainActor
     func testConfiguredPanelUsesApprovedWindowBehavior() {
         let controller = StudioWindowController(spike: ProcessTapSpike())
@@ -112,7 +134,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
 
         XCTAssertEqual(inspection.collectionBehavior, StudioWindowBehavior.collectionBehavior)
         XCTAssertTrue(inspection.isMovable)
-        XCTAssertTrue(inspection.isMovableByWindowBackground)
+        XCTAssertFalse(inspection.isMovableByWindowBackground)
         XCTAssertTrue(inspection.isResizable)
         XCTAssertTrue(inspection.usesDragHostingView)
         XCTAssertFalse(inspection.collectionBehavior.contains(.fullScreenPrimary))

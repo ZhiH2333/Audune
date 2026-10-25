@@ -62,6 +62,30 @@ final class StudioHitMap {
     var controlFramesTopLeft: [CGRect] = []
 }
 
+enum StudioWindowDrag {
+    static func origin(startOrigin: CGPoint, startMouse: CGPoint, currentMouse: CGPoint) -> CGPoint {
+        let values = [startOrigin.x, startOrigin.y, startMouse.x, startMouse.y, currentMouse.x, currentMouse.y]
+        guard values.allSatisfy(\.isFinite) else { return startOrigin }
+        return CGPoint(
+            x: startOrigin.x + (currentMouse.x - startMouse.x),
+            y: startOrigin.y + (currentMouse.y - startMouse.y)
+        )
+    }
+
+    @MainActor
+    static func track(_ window: NSWindow) {
+        let startMouse = NSEvent.mouseLocation
+        let startOrigin = window.frame.origin
+        while true {
+            guard let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) else { return }
+            if next.type == .leftMouseUp { return }
+            window.setFrameOrigin(
+                origin(startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+            )
+        }
+    }
+}
+
 struct StudioWindowInspection: Equatable {
     var collectionBehavior: NSWindow.CollectionBehavior
     var isMovable: Bool

@@ -93,7 +93,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.delegate = self
         panel.isReleasedWhenClosed = false
         panel.isMovable = true
-        panel.isMovableByWindowBackground = true
+        panel.isMovableByWindowBackground = false
         panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false

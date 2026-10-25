@@ -70,6 +70,20 @@ The floating panel can be opened from the menu bar. `StudioFrameTests` only chec
 
 The v1 `NEEDS REDESIGN` row above stays as the record of the old chrome. The v1.1 visual review stays `NOT TESTED` until someone looks at it on a real Mac.
 
+### Studio v1.2 window checks
+
+`StudioWindowBehaviorTests` checks collection-behavior flags, drag-route geometry, and screen-coordinate origin math. Calling `performDrag(with:)` previously logged `Window move completed without beginning` and is not treated as a successful drag. These rows stay `NOT TESTED` until a real macOS GUI session sees the window move. Do not mark them `PASS` from a unit test, a synthetic mouse event, or a successful build.
+
+- [ ] `NOT TESTED` — Dragging the canvas blank area moves the Studio window.
+- [ ] `NOT TESTED` — Start, Stop, mode, color, opacity, Always on Top, Reset, and Close do not move the window.
+- [ ] `NOT TESTED` — Resizing from the window edges does not clip the graphic.
+- [ ] `NOT TESTED` — Position and size restore after relaunch.
+- [ ] `NOT TESTED` — With Studio open, switching to another desktop Space still shows Studio without reopening it.
+- [ ] `NOT TESTED` — A full-screen app shows Studio on that Space while Always on Top is on.
+- [ ] `NOT TESTED` — With Always on Top off, a full-screen app can cover Studio.
+- [ ] `NOT TESTED` — Leaving full screen leaves Studio visible on the normal desktop.
+- [ ] `NOT TESTED` — Dragging Studio to another display, then disconnecting that display, returns it to a visible screen.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.
