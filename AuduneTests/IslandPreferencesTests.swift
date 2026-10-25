@@ -24,6 +24,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.mode, .spectrum)
         XCTAssertTrue(loaded.hoverToExpand)
         XCTAssertEqual(loaded.collapseDelaySeconds, 0.35, accuracy: 0.000_1)
+        XCTAssertEqual(loaded.expandDelaySeconds, 0.35, accuracy: 0.000_1)
         XCTAssertEqual(loaded.compactBarCountPerSide, 5)
         XCTAssertFalse(loaded.showsInFullScreen)
         XCTAssertTrue(loaded.followsReduceMotion)
@@ -36,6 +37,7 @@ final class IslandPreferencesTests: XCTestCase {
             mode: .orbit,
             hoverToExpand: false,
             collapseDelaySeconds: 0.9,
+            expandDelaySeconds: 0.2,
             compactBarCountPerSide: 6,
             showsInFullScreen: true,
             followsReduceMotion: false
@@ -70,6 +72,25 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(
             IslandPreferences.load(from: defaults).collapseDelaySeconds,
             IslandPreferences.standard.collapseDelaySeconds,
+            accuracy: 0.000_1
+        )
+
+        defaults.set(4.0, forKey: IslandPreferenceKey.expandDelaySeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).expandDelaySeconds,
+            IslandPreferences.expandDelayRange.upperBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(0.01, forKey: IslandPreferenceKey.expandDelaySeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).expandDelaySeconds,
+            IslandPreferences.expandDelayRange.lowerBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(Double.nan, forKey: IslandPreferenceKey.expandDelaySeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).expandDelaySeconds,
+            IslandPreferences.standard.expandDelaySeconds,
             accuracy: 0.000_1
         )
     }

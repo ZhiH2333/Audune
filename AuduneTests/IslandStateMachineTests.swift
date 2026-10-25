@@ -3,23 +3,95 @@ import XCTest
 @testable import Audune
 
 final class IslandStateMachineTests: XCTestCase {
-    func testHoverExpandsFromCompactWhenEnabled() {
+    func testHoverArmsCompactUntilTheExpandDelayElapses() {
         var ctx = IslandStateContext(state: .compact)
-        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true))
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true, at: 10), expandDelay: 0.35)
 
-        XCTAssertEqual(ctx.state, .expanded)
+        XCTAssertEqual(ctx.state, .compact)
         XCTAssertTrue(ctx.pointerInside)
+        XCTAssertEqual(ctx.expandArmedAt, 10)
         XCTAssertNil(ctx.exitedAt)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 10.34), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .compact)
+        XCTAssertEqual(ctx.expandArmedAt, 10)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 10.35), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .expanded)
+        XCTAssertNil(ctx.expandArmedAt)
+        XCTAssertTrue(ctx.pointerInside)
+    }
+
+    func testLeavingDuringTheExpandDelayCancelsAndReentryRestartsIt() {
+        var ctx = IslandStateContext(state: .compact)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true, at: 10), expandDelay: 0.35)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerExited(at: 10.1), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .compact)
+        XCTAssertNil(ctx.expandArmedAt)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 10.5), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .compact)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true, at: 12), expandDelay: 0.35)
+        XCTAssertEqual(ctx.expandArmedAt, 12)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 12.2), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .compact)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 12.35), expandDelay: 0.35)
+        XCTAssertEqual(ctx.state, .expanded)
+    }
+
+    func testExpandDelayDoesNotChangeCollapseDelay() {
+        var ctx = IslandStateContext(state: .expanded, pointerInside: true)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerExited(at: 4), collapseDelay: 0.9, expandDelay: 0.1)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .collapseTimerFired(now: 4.2), collapseDelay: 0.9, expandDelay: 0.1)
+        XCTAssertEqual(ctx.state, .expanded)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .collapseTimerFired(now: 4.9), collapseDelay: 0.9, expandDelay: 0.1)
+        XCTAssertEqual(ctx.state, .compact)
+        XCTAssertNil(ctx.expandArmedAt)
+    }
+
+    func testPinEscapeAndDisableDropAPendingExpand() {
+        var armed = IslandStateContext(state: .compact, expandArmedAt: 3, pointerInside: true)
+        armed = IslandStateMachine.reduce(context: armed, event: .togglePin(at: 3.1))
+        XCTAssertEqual(armed.state, .pinned)
+        XCTAssertNil(armed.expandArmedAt)
+        armed = IslandStateMachine.reduce(context: armed, event: .expandTimerFired(now: 4))
+        XCTAssertEqual(armed.state, .pinned)
+
+        var escaping = IslandStateContext(state: .compact, expandArmedAt: 3, pointerInside: true)
+        escaping = IslandStateMachine.reduce(context: escaping, event: .escapePressed)
+        XCTAssertEqual(escaping.state, .compact)
+        XCTAssertNil(escaping.expandArmedAt)
+        escaping = IslandStateMachine.reduce(context: escaping, event: .expandTimerFired(now: 4))
+        XCTAssertEqual(escaping.state, .compact)
+
+        var disabled = IslandStateContext(state: .compact, expandArmedAt: 3, pointerInside: true)
+        disabled = IslandStateMachine.reduce(context: disabled, event: .availabilityChanged(isEnabled: false, isSupported: true))
+        XCTAssertEqual(disabled.state, .disabled)
+        XCTAssertNil(disabled.expandArmedAt)
+        disabled = IslandStateMachine.reduce(context: disabled, event: .expandTimerFired(now: 20))
+        XCTAssertEqual(disabled.state, .disabled)
+
+        var cancelled = IslandStateContext(state: .expanded, expandArmedAt: 8, pointerInside: true)
+        cancelled = IslandStateMachine.reduce(context: cancelled, event: .hoverTimingCancelled)
+        XCTAssertEqual(cancelled.state, .expanded)
+        XCTAssertNil(cancelled.expandArmedAt)
     }
 
     func testHoverDoesNotExpandWhenHoverToExpandIsOffButExplicitExpandStillWorks() {
         var ctx = IslandStateContext(state: .compact)
-        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: false))
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: false, at: 1))
         XCTAssertEqual(ctx.state, .compact)
         XCTAssertTrue(ctx.pointerInside)
+        XCTAssertNil(ctx.expandArmedAt)
+
+        ctx = IslandStateMachine.reduce(context: ctx, event: .expandTimerFired(now: 2))
+        XCTAssertEqual(ctx.state, .compact)
 
         ctx = IslandStateMachine.reduce(context: ctx, event: .expandRequested)
         XCTAssertEqual(ctx.state, .expanded)
+        XCTAssertNil(ctx.expandArmedAt)
     }
 
     func testDelayedCollapseWaitsForDelayAndCancelsOnReentry() {
@@ -35,7 +107,7 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertEqual(ctx.state, .expanded)
 
         // Re-entering before the delay elapses cancels the pending collapse.
-        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true), collapseDelay: 0.35)
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true, at: 10.3), collapseDelay: 0.35)
         XCTAssertEqual(ctx.state, .expanded)
         XCTAssertTrue(ctx.pointerInside)
         XCTAssertNil(ctx.exitedAt)
@@ -101,7 +173,7 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertNil(ctx.exitedAt)
 
         // Events while disabled do not change state.
-        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true))
+        ctx = IslandStateMachine.reduce(context: ctx, event: .pointerEntered(hoverToExpand: true, at: 1))
         XCTAssertEqual(ctx.state, .disabled)
 
         // Re-enabling on a supported screen starts in compact.
@@ -123,6 +195,12 @@ final class IslandStateMachineTests: XCTestCase {
             0.20,
             accuracy: 0.000_1
         )
+        XCTAssertEqual(IslandMotion.prefeedbackSeconds(expandDelay: 0.35, reduceMotion: false), 0.12, accuracy: 0.000_1)
+        XCTAssertEqual(IslandMotion.prefeedbackSeconds(expandDelay: 0.1, reduceMotion: false), 0.1, accuracy: 0.000_1)
+        XCTAssertEqual(IslandMotion.prefeedbackSeconds(expandDelay: 0.35, reduceMotion: true, followsReduceMotion: true), 0)
+        XCTAssertEqual(IslandMotion.prefeedbackScale(hoverArmed: true, reduceMotion: false), IslandMotion.armedContentScale)
+        XCTAssertEqual(IslandMotion.prefeedbackScale(hoverArmed: true, reduceMotion: true), 1)
+        XCTAssertEqual(IslandMotion.prefeedbackScale(hoverArmed: false, reduceMotion: false), 1)
     }
 
     @MainActor

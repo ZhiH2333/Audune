@@ -81,6 +81,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var stateContext = IslandStateContext(state: .compact)
     private var timer: Timer?
     private var collapseTask: Task<Void, Never>?
+    private var expandTask: Task<Void, Never>?
+    private var timingGeneration = 0
     private var saveTask: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
@@ -140,8 +142,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     func shutdown() {
         guard didShutdown == false else { return }
         didShutdown = true
+        timingGeneration += 1
         collapseTask?.cancel()
         collapseTask = nil
+        expandTask?.cancel()
+        expandTask = nil
         saveTask?.cancel()
         saveTask = nil
         stopDisplayTimer()
@@ -251,6 +256,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     func evaluateScreensAndApply(animated: Bool = false) {
         guard didShutdown == false else { return }
+        timingGeneration += 1
+        collapseTask?.cancel()
+        collapseTask = nil
+        expandTask?.cancel()
+        expandTask = nil
         let screens = screenProvider()
         model.availableScreens = screens
         let resolution = IslandGeometry.selectScreen(from: screens, target: model.prefs.targetScreenMode)
@@ -265,16 +275,24 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.usedFallbackScreen = false
         }
         applyCollectionBehavior()
+        if stateContext.expandArmedAt != nil {
+            applyEvent(.hoverTimingCancelled, animated: false)
+        }
         applyEvent(
             .availabilityChanged(isEnabled: model.prefs.isEnabled, isSupported: model.isSupported),
             animated: animated
         )
+        rearmHoverIfPointerStillInside()
     }
 
     // MARK: Test Entry Points
 
-    func simulatePointerEntered() {
-        applyEvent(.pointerEntered(hoverToExpand: model.prefs.hoverToExpand), animated: false)
+    func simulatePointerEntered(at timestamp: TimeInterval = 0) {
+        applyEvent(.pointerEntered(hoverToExpand: model.prefs.hoverToExpand, at: timestamp), animated: false)
+    }
+
+    func simulateExpandTimerFired(now: TimeInterval) {
+        applyEvent(.expandTimerFired(now: now), animated: false)
     }
 
     func simulatePointerExited(at timestamp: TimeInterval) {
@@ -394,7 +412,10 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func handleLivePointerEntered() {
-        applyEvent(.pointerEntered(hoverToExpand: model.prefs.hoverToExpand), animated: true)
+        applyEvent(
+            .pointerEntered(hoverToExpand: model.prefs.hoverToExpand, at: Date().timeIntervalSinceReferenceDate),
+            animated: true
+        )
     }
 
     private func handleLivePointerExited() {
@@ -412,13 +433,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         stateContext = IslandStateMachine.reduce(
             context: stateContext,
             event: event,
-            collapseDelay: model.prefs.collapseDelaySeconds
+            collapseDelay: model.prefs.collapseDelaySeconds,
+            expandDelay: model.prefs.expandDelaySeconds
         )
         model.state = stateContext.state
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown
+        model.hoverArmed = stateContext.state == .compact && stateContext.expandArmedAt != nil
 
         scheduleCollapseTimerIfNeeded()
+        scheduleExpandTimerIfNeeded()
 
         guard stateContext.state != .disabled, let geometry = model.geometry else {
             stopDisplayTimer()
@@ -451,17 +475,63 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             return
         }
         let delay = model.prefs.collapseDelaySeconds
+        let generation = timingGeneration
         collapseTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard Task.isCancelled == false, let self else { return }
+            guard Task.isCancelled == false, let self, self.timingGeneration == generation else { return }
             if self.allowsOrderFront,
                IslandStateMachine.pointerIsInside(windowFrame: self.panel.frame, cursor: NSEvent.mouseLocation)
             {
-                self.applyEvent(.pointerEntered(hoverToExpand: self.model.prefs.hoverToExpand), animated: true)
+                self.applyEvent(
+                    .pointerEntered(
+                        hoverToExpand: self.model.prefs.hoverToExpand,
+                        at: Date().timeIntervalSinceReferenceDate
+                    ),
+                    animated: true
+                )
                 return
             }
             self.applyEvent(.collapseTimerFired(now: exitedAt + delay), animated: true)
         }
+    }
+
+    private func scheduleExpandTimerIfNeeded() {
+        expandTask?.cancel()
+        expandTask = nil
+        guard stateContext.state == .compact,
+              stateContext.pointerInside,
+              stateContext.pointerDown == false,
+              let armedAt = stateContext.expandArmedAt
+        else {
+            return
+        }
+        let delay = model.prefs.expandDelaySeconds
+        let generation = timingGeneration
+        expandTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard Task.isCancelled == false, let self, self.timingGeneration == generation else { return }
+            if self.allowsOrderFront,
+               IslandStateMachine.pointerIsInside(windowFrame: self.panel.frame, cursor: NSEvent.mouseLocation) == false
+            {
+                self.applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
+                return
+            }
+            self.applyEvent(.expandTimerFired(now: armedAt + delay), animated: true)
+        }
+    }
+
+    private func rearmHoverIfPointerStillInside() {
+        guard allowsOrderFront,
+              stateContext.state == .compact,
+              model.prefs.hoverToExpand,
+              IslandStateMachine.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation)
+        else {
+            return
+        }
+        applyEvent(
+            .pointerEntered(hoverToExpand: true, at: Date().timeIntervalSinceReferenceDate),
+            animated: true
+        )
     }
 
     private func updatePanelFrame(_ targetFrame: CGRect, expanding: Bool, animated: Bool) {

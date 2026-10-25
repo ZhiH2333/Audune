@@ -21,6 +21,8 @@ final class IslandModel {
     var expandedWaveform = AudioSnapshot.zero.waveform
     var pointerInside = false
     var pointerDown = false
+    /// Compact-only anticipation. The window frame stays on the compact geometry while this is true.
+    var hoverArmed = false
 
     var isSupported: Bool {
         geometry != nil && unsupportedReason == nil
@@ -141,6 +143,7 @@ struct IslandContentView: View {
     var collapse: () -> Void
     var openStudio: () -> Void
     var openSettings: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -156,9 +159,15 @@ struct IslandContentView: View {
     }
 
     private var compactBody: some View {
-        ZStack {
-            IslandShape(bottomRadius: 12)
-                .fill(Color.black)
+        let shape = IslandShape(bottomRadius: 12)
+        let armedScale = IslandMotion.prefeedbackScale(
+            hoverArmed: model.hoverArmed,
+            reduceMotion: reduceMotion,
+            followsReduceMotion: model.prefs.followsReduceMotion
+        )
+        return ZStack {
+            shape.fill(Color.black)
+            shape.stroke(Color.white.opacity(model.hoverArmed ? 0.16 : 0), lineWidth: 0.5)
             IslandCompactSpectrumCanvas(
                 levels: model.compactLevels,
                 geometry: model.geometry,
@@ -167,9 +176,12 @@ struct IslandContentView: View {
                 color: model.appearance.color.swiftUI,
                 opacity: model.appearance.opacity
             )
+            .scaleEffect(armedScale)
             .allowsHitTesting(false)
         }
-        .contentShape(IslandShape(bottomRadius: 12))
+        .clipShape(shape)
+        .animation(prefeedbackAnimation, value: model.hoverArmed)
+        .contentShape(shape)
         .onTapGesture {
             expand()
         }
@@ -316,6 +328,16 @@ struct IslandContentView: View {
                 gapDegrees: model.orbit.gapDegrees
             )
         }
+    }
+
+    private var prefeedbackAnimation: Animation? {
+        let duration = IslandMotion.prefeedbackSeconds(
+            expandDelay: model.prefs.expandDelaySeconds,
+            reduceMotion: reduceMotion,
+            followsReduceMotion: model.prefs.followsReduceMotion
+        )
+        guard duration > 0 else { return nil }
+        return .easeOut(duration: duration)
     }
 
     private var drawsBars: Bool {

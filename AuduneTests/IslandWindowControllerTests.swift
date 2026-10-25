@@ -100,9 +100,21 @@ final class IslandWindowControllerTests: XCTestCase {
         )
         defer { controller.shutdown() }
 
-        controller.simulatePointerEntered()
+        let compactFrame = controller.inspectWindowForTests().frame
+        controller.simulatePointerEntered(at: 10)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, compactFrame)
+        XCTAssertEqual(compactFrame, expectedGeometry.compactFrame)
+        XCTAssertTrue(controller.model.hoverArmed)
+
+        controller.simulateExpandTimerFired(now: 10.20)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.compactFrame)
+
+        controller.simulateExpandTimerFired(now: 10.35)
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
         XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.expandedFrame)
+        XCTAssertFalse(controller.model.hoverArmed)
 
         controller.togglePin()
         XCTAssertEqual(controller.inspectWindowForTests().state, .pinned)
@@ -166,6 +178,28 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
         XCTAssertTrue(controller.inspectWindowForTests().isVisible)
         XCTAssertTrue(controller.inspectWindowForTests().isTimerRunning)
+
+        controller.simulatePointerEntered(at: 5)
+        XCTAssertTrue(controller.model.hoverArmed)
+        controller.evaluateScreensAndApply(animated: false)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+        XCTAssertFalse(controller.model.hoverArmed)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, movedGeometry.compactFrame)
+        controller.simulateExpandTimerFired(now: 5.35)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+
+        controller.simulatePointerEntered(at: 8)
+        controller.simulateEscapePressed()
+        controller.simulateExpandTimerFired(now: 9)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+        XCTAssertFalse(controller.model.hoverArmed)
+
+        controller.simulatePointerEntered(at: 11)
+        controller.togglePin()
+        controller.simulateExpandTimerFired(now: 12)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .pinned)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, movedGeometry.expandedFrame)
+        controller.simulateEscapePressed()
 
         controller.selectMode(.waveform)
         controller.selectMode(.orbit)

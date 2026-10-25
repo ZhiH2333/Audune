@@ -19,16 +19,19 @@ nonisolated enum IslandPresentationState: String, Equatable, Sendable {
 nonisolated struct IslandStateContext: Equatable, Sendable {
     var state: IslandPresentationState = .compact
     var exitedAt: TimeInterval? = nil
+    var expandArmedAt: TimeInterval? = nil
     var pointerInside: Bool = false
     var pointerDown: Bool = false
 }
 
 nonisolated enum IslandEvent: Equatable, Sendable {
     case availabilityChanged(isEnabled: Bool, isSupported: Bool)
-    case pointerEntered(hoverToExpand: Bool)
+    case pointerEntered(hoverToExpand: Bool, at: TimeInterval)
     case pointerExited(at: TimeInterval)
     case pointerDownChanged(Bool, at: TimeInterval)
     case collapseTimerFired(now: TimeInterval)
+    case expandTimerFired(now: TimeInterval)
+    case hoverTimingCancelled
     case expandRequested
     case collapseRequested
     case togglePin(at: TimeInterval)
@@ -39,6 +42,30 @@ nonisolated enum IslandMotion {
     static let expandSeconds = 0.20
     static let collapseSeconds = 0.18
     static let defaultCollapseDelaySeconds = 0.35
+    static let defaultExpandDelaySeconds = 0.35
+    static let maxPrefeedbackSeconds = 0.12
+    static let armedContentScale: CGFloat = 1.03
+
+    /// Visual-only anticipation. A zero duration means the compact shape should not scale.
+    static func prefeedbackSeconds(
+        expandDelay: TimeInterval,
+        reduceMotion: Bool,
+        followsReduceMotion: Bool = true
+    ) -> Double {
+        guard reduceMotion == false || followsReduceMotion == false else { return 0 }
+        let delay = expandDelay.isFinite && expandDelay > 0 ? expandDelay : defaultExpandDelaySeconds
+        return min(maxPrefeedbackSeconds, delay)
+    }
+
+    static func prefeedbackScale(
+        hoverArmed: Bool,
+        reduceMotion: Bool,
+        followsReduceMotion: Bool = true
+    ) -> CGFloat {
+        guard hoverArmed else { return 1 }
+        guard reduceMotion == false || followsReduceMotion == false else { return 1 }
+        return armedContentScale
+    }
 
     static func transitionSeconds(
         expanding: Bool,
@@ -71,10 +98,12 @@ nonisolated enum IslandStateMachine {
     static func reduce(
         context: IslandStateContext,
         event: IslandEvent,
-        collapseDelay: TimeInterval = IslandMotion.defaultCollapseDelaySeconds
+        collapseDelay: TimeInterval = IslandMotion.defaultCollapseDelaySeconds,
+        expandDelay: TimeInterval = IslandMotion.defaultExpandDelaySeconds
     ) -> IslandStateContext {
         var next = context
         let delay = collapseDelay.isFinite ? max(collapseDelay, 0) : IslandMotion.defaultCollapseDelaySeconds
+        let armDelay = expandDelay.isFinite ? max(expandDelay, 0) : IslandMotion.defaultExpandDelaySeconds
 
         switch event {
         case .availabilityChanged(let isEnabled, let isSupported):
@@ -82,6 +111,7 @@ nonisolated enum IslandStateMachine {
                 return IslandStateContext(
                     state: .disabled,
                     exitedAt: nil,
+                    expandArmedAt: nil,
                     pointerInside: false,
                     pointerDown: false
                 )
@@ -89,21 +119,26 @@ nonisolated enum IslandStateMachine {
             if next.state == .disabled {
                 next.state = .compact
                 next.exitedAt = nil
+                next.expandArmedAt = nil
             }
             return next
 
-        case .pointerEntered(let hoverToExpand):
+        case .pointerEntered(let hoverToExpand, let timestamp):
             guard next.state != .disabled else { return next }
             next.pointerInside = true
             next.exitedAt = nil
+            let safeTime = timestamp.isFinite ? timestamp : 0
             if next.state == .compact, hoverToExpand {
-                next.state = .expanded
+                next.expandArmedAt = safeTime
+            } else {
+                next.expandArmedAt = nil
             }
             return next
 
         case .pointerExited(let timestamp):
             guard next.state != .disabled else { return next }
             next.pointerInside = false
+            next.expandArmedAt = nil
             let safeTime = timestamp.isFinite ? timestamp : 0
             switch next.state {
             case .expanded:
@@ -121,6 +156,9 @@ nonisolated enum IslandStateMachine {
             let safeTime = timestamp.isFinite ? timestamp : 0
             if down {
                 next.exitedAt = nil
+                if next.state == .compact {
+                    next.expandArmedAt = nil
+                }
             } else if next.pointerInside == false, next.state == .expanded {
                 next.exitedAt = safeTime
             }
@@ -141,11 +179,33 @@ nonisolated enum IslandStateMachine {
             }
             return next
 
+        case .expandTimerFired(let now):
+            guard next.state == .compact,
+                  next.pointerInside,
+                  next.pointerDown == false,
+                  let armedAt = next.expandArmedAt
+            else {
+                return next
+            }
+            let safeNow = now.isFinite ? now : armedAt
+            // A direct subtraction can land a fraction under the delay at the exact boundary.
+            if safeNow + 0.000_001 >= armedAt + armDelay {
+                next.state = .expanded
+                next.expandArmedAt = nil
+                next.exitedAt = nil
+            }
+            return next
+
+        case .hoverTimingCancelled:
+            next.expandArmedAt = nil
+            return next
+
         case .expandRequested:
             guard next.state != .disabled else { return next }
             if next.state == .compact {
                 next.state = .expanded
                 next.exitedAt = nil
+                next.expandArmedAt = nil
             }
             return next
 
@@ -153,10 +213,12 @@ nonisolated enum IslandStateMachine {
             guard next.state != .disabled else { return next }
             next.state = .compact
             next.exitedAt = nil
+            next.expandArmedAt = nil
             return next
 
         case .togglePin(let timestamp):
             let safeTime = timestamp.isFinite ? timestamp : 0
+            next.expandArmedAt = nil
             switch next.state {
             case .disabled:
                 return next

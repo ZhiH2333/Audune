@@ -6,6 +6,7 @@ nonisolated enum IslandPreferenceKey {
     static let mode = "island.mode"
     static let hoverToExpand = "island.hoverToExpand"
     static let collapseDelaySeconds = "island.collapseDelaySeconds"
+    static let expandDelaySeconds = "island.expandDelaySeconds"
     static let compactBarCountPerSide = "island.compactBarCountPerSide"
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
@@ -17,11 +18,13 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var mode: StudioVisualMode
     var hoverToExpand: Bool
     var collapseDelaySeconds: Double
+    var expandDelaySeconds: Double
     var compactBarCountPerSide: Int
     var showsInFullScreen: Bool
     var followsReduceMotion: Bool
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
+    static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
     static let compactBarCounts = IslandGeometry.compactBarCounts
 
     static let standard = IslandPreferences(
@@ -30,6 +33,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         mode: .spectrum,
         hoverToExpand: true,
         collapseDelaySeconds: 0.35,
+        expandDelaySeconds: 0.35,
         compactBarCountPerSide: 5,
         showsInFullScreen: false,
         followsReduceMotion: true
@@ -61,6 +65,16 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         } else {
             collapseDelay = standard.collapseDelaySeconds
         }
+        let expandDelay: Double
+        if defaults.object(forKey: IslandPreferenceKey.expandDelaySeconds) != nil {
+            expandDelay = StudioPreferences.clamped(
+                defaults.double(forKey: IslandPreferenceKey.expandDelaySeconds),
+                to: expandDelayRange,
+                fallback: standard.expandDelaySeconds
+            )
+        } else {
+            expandDelay = standard.expandDelaySeconds
+        }
         let compactBarCount: Int
         if defaults.object(forKey: IslandPreferenceKey.compactBarCountPerSide) != nil {
             let stored = defaults.integer(forKey: IslandPreferenceKey.compactBarCountPerSide)
@@ -81,6 +95,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             mode: mode,
             hoverToExpand: hoverToExpand,
             collapseDelaySeconds: collapseDelay,
+            expandDelaySeconds: expandDelay,
             compactBarCountPerSide: compactBarCount,
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion
@@ -95,6 +110,11 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             collapseDelaySeconds,
             to: Self.collapseDelayRange,
             fallback: standard.collapseDelaySeconds
+        )
+        result.expandDelaySeconds = StudioPreferences.clamped(
+            expandDelaySeconds,
+            to: Self.expandDelayRange,
+            fallback: standard.expandDelaySeconds
         )
         result.compactBarCountPerSide = Self.compactBarCounts.contains(compactBarCountPerSide)
             ? compactBarCountPerSide
@@ -113,6 +133,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.mode.rawValue, forKey: IslandPreferenceKey.mode)
         defaults.set(normalized.hoverToExpand, forKey: IslandPreferenceKey.hoverToExpand)
         defaults.set(normalized.collapseDelaySeconds, forKey: IslandPreferenceKey.collapseDelaySeconds)
+        defaults.set(normalized.expandDelaySeconds, forKey: IslandPreferenceKey.expandDelaySeconds)
         defaults.set(normalized.compactBarCountPerSide, forKey: IslandPreferenceKey.compactBarCountPerSide)
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)

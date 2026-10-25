@@ -386,6 +386,12 @@ struct SettingsView: View {
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
             SettingsSlider(
+                title: "Expand delay (s)",
+                value: $islandModel.prefs.expandDelaySeconds,
+                range: IslandPreferences.expandDelayRange,
+                step: 0.05
+            )
+            SettingsSlider(
                 title: "Collapse delay (s)",
                 value: $islandModel.prefs.collapseDelaySeconds,
                 range: IslandPreferences.collapseDelayRange,
