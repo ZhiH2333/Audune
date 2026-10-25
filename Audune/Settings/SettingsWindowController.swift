@@ -24,6 +24,8 @@ final class SettingsWindowController: NSObject {
         )
         super.init()
         window.title = "Audune Settings"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.level = .normal
         window.collectionBehavior = []

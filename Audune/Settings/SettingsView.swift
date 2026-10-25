@@ -53,6 +53,14 @@ struct SettingsView: View {
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
         } detail: {
+            VStack(spacing: 0) {
+                Text(model.settingsCategory.title)
+                    .font(.title2.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                    .accessibilityAddTraits(.isHeader)
             Form {
                 Section {
                     studioPreviewRow
@@ -67,8 +75,9 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(model.settingsCategory.title)
+            }
         }
+        .toolbar(removing: .sidebarToggle)
         .onChange(of: model.prefs) { _, _ in
             studio.preferencesDidChange()
         }
