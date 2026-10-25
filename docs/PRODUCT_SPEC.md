@@ -188,10 +188,11 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 #### 窗口行为
 
 - 无标题栏外观；可拖动、可调整大小；默认尺寸应能清楚显示图形。
-- 默认加入所有桌面空间：`collectionBehavior` 包含 `canJoinAllSpaces`。
-- 全屏 App 兼容同时包含 `fullScreenAuxiliary`。普通桌面和全屏空间都要在真实 Mac 上确认窗口确实可见；置顶继续使用公开的 `.floating` 与 `.normal`。
-- 提供 `Always on Top` 开关。Studio 默认置顶与否应在 UI 中清晰可见；推荐默认开启，并允许立即关闭。
-- 置顶状态使用公开 AppKit 窗口层级控制；不得使用私有窗口级别。
+- 窗口模式和 Spaces 行为分开设置，三选一，立即生效并持久化。切换时写回原来的 frame，不 `orderOut`，也不重新居中。
+- On Desktop：公开 `CGWindowLevelForKey(.desktopIconWindow)`，低于普通窗口。`collectionBehavior` 只有 `canJoinAllSpaces`，不含 `fullScreenAuxiliary`。本 SDK 没有 `NSWindow.Level.desktop`。多 Space 是否真的生效必须在真机上记录；若桌面图标层不可见或收不到点击，再改用公开的 `.backstopMenu`。不用壁纸层 `.desktopWindow`。
+- On Top：`.floating`，`isFloatingPanel = true`，`collectionBehavior` 为 `canJoinAllSpaces` 加 `fullScreenAuxiliary`。它不是全屏窗口，只作为辅助窗口出现在全屏 Space。离开全屏后仍留在普通桌面。这是默认模式。
+- As Window：`.normal`，`isFloatingPanel = false`，`collectionBehavior` 为空。它留在自己的 Space，普通窗口和全屏应用都可以盖住它。
+- 旧的 `studio.alwaysOnTop` 在没有 `studio.windowMode` 时迁移：`true` 为 On Top，`false` 为 As Window。保存时仍把 On Top 写成 `true`，其余写成 `false`。
 - 关闭/隐藏 Studio 不停止音频捕获，也不关闭菜单栏应用。
 - 记忆窗口位置、大小、所选可视化模式和窗口层级选项。
 - 屏幕断开、分辨率变化、保存坐标在屏幕之外时，窗口恢复到当前可见屏幕。
@@ -208,7 +209,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 #### 验收
 
 - 用户可拖动、缩放、隐藏、重新打开。
-- `Always on Top` 开关即时生效。
+- 三种窗口模式即时改变公开层级，切换后窗口仍可见且位置不变。
 - 模式切换不重建音频 capture service。
 - 连续运行时窗口不闪烁、无持续增长的资源占用。
 

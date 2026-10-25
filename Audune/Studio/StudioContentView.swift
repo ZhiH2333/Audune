@@ -6,7 +6,7 @@ import SwiftUI
 final class StudioModel {
     var snapshot = AudioSnapshot.zero
     var studioSpectrum = Array(repeating: Float(0), count: StudioPreferences.standard.barCount)
-    var alwaysOnTop = StudioPreferences.standard.alwaysOnTop
+    var windowMode = StudioPreferences.standard.windowMode
     var mode: StudioVisualMode = .spectrum
     var backgroundOpacity = StudioPreferences.standard.backgroundOpacity
     var accent: StudioAccent = .warm
@@ -18,7 +18,7 @@ final class StudioModel {
 struct StudioContentView: View {
     @Bindable var spike: ProcessTapSpike
     @Bindable var model: StudioModel
-    var setAlwaysOnTop: (Bool) -> Void
+    var setWindowMode: (StudioWindowMode) -> Void
     var savePreferences: () -> Void
     var resetPreferences: () -> Void
     var close: () -> Void
@@ -125,14 +125,19 @@ struct StudioContentView: View {
             StudioTextButton(title: showsAppearance ? "Done" : "Settings") {
                 showsAppearance.toggle()
             }
-            StudioTextButton(
-                title: model.alwaysOnTop ? "On Top" : "Pin",
-                highlighted: model.alwaysOnTop,
-                accessibilityLabel: "Always on Top",
-                accessibilityValue: model.alwaysOnTop ? "On" : "Off"
-            ) {
-                setAlwaysOnTop(!model.alwaysOnTop)
+            Picker("Window", selection: Binding(
+                get: { model.windowMode },
+                set: { setWindowMode($0) }
+            )) {
+                ForEach(StudioWindowMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
             }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityLabel("Window mode")
+            .studioControlRegion()
             StudioTextButton(title: "Hide", action: close)
         }
         .frame(height: StudioChrome.barHeight)

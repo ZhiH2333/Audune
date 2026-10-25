@@ -2,12 +2,37 @@
 import AppKit
 import CoreGraphics
 
-/// Visible on every normal Space and beside full-screen apps.
-/// `fullScreenAuxiliary` alone hides the panel on ordinary desktops.
+/// Window level and Spaces membership are separate.
+/// `fullScreenAuxiliary` alone hides a panel on ordinary desktops, so On Top pairs it with `canJoinAllSpaces`.
 nonisolated enum StudioWindowBehavior {
-    static let collectionBehavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     static let resizeMargin: CGFloat = 6
     static let controlSlop: CGFloat = 1
+
+    static func level(for mode: StudioWindowMode) -> NSWindow.Level {
+        switch mode {
+        case .onDesktop:
+            return NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)))
+        case .onTop:
+            return .floating
+        case .asWindow:
+            return .normal
+        }
+    }
+
+    static func isFloatingPanel(for mode: StudioWindowMode) -> Bool {
+        mode == .onTop
+    }
+
+    static func collectionBehavior(for mode: StudioWindowMode) -> NSWindow.CollectionBehavior {
+        switch mode {
+        case .onDesktop:
+            return [.canJoinAllSpaces]
+        case .onTop:
+            return [.canJoinAllSpaces, .fullScreenAuxiliary]
+        case .asWindow:
+            return []
+        }
+    }
 }
 
 nonisolated enum StudioDragRoute: Equatable {
@@ -125,6 +150,10 @@ enum StudioWindowDrag {
 }
 
 struct StudioWindowInspection: Equatable {
+    var frame: NSRect
+    var level: NSWindow.Level
+    var isFloatingPanel: Bool
+    var hidesOnDeactivate: Bool
     var collectionBehavior: NSWindow.CollectionBehavior
     var isMovable: Bool
     var isMovableByWindowBackground: Bool

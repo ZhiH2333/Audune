@@ -30,9 +30,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     var isVisible: Bool { panel.isVisible }
 
     func show() {
-        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         clampOntoVisibleScreen()
-        applyLevel()
+        applyWindowMode()
         refreshPointerInside()
         panel.orderFrontRegardless()
         startDisplayTimer()
@@ -66,10 +65,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.orderOut(nil)
     }
 
-    func setAlwaysOnTop(_ enabled: Bool) {
-        model.alwaysOnTop = enabled
+    func setWindowMode(_ mode: StudioWindowMode) {
+        model.windowMode = mode
         savePreferences()
-        applyLevel()
+        applyWindowMode()
     }
 
     func savePreferences() {
@@ -104,6 +103,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     func inspectWindowForTests() -> StudioWindowInspection {
         StudioWindowInspection(
+            frame: panel.frame,
+            level: panel.level,
+            isFloatingPanel: panel.isFloatingPanel,
+            hidesOnDeactivate: panel.hidesOnDeactivate,
             collectionBehavior: panel.collectionBehavior,
             isMovable: panel.isMovable,
             isMovableByWindowBackground: panel.isMovableByWindowBackground,
@@ -122,7 +125,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.isMovable = true
         panel.isMovableByWindowBackground = false
-        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
         panel.hasShadow = false
@@ -132,12 +134,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.ignoresMouseEvents = false
         panel.minSize = StudioFrame.minimumSize
         panel.contentMinSize = StudioFrame.minimumSize
-        applyLevel()
         let root = StudioContentView(
             spike: spike,
             model: model,
-            setAlwaysOnTop: { [weak self] enabled in
-                self?.setAlwaysOnTop(enabled)
+            setWindowMode: { [weak self] mode in
+                self?.setWindowMode(mode)
             },
             savePreferences: { [weak self] in
                 self?.savePreferences()
@@ -173,6 +174,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             panel.center()
         }
         clampOntoVisibleScreen()
+        applyWindowMode()
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -184,26 +186,37 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func applyLevel() {
-        panel.level = model.alwaysOnTop ? .floating : .normal
+    private func applyWindowMode() {
+        let frame = panel.frame
+        let visible = panel.isVisible
+        panel.isFloatingPanel = StudioWindowBehavior.isFloatingPanel(for: model.windowMode)
+        panel.level = StudioWindowBehavior.level(for: model.windowMode)
+        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior(for: model.windowMode)
+        panel.hidesOnDeactivate = false
+        if panel.frame != frame {
+            panel.setFrame(frame, display: visible)
+        }
+        if visible {
+            panel.orderFrontRegardless()
+        }
     }
 
     private func apply(_ preferences: StudioPreferences) {
         model.mode = preferences.mode
-        model.alwaysOnTop = preferences.alwaysOnTop
+        model.windowMode = preferences.windowMode
         model.backgroundOpacity = preferences.backgroundOpacity
         model.accent = preferences.accent
         model.barCount = preferences.barCount
         if model.studioSpectrum.count != preferences.barCount {
             model.studioSpectrum = Array(repeating: 0, count: preferences.barCount)
         }
-        applyLevel()
+        applyWindowMode()
     }
 
     private func currentPreferences() -> StudioPreferences {
         StudioPreferences(
             mode: model.mode,
-            alwaysOnTop: model.alwaysOnTop,
+            windowMode: model.windowMode,
             backgroundOpacity: model.backgroundOpacity,
             accent: model.accent,
             barCount: model.barCount

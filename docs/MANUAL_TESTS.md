@@ -123,6 +123,19 @@ Superseded by Studio Transparent Canvas. Do not mark these rows `PASS`. The full
 - [ ] `NOT TESTED` — Dragging the blank canvas, a button, a slider, or a picker does not move the window.
 - [ ] `NOT TESTED` — Resizing from the window edges still works after the grip tracking change.
 
+### Studio v1.3 window modes
+
+Level and collection-behavior flags are covered by `StudioWindowBehaviorTests`. Those tests do not show the panel on another Space or over a full-screen app. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — On Desktop sits behind an ordinary app window and stays visible above the wallpaper.
+- [ ] `NOT TESTED` — On Top stays above ordinary app windows.
+- [ ] `NOT TESTED` — As Window uses normal ordering and can be covered by another ordinary window.
+- [ ] `NOT TESTED` — Switching among the three modes does not hide Studio or change its position.
+- [ ] `NOT TESTED` — On Top remains visible after switching to another desktop Space, remains visible beside a full-screen app, and is still on the normal desktop after leaving full screen.
+- [ ] `NOT TESTED` — As Window stays on its own Space and a full-screen app can cover it.
+- [ ] `NOT TESTED` — On Desktop's actual multi-Space behavior is recorded here after a real session. Do not mark this `PASS` from `canJoinAllSpaces` alone.
+- [ ] `NOT TESTED` — The selected window mode and frame restore after relaunch.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

@@ -17,7 +17,7 @@ final class StudioPreferencesTests: XCTestCase {
 
     func testMissingValuesUseDefaults() {
         XCTAssertEqual(StudioPreferences.load(from: defaults), .standard)
-        XCTAssertEqual(StudioPreferences.standard.alwaysOnTop, true)
+        XCTAssertEqual(StudioPreferences.standard.windowMode, .onTop)
         XCTAssertEqual(StudioPreferences.standard.mode, .spectrum)
         XCTAssertEqual(StudioPreferences.standard.accent, .warm)
         XCTAssertEqual(StudioPreferences.standard.backgroundOpacity, 0.92)
@@ -29,12 +29,13 @@ final class StudioPreferencesTests: XCTestCase {
         defaults.set("purple", forKey: StudioPreferenceKey.accent)
         defaults.set(4.0, forKey: StudioPreferenceKey.backgroundOpacity)
         defaults.set(false, forKey: StudioPreferenceKey.alwaysOnTop)
+        defaults.set("nope", forKey: StudioPreferenceKey.windowMode)
         let loaded = StudioPreferences.load(from: defaults)
 
         XCTAssertEqual(loaded.mode, .spectrum)
         XCTAssertEqual(loaded.accent, .warm)
         XCTAssertEqual(loaded.backgroundOpacity, 1)
-        XCTAssertFalse(loaded.alwaysOnTop)
+        XCTAssertEqual(loaded.windowMode, .asWindow)
     }
 
     func testLowAndNonFiniteOpacityClamp() {
@@ -48,13 +49,26 @@ final class StudioPreferencesTests: XCTestCase {
     func testSaveRoundTrip() {
         let stored = StudioPreferences(
             mode: .orbit,
-            alwaysOnTop: false,
+            windowMode: .onDesktop,
             backgroundOpacity: 0.5,
             accent: .sea,
             barCount: 48
         )
         stored.save(to: defaults)
         XCTAssertEqual(StudioPreferences.load(from: defaults), stored)
+        XCTAssertFalse(defaults.bool(forKey: StudioPreferenceKey.alwaysOnTop))
+    }
+
+    func testLegacyAlwaysOnTopMigratesUntilWindowModeIsStored() {
+        defaults.set(false, forKey: StudioPreferenceKey.alwaysOnTop)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).windowMode, .asWindow)
+
+        defaults.set(true, forKey: StudioPreferenceKey.alwaysOnTop)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).windowMode, .onTop)
+
+        defaults.set(StudioWindowMode.onDesktop.rawValue, forKey: StudioPreferenceKey.windowMode)
+        defaults.set(false, forKey: StudioPreferenceKey.alwaysOnTop)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).windowMode, .onDesktop)
     }
 
     func testResetRestoresVisualDefaultsAndLeavesOtherKeys() {

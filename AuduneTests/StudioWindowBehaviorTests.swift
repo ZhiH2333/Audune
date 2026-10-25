@@ -4,14 +4,24 @@ import XCTest
 @testable import Audune
 
 final class StudioWindowBehaviorTests: XCTestCase {
-    func testCollectionBehaviorJoinsSpacesAndFullScreenApps() {
-        let behavior = StudioWindowBehavior.collectionBehavior
-
-        XCTAssertEqual(behavior, [.canJoinAllSpaces, .fullScreenAuxiliary])
-        XCTAssertTrue(behavior.contains(.canJoinAllSpaces))
-        XCTAssertTrue(behavior.contains(.fullScreenAuxiliary))
-        XCTAssertFalse(behavior.contains(.fullScreenPrimary))
-        XCTAssertFalse(behavior.contains(.moveToActiveSpace))
+    func testWindowModesUseSeparateLevelAndSpaceBehavior() {
+        XCTAssertEqual(
+            StudioWindowBehavior.level(for: .onDesktop).rawValue,
+            Int(CGWindowLevelForKey(.desktopIconWindow))
+        )
+        XCTAssertEqual(StudioWindowBehavior.level(for: .onTop), .floating)
+        XCTAssertEqual(StudioWindowBehavior.level(for: .asWindow), .normal)
+        XCTAssertFalse(StudioWindowBehavior.isFloatingPanel(for: .onDesktop))
+        XCTAssertTrue(StudioWindowBehavior.isFloatingPanel(for: .onTop))
+        XCTAssertFalse(StudioWindowBehavior.isFloatingPanel(for: .asWindow))
+        XCTAssertEqual(StudioWindowBehavior.collectionBehavior(for: .onDesktop), [.canJoinAllSpaces])
+        XCTAssertEqual(StudioWindowBehavior.collectionBehavior(for: .onTop), [.canJoinAllSpaces, .fullScreenAuxiliary])
+        XCTAssertEqual(StudioWindowBehavior.collectionBehavior(for: .asWindow), [])
+        for mode in StudioWindowMode.allCases {
+            let behavior = StudioWindowBehavior.collectionBehavior(for: mode)
+            XCTAssertFalse(behavior.contains(.fullScreenPrimary))
+            XCTAssertFalse(behavior.contains(.moveToActiveSpace))
+        }
     }
 
     func testGripDragsAndCanvasOrControlDoesNot() {
@@ -187,7 +197,10 @@ final class StudioWindowBehaviorTests: XCTestCase {
         defer { controller.shutdown() }
         let inspection = controller.inspectWindowForTests()
 
-        XCTAssertEqual(inspection.collectionBehavior, StudioWindowBehavior.collectionBehavior)
+        XCTAssertEqual(inspection.level, .floating)
+        XCTAssertTrue(inspection.isFloatingPanel)
+        XCTAssertFalse(inspection.hidesOnDeactivate)
+        XCTAssertEqual(inspection.collectionBehavior, StudioWindowBehavior.collectionBehavior(for: .onTop))
         XCTAssertTrue(inspection.isMovable)
         XCTAssertFalse(inspection.isMovableByWindowBackground)
         XCTAssertTrue(inspection.isResizable)
@@ -206,6 +219,37 @@ final class StudioWindowBehaviorTests: XCTestCase {
     }
 
     @MainActor
+    func testWindowModeSwitchKeepsFrameAndVisibilityFlags() {
+        let controller = StudioWindowController(spike: ProcessTapSpike())
+        defer { controller.shutdown() }
+        let before = controller.inspectWindowForTests()
+
+        controller.setWindowMode(.onDesktop)
+        var inspection = controller.inspectWindowForTests()
+        XCTAssertEqual(inspection.frame, before.frame)
+        XCTAssertEqual(inspection.level.rawValue, Int(CGWindowLevelForKey(.desktopIconWindow)))
+        XCTAssertFalse(inspection.isFloatingPanel)
+        XCTAssertFalse(inspection.hidesOnDeactivate)
+        XCTAssertEqual(inspection.collectionBehavior, [.canJoinAllSpaces])
+        XCTAssertFalse(inspection.ignoresMouseEvents)
+
+        controller.setWindowMode(.asWindow)
+        inspection = controller.inspectWindowForTests()
+        XCTAssertEqual(inspection.frame, before.frame)
+        XCTAssertEqual(inspection.level, .normal)
+        XCTAssertFalse(inspection.isFloatingPanel)
+        XCTAssertEqual(inspection.collectionBehavior, [])
+
+        controller.setWindowMode(.onTop)
+        inspection = controller.inspectWindowForTests()
+        XCTAssertEqual(inspection.frame, before.frame)
+        XCTAssertEqual(inspection.level, .floating)
+        XCTAssertTrue(inspection.isFloatingPanel)
+        XCTAssertEqual(inspection.collectionBehavior, [.canJoinAllSpaces, .fullScreenAuxiliary])
+        XCTAssertFalse(controller.isVisible)
+    }
+
+    @MainActor
     func testBarCountAndChromeDoNotStartCapture() {
         let spike = ProcessTapSpike()
         let controller = StudioWindowController(spike: spike)
@@ -219,7 +263,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(controller.model.studioSpectrum.count, 64)
         XCTAssertFalse(controller.inspectWindowForTests().hasShadow)
         XCTAssertFalse(controller.inspectWindowForTests().ignoresMouseEvents)
-        XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior)
+        XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior(for: .onTop))
 
         controller.setBarCount(3)
         XCTAssertEqual(controller.model.barCount, 16)
