@@ -184,4 +184,30 @@ final class MusicPlayerController: PlayerControlling {
         )
     }
 }
+
+@MainActor
+final class SpotifyPlayerController: PlayerControlling {
+    let id = "spotify"
+    let displayName = "Spotify"
+    let bundleIdentifier = "com.spotify.client"
+
+    func availability() -> PlayerAvailability {
+        AppleScriptPlayer.availability(bundleIdentifier: bundleIdentifier)
+    }
+
+    func playbackState() -> PlayerCommandResult {
+        let gate = availability()
+        guard gate == .ready else { return .unavailable(gate) }
+        return AppleScriptPlayer.run(application: "Spotify", source: "return player state as string")
+    }
+
+    func togglePlayPause() -> PlayerCommandResult {
+        let gate = availability()
+        guard gate == .ready else { return .unavailable(gate) }
+        return AppleScriptPlayer.run(
+            application: "Spotify",
+            source: "playpause\nreturn player state as string"
+        )
+    }
+}
 #endif

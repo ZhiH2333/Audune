@@ -41,4 +41,15 @@ final class PlayerControlTests: XCTestCase {
             XCTFail("Music.app should be installed")
         }
     }
+
+    @MainActor
+    func testSpotifyAvailabilityDoesNotRequireSendingACommand() {
+        let spotify = SpotifyPlayerController()
+        switch spotify.availability() {
+        case .ready, .notRunning:
+            break
+        case .notInstalled, .noSelection, .automationDenied, .failed:
+            XCTFail("Spotify.app should be installed")
+        }
+    }
 }

@@ -166,6 +166,13 @@ Geometry tests cover bar gap, waveform display gain, orbit inner ring, and displ
 - [ ] `NOT TESTED` — Quitting Music disables the button until Music is running again.
 - [ ] `NOT TESTED` — A failed command does not flip the button to the opposite playback state.
 
+### Studio v1.3 Spotify playback
+
+Spotify's scripting dictionary on this Mac includes `playpause` and `player state`. `SpotifyPlayerController.availability()` only checks that the app is installed and running. It does not send an Apple Event. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Selecting Spotify does not also control Music. Play/Pause changes Spotify's actual playback when Automation is allowed.
+- [ ] `NOT TESTED` — Denying Automation for Spotify, or quitting Spotify, disables the button and does not report a fake playback state.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

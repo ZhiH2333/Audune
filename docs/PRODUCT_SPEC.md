@@ -205,7 +205,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - Studio 的 Spectrum 和 Orbit 可选 8、12、16、24、32、48、64 根柱，默认 32。柱数来自同一次 FFT 的 512 个 bin 幅度做对数聚合，不把菜单栏的 16 个值复制或插值成更多柱。48 kHz 时低端多条可能共享同一个 bin。菜单栏保持 16 柱，仍读取分析器平滑后的 `spectrum`。调整柱数不重建 Process Tap，也不在实时回调里做 FFT。
 - Waveform 使用真实 PCM。默认再乘约 3 的显示增益和用户振幅，使常见音量离开中线；平滑只混合相邻样本和前后帧。Orbit 使用同一份真实频带，默认画在内半径约 0.55 的环上，静音时停在环上，不自转。
 - `studio.backgroundOpacity` 仍保存在 0.35–1，默认 0.92。它只乘到 Studio 三种可视化的颜色上，不填充窗口，菜单栏频谱也不读取它。
-- 底栏可以选择一个播放器。未选择、未安装、未运行或 Automation 被拒绝时，播放按钮禁用，不向任何应用发送命令。当前只对 Apple Music 使用公开 Apple Event `playpause` 和 `player state`。这不是 `MPRemoteCommandCenter`，Audune 也不注册远程命令。不控制浏览器。Release 沙盒没有 Apple Events entitlement，本项只在 macOS Debug 下能弹出授权。
+- 底栏可以选择一个播放器。未选择、未安装、未运行或 Automation 被拒绝时，播放按钮禁用，不向任何应用发送命令。Apple Music 和 Spotify 各有一个适配器，都使用公开 Apple Event `playpause` 和 `player state`。一次只选中一个。这不是 `MPRemoteCommandCenter`，Audune 也不注册远程命令。不控制浏览器。Release 沙盒没有 Apple Events entitlement，本项只在 macOS Debug 下能弹出授权。
 - 拖动、缩放、多桌面、全屏、窗口是否真正透明，以及播放控制是否真的生效，必须在真实 Mac 上看到后才算通过。单元测试里的坐标计算、窗口标志、状态解析和合成鼠标事件不能代替这些验收。
 
 #### 验收

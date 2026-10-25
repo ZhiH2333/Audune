@@ -10,7 +10,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private let hitMap = StudioHitMap()
     private var timer: Timer?
     private var playbackTimer: Timer?
-    private let players: [any PlayerControlling] = [MusicPlayerController()]
+    private let players: [any PlayerControlling] = [MusicPlayerController(), SpotifyPlayerController()]
     private var screenObserver: NSObjectProtocol?
     private var pointerMonitor: Any?
     private var smoothedStudio: [Float] = []
