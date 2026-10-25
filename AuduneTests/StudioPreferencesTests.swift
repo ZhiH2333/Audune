@@ -65,7 +65,8 @@ final class StudioPreferencesTests: XCTestCase {
             restorePosition: false,
             hideDelaySeconds: 1.2,
             animatesChrome: false,
-            followsReduceMotion: false
+            followsReduceMotion: false,
+            passesMouseThrough: true
         )
         stored.appearance = AppearancePreferences(
             color: StudioColor(red: 0.2, green: 0.4, blue: 0.6),
@@ -225,6 +226,7 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(standard.hideDelaySeconds, 0.4, accuracy: 0.000_1)
         XCTAssertTrue(standard.animatesChrome)
         XCTAssertTrue(standard.followsReduceMotion)
+        XCTAssertFalse(standard.passesMouseThrough)
 
         defaults.set(99.0, forKey: StudioPreferenceKey.windowHideDelay)
         XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 2)

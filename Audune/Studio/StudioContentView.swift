@@ -18,6 +18,7 @@ final class StudioModel {
     var settingsCategory: SettingsCategory = .appearance
     var pointerInside = false
     var pointerDown = false
+    var chromeVisible = true
     var isShown = false
 }
 
@@ -43,8 +44,8 @@ struct StudioContentView: View {
             chrome
                 .fixedSize()
                 .padding(8)
-                .opacity(showsChrome ? 1 : 0)
-                .allowsHitTesting(showsChrome)
+                .opacity(model.prefs.window.passesMouseThrough ? 0 : (showsChrome ? 1 : 0))
+                .allowsHitTesting(model.prefs.window.passesMouseThrough == false && showsChrome)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(warmWhite)

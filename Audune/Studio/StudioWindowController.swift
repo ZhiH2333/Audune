@@ -8,6 +8,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     let model = StudioModel()
     private let panel: NSPanel
     private let hitMap = StudioHitMap()
+    private var interactionPanel: NSPanel?
+    private var interactionHost: StudioInteractionHostingView<StudioInteractionRoot>?
+    private var edgePanels: [StudioEdgePanel] = []
+    private var interactionContentSize = CGSize(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
     private var timer: Timer?
     private var playbackTimer: Timer?
     private let players: [any PlayerControlling] = [MusicPlayerController(), SpotifyPlayerController()]
@@ -54,10 +58,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.isShown = true
         startDisplayTimer()
         updatePlaybackTimer()
+        syncPassthroughWindows()
     }
 
     func hide() {
         stopDisplayTimer()
+        orderOutPassthroughWindows()
         panel.orderOut(nil)
         model.isShown = false
         updatePlaybackTimer()
@@ -104,6 +110,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             self.pointerMonitor = nil
         }
         stopPlaybackTimer()
+        orderOutPassthroughWindows()
         panel.orderOut(nil)
         model.isShown = false
     }
@@ -255,6 +262,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
+        model.chromeVisible = visible
+        if visible == false, model.prefs.window.passesMouseThrough {
+            interactionContentSize = CGSize(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
+        }
+        syncPassthroughWindows()
     }
 
     func resetPreferences() {
@@ -329,9 +341,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             self?.model.pointerInside = inside
         }
         panel.contentView = host
+        hitMap.onWindowFrameChanged = { [weak self] in
+            self?.syncPassthroughWindows()
+        }
         pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] event in
             MainActor.assumeIsolated {
-                guard let self, event.window === self.panel else { return }
+                guard let self, self.ownsEventWindow(event.window) else { return }
                 self.model.pointerDown = event.type == .leftMouseDown
             }
             return event
@@ -375,6 +390,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         } else {
             panel.styleMask.remove(.resizable)
         }
+        syncPassthroughWindows()
     }
 
     /// Back to the default size, centered on the screen the window is on.
@@ -383,6 +399,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             ?? NSRect(origin: .zero, size: StudioFrame.defaultSize)
         panel.setFrame(StudioFrame.centeredDefault(in: visible), display: panel.isVisible)
         clampOntoVisibleScreen()
+        syncPassthroughWindows()
     }
 
     private func applyWindowMode() {
@@ -398,6 +415,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         if visible {
             panel.orderFrontRegardless()
         }
+        syncPassthroughWindows()
     }
 
     private func apply(_ preferences: StudioPreferences) {
@@ -415,7 +433,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func refreshPointerInside() {
-        let inside = StudioChrome.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation)
+        let frame = model.prefs.window.passesMouseThrough ? (interactionPanel?.frame ?? .zero) : panel.frame
+        let inside = StudioChrome.pointerIsInside(windowFrame: frame, cursor: NSEvent.mouseLocation)
         if model.pointerInside != inside {
             model.pointerInside = inside
         }
@@ -593,6 +612,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         if clamped != panel.frame {
             panel.setFrame(clamped, display: panel.isVisible)
         }
+        syncPassthroughWindows()
     }
 
     private func startDisplayTimer() {
@@ -625,6 +645,226 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         refreshPointerInside()
         refreshStudioSpectrum(dt: dt)
         refreshWaveform()
+    }
+
+    func placeForTests(_ frame: CGRect) {
+        panel.setFrame(frame, display: false)
+        syncPassthroughWindows()
+    }
+
+    func inspectWindowNumberForTests() -> Int {
+        panel.windowNumber
+    }
+
+    func inspectInteractionWindowNumberForTests() -> Int {
+        interactionPanel?.windowNumber ?? 0
+    }
+
+    func stackAboveForTests() {
+        panel.orderFrontRegardless()
+        edgePanels.forEach { $0.orderFrontRegardless() }
+        interactionPanel?.orderFrontRegardless()
+    }
+
+    func setLevelForTests(_ level: NSWindow.Level) {
+        panel.level = level
+        interactionPanel?.level = level
+        edgePanels.forEach { $0.level = level }
+    }
+
+    func inspectPassthroughForTests() -> StudioPassthroughInspection {
+        StudioPassthroughInspection(
+            visualIgnoresMouseEvents: panel.ignoresMouseEvents,
+            interactionVisible: interactionPanel?.isVisible ?? false,
+            interactionFrame: interactionPanel?.frame ?? .zero,
+            interactionIgnoresMouseEvents: interactionPanel?.ignoresMouseEvents ?? false,
+            interactionLevel: interactionPanel?.level ?? panel.level,
+            interactionCollectionBehavior: interactionPanel?.collectionBehavior ?? [],
+            edgeFrames: edgePanels.map(\.frame)
+        )
+    }
+
+    private func ownsEventWindow(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        if window === panel || window === interactionPanel { return true }
+        return edgePanels.contains { $0 === window }
+    }
+
+    private var passthroughSyncDepth = 0
+    private var passthroughSyncAgain = false
+
+    private func noteInteractionSize(_ size: CGSize) {
+        guard model.chromeVisible else { return }
+        guard size.width.isFinite, size.height.isFinite, size.width > 1, size.height > 1 else { return }
+        guard abs(size.width - interactionContentSize.width) > 0.5 || abs(size.height - interactionContentSize.height) > 0.5 else { return }
+        interactionContentSize = size
+        syncPassthroughWindows()
+    }
+
+    private func syncPassthroughWindows() {
+        guard didShutdown == false else { return }
+        if passthroughSyncDepth > 0 {
+            passthroughSyncAgain = true
+            return
+        }
+        passthroughSyncDepth = 1
+        var passes = 0
+        repeat {
+            passthroughSyncAgain = false
+            performPassthroughSync()
+            passes += 1
+        } while passthroughSyncAgain && passes < 3
+        passthroughSyncDepth = 0
+    }
+
+    private func performPassthroughSync() {
+        let enabled = model.prefs.window.passesMouseThrough
+        panel.ignoresMouseEvents = enabled
+        guard enabled else {
+            orderOutPassthroughWindows()
+            return
+        }
+        let interaction = ensureInteractionPanel()
+        matchVisualBehavior(interaction)
+        let frame = StudioPassthroughLayout.interactionFrame(visual: panel.frame, contentSize: interactionContentSize)
+        if interaction.frame.equalTo(frame) == false {
+            interaction.setFrame(frame, display: false)
+        }
+        if panel.isVisible {
+            if interaction.isVisible == false {
+                interaction.orderFrontRegardless()
+            }
+        } else {
+            interaction.orderOut(nil)
+        }
+        syncEdgePanels()
+    }
+
+    private func syncEdgePanels() {
+        let bands = model.prefs.window.allowsResize
+            ? StudioPassthroughLayout.edgeBands(in: panel.frame, margin: StudioWindowBehavior.resizeMargin)
+            : []
+        if bands.isEmpty {
+            edgePanels.forEach { $0.orderOut(nil) }
+            return
+        }
+        if edgePanels.count != bands.count {
+            edgePanels.forEach { $0.orderOut(nil) }
+            edgePanels = bands.map { makeEdgePanel($0.edge) }
+        }
+        for (edgePanel, band) in zip(edgePanels, bands) {
+            edgePanel.edge = band.edge
+            matchVisualBehavior(edgePanel)
+            if edgePanel.frame.equalTo(band.frame) == false {
+                edgePanel.setFrame(band.frame, display: false)
+            }
+            if panel.isVisible {
+                if edgePanel.isVisible == false {
+                    edgePanel.orderFrontRegardless()
+                }
+            } else {
+                edgePanel.orderOut(nil)
+            }
+        }
+        if panel.isVisible, let interactionPanel, interactionPanel.isVisible == false {
+            interactionPanel.orderFrontRegardless()
+        }
+    }
+
+    private func ensureInteractionPanel() -> NSPanel {
+        if let interactionPanel { return interactionPanel }
+        let interaction = makeAuxiliaryPanel()
+        interaction.title = "Audune Studio Controls"
+        let root = StudioInteractionRoot(
+            spike: spike,
+            model: model,
+            savePreferences: { [weak self] in self?.savePreferences() },
+            openSettings: { [weak self] in self?.openSettings?() },
+            togglePlayback: { [weak self] in self?.togglePlayback() },
+            drag: { [weak self] in self?.dragVisualPanel() },
+            summon: { [weak self] in self?.model.pointerInside = true },
+            onContentSize: { [weak self] size in self?.noteInteractionSize(size) }
+        )
+        let host = StudioInteractionHostingView(rootView: root)
+        host.onPointerInside = { [weak self] inside in
+            self?.model.pointerInside = inside
+        }
+        interaction.contentView = host
+        interactionHost = host
+        interactionPanel = interaction
+        return interaction
+    }
+
+    private func makeEdgePanel(_ edge: StudioResizeEdge) -> StudioEdgePanel {
+        let edgePanel = StudioEdgePanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        configureAuxiliary(edgePanel)
+        edgePanel.edge = edge
+        edgePanel.title = "Audune Studio Resize"
+        let view = StudioEdgeView()
+        view.onMouseDown = { [weak self, weak edgePanel] in
+            guard let self, let edgePanel else { return }
+            self.model.pointerDown = true
+            StudioWindowResize.track(
+                window: self.panel,
+                eventWindow: edgePanel,
+                edge: edgePanel.edge,
+                minimum: StudioFrame.minimumSize
+            ) { [weak self] in
+                self?.syncPassthroughWindows()
+            }
+            self.model.pointerDown = false
+        }
+        edgePanel.contentView = view
+        return edgePanel
+    }
+
+    private func makeAuxiliaryPanel() -> NSPanel {
+        let panel = NSPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        configureAuxiliary(panel)
+        return panel
+    }
+
+    private func configureAuxiliary(_ panel: NSPanel) {
+        panel.isReleasedWhenClosed = false
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.ignoresMouseEvents = false
+        panel.hidesOnDeactivate = false
+        panel.isMovable = false
+        panel.isMovableByWindowBackground = false
+        panel.isExcludedFromWindowsMenu = true
+        panel.becomesKeyOnlyIfNeeded = false
+    }
+
+    private func matchVisualBehavior(_ window: NSPanel) {
+        window.isFloatingPanel = panel.isFloatingPanel
+        window.level = panel.level
+        window.collectionBehavior = panel.collectionBehavior
+        window.hidesOnDeactivate = false
+    }
+
+    private func dragVisualPanel() {
+        model.pointerDown = true
+        StudioWindowDrag.track(panel) { [weak self] in
+            self?.syncPassthroughWindows()
+        }
+        model.pointerDown = false
+    }
+
+    private func orderOutPassthroughWindows() {
+        interactionPanel?.orderOut(nil)
+        edgePanels.forEach { $0.orderOut(nil) }
     }
 }
 #endif

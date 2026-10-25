@@ -316,6 +316,9 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Controls") {
+            Toggle("Pass mouse events through the canvas", isOn: $model.prefs.window.passesMouseThrough)
+            Text("When this is on, clicks on the visualization reach the app underneath. The grip stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
+                .foregroundStyle(.secondary)
             SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
             Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)

@@ -58,6 +58,7 @@ nonisolated enum StudioPreferenceKey {
     static let windowHideDelay = "studio.window.hideDelaySeconds"
     static let windowAnimatesChrome = "studio.window.animatesChrome"
     static let windowFollowsReduceMotion = "studio.window.followsReduceMotion"
+    static let windowPassesMouseThrough = "studio.window.passesMouseThrough"
     /// Versioned JSON for custom visual presets. Built-in presets are not stored here.
     static let visualPresets = "studio.visualPresets"
 }
@@ -343,6 +344,8 @@ nonisolated struct WindowPreferences: Equatable {
     var animatesChrome: Bool
     /// When true, the system Reduce Motion setting removes the fade.
     var followsReduceMotion: Bool
+    /// Canvas clicks pass through. Controls live on a separate panel.
+    var passesMouseThrough: Bool
 
     static let standard = WindowPreferences(
         allowsDrag: true,
@@ -350,7 +353,8 @@ nonisolated struct WindowPreferences: Equatable {
         restorePosition: true,
         hideDelaySeconds: 0.4,
         animatesChrome: true,
-        followsReduceMotion: true
+        followsReduceMotion: true,
+        passesMouseThrough: false
     )
 }
 
@@ -416,7 +420,8 @@ nonisolated struct StudioPreferences: Equatable {
                 restorePosition: reader.bool(StudioPreferenceKey.windowRestorePosition, fallback: standard.window.restorePosition),
                 hideDelaySeconds: reader.double(StudioPreferenceKey.windowHideDelay, range: hideDelayRange, fallback: standard.window.hideDelaySeconds),
                 animatesChrome: reader.bool(StudioPreferenceKey.windowAnimatesChrome, fallback: standard.window.animatesChrome),
-                followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion)
+                followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion),
+                passesMouseThrough: reader.bool(StudioPreferenceKey.windowPassesMouseThrough, fallback: standard.window.passesMouseThrough)
             ),
             appearance: AppearancePreferences(
                 color: color,
@@ -509,6 +514,7 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.window.hideDelaySeconds, forKey: StudioPreferenceKey.windowHideDelay)
         defaults.set(p.window.animatesChrome, forKey: StudioPreferenceKey.windowAnimatesChrome)
         defaults.set(p.window.followsReduceMotion, forKey: StudioPreferenceKey.windowFollowsReduceMotion)
+        defaults.set(p.window.passesMouseThrough, forKey: StudioPreferenceKey.windowPassesMouseThrough)
 
         defaults.set(p.appearance.color.hex, forKey: StudioPreferenceKey.color)
         defaults.set(p.appearance.strokeColor.hex, forKey: StudioPreferenceKey.strokeColor)

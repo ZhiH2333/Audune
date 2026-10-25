@@ -106,6 +106,8 @@ final class StudioHitMap {
     var chromeVisible = true
     /// The Window setting that turns dragging off. The grip stays visible but does not move the window.
     var allowsDrag = true
+    /// Keeps passthrough panels attached while the visual panel moves.
+    var onWindowFrameChanged: (() -> Void)?
 }
 
 enum StudioWindowDrag {
@@ -127,7 +129,7 @@ enum StudioWindowDrag {
     /// `performDrag(with:)` is not used: on this panel it ends immediately and logs
     /// "Window move completed without beginning" without moving the window.
     @MainActor
-    static func track(_ window: NSWindow) {
+    static func track(_ window: NSWindow, onMove: (() -> Void)? = nil) {
         let startMouse = NSEvent.mouseLocation
         let startOrigin = window.frame.origin
         #if DEBUG
@@ -141,6 +143,7 @@ enum StudioWindowDrag {
         let monitor = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
             if event.type != .leftMouseUp, event.window === window || event.window == nil {
                 apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+                onMove?()
             }
             return event
         }
@@ -163,6 +166,7 @@ enum StudioWindowDrag {
                 return
             }
             apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+            onMove?()
         }
     }
 }

@@ -90,7 +90,9 @@ final class StudioDragView: NSView {
             return
         }
         guard let window else { return }
-        StudioWindowDrag.track(window)
+        StudioWindowDrag.track(window) { [weak self] in
+            self?.hitMap.onWindowFrameChanged?()
+        }
     }
 
     private func route(localPointInSelf local: CGPoint, content: NSView) -> StudioDragRoute {
@@ -176,7 +178,9 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
             super.mouseDown(with: event)
             return
         }
-        StudioWindowDrag.track(window)
+        StudioWindowDrag.track(window) { [weak self] in
+            self?.hitMap.onWindowFrameChanged?()
+        }
     }
 
     func currentRoute(_ point: CGPoint) -> StudioDragRoute {
