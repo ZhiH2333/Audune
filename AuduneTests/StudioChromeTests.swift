@@ -3,18 +3,17 @@ import XCTest
 @testable import Audune
 
 final class StudioChromeTests: XCTestCase {
-    func testCleanCanvasOffStaysVisible() {
-        XCTAssertTrue(visible(cleanCanvas: false, pointerInside: false, pointerDown: false, holdsChrome: false, now: 100, exitedAt: 0))
+    func testMissingExitKeepsChromeVisible() {
+        XCTAssertTrue(visible(pointerInside: false, pointerDown: false, holdsChrome: false, now: 100, exitedAt: nil))
     }
 
     func testPointerInsideShowsChromeImmediately() {
-        XCTAssertTrue(visible(cleanCanvas: true, pointerInside: true, pointerDown: false, holdsChrome: false, now: 80, exitedAt: 0))
+        XCTAssertTrue(visible(pointerInside: true, pointerDown: false, holdsChrome: false, now: 80, exitedAt: 0))
     }
 
     func testExitKeepsChromeUntilTheDelayElapses() {
         let exit = 10.0
         XCTAssertTrue(visible(
-            cleanCanvas: true,
             pointerInside: false,
             pointerDown: false,
             holdsChrome: false,
@@ -22,7 +21,6 @@ final class StudioChromeTests: XCTestCase {
             exitedAt: exit
         ))
         XCTAssertFalse(visible(
-            cleanCanvas: true,
             pointerInside: false,
             pointerDown: false,
             holdsChrome: false,
@@ -32,8 +30,8 @@ final class StudioChromeTests: XCTestCase {
     }
 
     func testPointerDownAndOpenSettingsHoldChrome() {
-        XCTAssertTrue(visible(cleanCanvas: true, pointerInside: false, pointerDown: true, holdsChrome: false, now: 50, exitedAt: 0))
-        XCTAssertTrue(visible(cleanCanvas: true, pointerInside: false, pointerDown: false, holdsChrome: true, now: 50, exitedAt: 0))
+        XCTAssertTrue(visible(pointerInside: false, pointerDown: true, holdsChrome: false, now: 50, exitedAt: 0))
+        XCTAssertTrue(visible(pointerInside: false, pointerDown: false, holdsChrome: true, now: 50, exitedAt: 0))
     }
 
     func testReduceMotionRemovesTheFade() {
@@ -56,10 +54,11 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertTrue(bounds.contains(chrome))
         XCTAssertEqual(chrome.height, StudioChrome.barHeight)
         XCTAssertEqual(StudioChrome.canvasFrame(in: .zero), .zero)
+        XCTAssertEqual(StudioChrome.gripWidth, 28)
+        XCTAssertEqual(StudioChrome.gripHeight, 22)
     }
 
     private func visible(
-        cleanCanvas: Bool,
         pointerInside: Bool,
         pointerDown: Bool,
         holdsChrome: Bool,
@@ -67,7 +66,6 @@ final class StudioChromeTests: XCTestCase {
         exitedAt: TimeInterval?
     ) -> Bool {
         StudioChrome.isVisible(
-            cleanCanvas: cleanCanvas,
             pointerInside: pointerInside,
             pointerDown: pointerDown,
             holdsChrome: holdsChrome,

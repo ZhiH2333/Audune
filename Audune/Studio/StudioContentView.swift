@@ -10,7 +10,6 @@ final class StudioModel {
     var mode: StudioVisualMode = .spectrum
     var backgroundOpacity = StudioPreferences.standard.backgroundOpacity
     var accent: StudioAccent = .warm
-    var cleanCanvas = StudioPreferences.standard.cleanCanvas
     var barCount = StudioPreferences.standard.barCount
     var pointerInside = false
     var pointerDown = false
@@ -23,12 +22,12 @@ struct StudioContentView: View {
     var savePreferences: () -> Void
     var resetPreferences: () -> Void
     var close: () -> Void
-    var setCleanCanvas: (Bool) -> Void
     var setBarCount: (Int) -> Void
     var setChromeVisible: (Bool) -> Void
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsAppearance = false
+    @State private var gripHovering = false
     @State private var exitedAt: TimeInterval?
     @State private var now = Date().timeIntervalSinceReferenceDate
     @State private var hideTask: Task<Void, Never>?
@@ -38,8 +37,8 @@ struct StudioContentView: View {
             visualization
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .allowsHitTesting(false)
-            StudioDragSurface(hitMap: hitMap)
             chrome
+                .fixedSize()
                 .padding(8)
                 .opacity(showsChrome ? 1 : 0)
                 .allowsHitTesting(showsChrome)
@@ -51,6 +50,9 @@ struct StudioContentView: View {
         .animation(chromeAnimation, value: showsChrome)
         .onPreferenceChange(StudioControlFramesKey.self) { frames in
             hitMap.controlFramesTopLeft = showsChrome ? frames : []
+        }
+        .onPreferenceChange(StudioGripFramesKey.self) { frames in
+            hitMap.gripFramesTopLeft = showsChrome ? frames : []
         }
         .onChange(of: model.mode) { _, _ in savePreferences() }
         .onChange(of: model.accent) { _, _ in savePreferences() }
@@ -76,21 +78,15 @@ struct StudioContentView: View {
                 beginHideCountdown()
             }
         }
-        .onChange(of: model.cleanCanvas) { _, enabled in
-            if enabled == false {
-                cancelHide()
-            } else if model.pointerInside == false, model.pointerDown == false, showsAppearance == false {
-                beginHideCountdown()
-            }
-        }
         .onChange(of: showsChrome) { _, visible in
             if visible == false {
                 hitMap.controlFramesTopLeft = []
+                hitMap.gripFramesTopLeft = []
             }
             setChromeVisible(visible)
         }
         .onAppear {
-            if model.cleanCanvas, model.pointerInside == false, showsAppearance == false {
+            if model.pointerInside == false, showsAppearance == false {
                 beginHideCountdown()
             }
             setChromeVisible(showsChrome)
@@ -105,7 +101,7 @@ struct StudioContentView: View {
                     .foregroundStyle(Color(red: 0.93, green: 0.55, blue: 0.48))
                     .lineLimit(2)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(width: 220, alignment: .leading)
                     .studioControlRegion()
             }
             if showsAppearance {
@@ -116,52 +112,64 @@ struct StudioContentView: View {
     }
 
     private var bar: some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(warmWhite.opacity(0.72))
-                .lineLimit(1)
-            StudioDragSurface(hitMap: hitMap)
-                .frame(maxWidth: .infinity, minHeight: 22)
+        HStack(spacing: 6) {
+            grip
             Picker("Mode", selection: $model.mode) {
                 ForEach(StudioVisualMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .labelsHidden()
-            .frame(width: 228)
+            .fixedSize()
             .accessibilityLabel("Mode")
             .studioControlRegion()
-            HStack(spacing: 6) {
-                Button("Start") {
-                    Task { await spike.start() }
-                }
-                .disabled(startDisabled)
-                Button("Stop") {
-                    spike.stop()
-                }
-                .disabled(stopDisabled)
-            }
-            .controlSize(.small)
-            .buttonStyle(.bordered)
-            .studioControlRegion()
-            Button(showsAppearance ? "Done" : "More") {
+            StudioTextButton(title: showsAppearance ? "Done" : "Settings") {
                 showsAppearance.toggle()
             }
-            .controlSize(.small)
-            .buttonStyle(.bordered)
-            .studioControlRegion()
-            Button("Close", action: close)
-                .controlSize(.small)
-                .buttonStyle(.borderless)
-                .studioControlRegion()
+            StudioTextButton(
+                title: model.alwaysOnTop ? "On Top" : "Pin",
+                highlighted: model.alwaysOnTop,
+                accessibilityLabel: "Always on Top",
+                accessibilityValue: model.alwaysOnTop ? "On" : "Off"
+            ) {
+                setAlwaysOnTop(!model.alwaysOnTop)
+            }
+            StudioTextButton(title: "Hide", action: close)
         }
         .frame(height: StudioChrome.barHeight)
     }
 
+    private var grip: some View {
+        ZStack {
+            StudioDragSurface(hitMap: hitMap)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(warmWhite.opacity(0.8))
+                .allowsHitTesting(false)
+        }
+        .frame(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
+        .background {
+            if gripHovering {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.white.opacity(0.16))
+            }
+        }
+        .onHover { gripHovering = $0 }
+        .accessibilityLabel("Drag Studio")
+        .studioGripRegion()
+    }
+
     private var appearance: some View {
         VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                StudioTextButton(title: "Start", disabled: startDisabled) {
+                    Task { await spike.start() }
+                }
+                StudioTextButton(title: "Stop", disabled: stopDisabled) {
+                    spike.stop()
+                }
+            }
             Picker("Color", selection: $model.accent) {
                 ForEach(StudioAccent.allCases) { accent in
                     Text(accent.title).tag(accent)
@@ -177,6 +185,7 @@ struct StudioContentView: View {
                 Slider(value: $model.backgroundOpacity, in: StudioPreferences.opacityRange)
             }
             .accessibilityElement(children: .combine)
+            .accessibilityLabel("Opacity")
             .studioControlRegion()
             if showsBarCount {
                 HStack(spacing: 8) {
@@ -202,25 +211,9 @@ struct StudioContentView: View {
                 .accessibilityLabel("Bar count")
                 .studioControlRegion()
             }
-            Toggle("Always on Top", isOn: Binding(
-                get: { model.alwaysOnTop },
-                set: { setAlwaysOnTop($0) }
-            ))
-            .font(.system(size: 12))
-            .studioControlRegion()
-            Toggle("Clean Canvas", isOn: Binding(
-                get: { model.cleanCanvas },
-                set: { setCleanCanvas($0) }
-            ))
-            .font(.system(size: 12))
-            .studioControlRegion()
-            Button("Reset", action: resetPreferences)
-                .controlSize(.small)
-                .buttonStyle(.bordered)
-                .studioControlRegion()
+            StudioTextButton(title: "Reset", action: resetPreferences)
         }
-        .padding(8)
-        .background(graphite.opacity(0.96), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(width: 220, alignment: .leading)
     }
 
     @ViewBuilder
@@ -237,7 +230,6 @@ struct StudioContentView: View {
 
     private var showsChrome: Bool {
         StudioChrome.isVisible(
-            cleanCanvas: model.cleanCanvas,
             pointerInside: model.pointerInside,
             pointerDown: model.pointerDown,
             holdsChrome: showsAppearance,
@@ -261,7 +253,6 @@ struct StudioContentView: View {
     }
 
     private func beginHideCountdown() {
-        guard model.cleanCanvas else { return }
         hideTask?.cancel()
         let exit = Date().timeIntervalSinceReferenceDate
         exitedAt = exit
@@ -281,10 +272,6 @@ struct StudioContentView: View {
         now = Date().timeIntervalSinceReferenceDate
     }
 
-    private var graphite: Color {
-        Color(red: 0.11, green: 0.11, blue: 0.12)
-    }
-
     private var warmWhite: Color {
         Color(red: 0.96, green: 0.94, blue: 0.90)
     }
@@ -299,19 +286,6 @@ struct StudioContentView: View {
         return "\(primary) \(spike.statusText)"
     }
 
-    private var title: String {
-        switch spike.phase {
-        case .idle:
-            return "Not listening"
-        case .starting:
-            return "Starting"
-        case .failed:
-            return "Capture failed"
-        case .running:
-            return model.snapshot.isSilent ? "No audio" : "Listening"
-        }
-    }
-
     private var startDisabled: Bool {
         spike.phase == .starting || spike.phase == .running
     }
@@ -322,6 +296,40 @@ struct StudioContentView: View {
 
     private var drawsBars: Bool {
         spike.phase == .running && model.snapshot.isSilent == false
+    }
+}
+
+private struct StudioTextButton: View {
+    var title: String
+    var disabled: Bool = false
+    var highlighted: Bool = false
+    var accessibilityLabel: String?
+    var accessibilityValue: String?
+    var action: () -> Void
+    @State private var hovering = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background {
+                    if hovering || focused || highlighted {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.white.opacity(0.16))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .focusable()
+        .focused($focused)
+        .onHover { hovering = $0 }
+        .accessibilityLabel(accessibilityLabel ?? title)
+        .accessibilityValue(accessibilityValue ?? "")
+        .studioControlRegion()
     }
 }
 #endif

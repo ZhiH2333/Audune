@@ -14,6 +14,7 @@ nonisolated enum StudioDragRoute: Equatable {
     case drag
     case control
     case resize
+    case idle
 }
 
 nonisolated enum StudioDragRouting {
@@ -21,6 +22,7 @@ nonisolated enum StudioDragRouting {
         point: CGPoint,
         bounds: CGRect,
         controlFrames: [CGRect],
+        gripFrames: [CGRect] = [],
         edge: CGFloat = StudioWindowBehavior.resizeMargin,
         controlSlop: CGFloat = StudioWindowBehavior.controlSlop
     ) -> StudioDragRoute {
@@ -38,7 +40,10 @@ nonisolated enum StudioDragRouting {
         if controlFrames.contains(where: { $0.insetBy(dx: -slop, dy: -slop).contains(point) }) {
             return .control
         }
-        return .drag
+        if gripFrames.contains(where: { $0.insetBy(dx: -slop, dy: -slop).contains(point) }) {
+            return .drag
+        }
+        return .idle
     }
 
     /// SwiftUI frames use a top-left origin. AppKit view bounds use a bottom-left origin.
@@ -60,6 +65,7 @@ nonisolated enum StudioDragRouting {
 
 final class StudioHitMap {
     var controlFramesTopLeft: [CGRect] = []
+    var gripFramesTopLeft: [CGRect] = []
 }
 
 enum StudioWindowDrag {

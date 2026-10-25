@@ -14,12 +14,31 @@ struct StudioControlFramesKey: PreferenceKey {
     }
 }
 
+struct StudioGripFramesKey: PreferenceKey {
+    static var defaultValue: [CGRect] = []
+
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 extension View {
     func studioControlRegion() -> some View {
         background {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: StudioControlFramesKey.self,
+                    value: [proxy.frame(in: .named(StudioCoordinateSpace.name))]
+                )
+            }
+        }
+    }
+
+    func studioGripRegion() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: StudioGripFramesKey.self,
                     value: [proxy.frame(in: .named(StudioCoordinateSpace.name))]
                 )
             }
@@ -76,11 +95,13 @@ final class StudioDragView: NSView {
 
     private func route(localPointInSelf local: CGPoint, content: NSView) -> StudioDragRoute {
         let point = content.convert(local, from: self)
-        let frames = StudioDragRouting.appKitFrames(
-            fromTopLeft: hitMap.controlFramesTopLeft,
-            containerHeight: content.bounds.height
+        let height = content.bounds.height
+        return StudioDragRouting.route(
+            point: point,
+            bounds: content.bounds,
+            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height)
         )
-        return StudioDragRouting.route(point: point, bounds: content.bounds, controlFrames: frames)
     }
 }
 
@@ -134,47 +155,24 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = superview.map { convert(point, from: $0) } ?? point
-        let route = currentRoute(local)
-        if route == .resize {
+        switch currentRoute(local) {
+        case .resize, .idle:
             return nil
+        case .drag:
+            return dragView(containing: local)
+        case .control:
+            return super.hitTest(point)
         }
-        let hit = super.hitTest(point)
-        if let hit, hit !== self, containsControl(hit) {
-            return hit
-        }
-        if route == .drag {
-            return dragView(containing: local) ?? self
-        }
-        return hit
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        let local = convert(event.locationInWindow, from: nil)
-        guard event.type == .leftMouseDown, currentRoute(local) == .drag else {
-            super.mouseDown(with: event)
-            return
-        }
-        guard let window else { return }
-        StudioWindowDrag.track(window)
     }
 
     private func currentRoute(_ point: CGPoint) -> StudioDragRoute {
-        let frames = StudioDragRouting.appKitFrames(
-            fromTopLeft: hitMap.controlFramesTopLeft,
-            containerHeight: bounds.height
+        let height = bounds.height
+        return StudioDragRouting.route(
+            point: point,
+            bounds: bounds,
+            controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height)
         )
-        return StudioDragRouting.route(point: point, bounds: bounds, controlFrames: frames)
-    }
-
-    private func containsControl(_ view: NSView) -> Bool {
-        var current: NSView? = view
-        while let candidate = current, candidate !== self {
-            if candidate is NSControl {
-                return true
-            }
-            current = candidate.superview
-        }
-        return false
     }
 
     private func dragView(containing point: NSPoint) -> StudioDragView? {

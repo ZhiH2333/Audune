@@ -5,6 +5,7 @@ nonisolated enum StudioPreferenceKey {
     static let alwaysOnTop = "studio.alwaysOnTop"
     static let backgroundOpacity = "studio.backgroundOpacity"
     static let accent = "studio.accent"
+    /// Retired. Old installs may still have this key; saving clears it.
     static let cleanCanvas = "studio.cleanCanvas"
     static let barCount = "studio.barCount"
 }
@@ -75,7 +76,6 @@ nonisolated struct StudioPreferences: Equatable {
     var alwaysOnTop: Bool
     var backgroundOpacity: Double
     var accent: StudioAccent
-    var cleanCanvas: Bool
     var barCount: Int
 
     static let opacityRange: ClosedRange<Double> = 0.35...1
@@ -85,7 +85,6 @@ nonisolated struct StudioPreferences: Equatable {
         alwaysOnTop: true,
         backgroundOpacity: 0.92,
         accent: .warm,
-        cleanCanvas: false,
         barCount: 16
     )
 
@@ -101,9 +100,6 @@ nonisolated struct StudioPreferences: Equatable {
         } else {
             backgroundOpacity = clampedOpacity(defaults.double(forKey: StudioPreferenceKey.backgroundOpacity))
         }
-        let cleanCanvas = defaults.object(forKey: StudioPreferenceKey.cleanCanvas) == nil
-            ? standard.cleanCanvas
-            : defaults.bool(forKey: StudioPreferenceKey.cleanCanvas)
         let barCount = defaults.object(forKey: StudioPreferenceKey.barCount) == nil
             ? standard.barCount
             : normalizedBarCount(defaults.integer(forKey: StudioPreferenceKey.barCount))
@@ -112,7 +108,6 @@ nonisolated struct StudioPreferences: Equatable {
             alwaysOnTop: alwaysOnTop,
             backgroundOpacity: backgroundOpacity,
             accent: accent,
-            cleanCanvas: cleanCanvas,
             barCount: barCount
         )
     }
@@ -122,7 +117,7 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(alwaysOnTop, forKey: StudioPreferenceKey.alwaysOnTop)
         defaults.set(Self.clampedOpacity(backgroundOpacity), forKey: StudioPreferenceKey.backgroundOpacity)
         defaults.set(accent.rawValue, forKey: StudioPreferenceKey.accent)
-        defaults.set(cleanCanvas, forKey: StudioPreferenceKey.cleanCanvas)
+        defaults.removeObject(forKey: StudioPreferenceKey.cleanCanvas)
         defaults.set(Self.normalizedBarCount(barCount), forKey: StudioPreferenceKey.barCount)
     }
 

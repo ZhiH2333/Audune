@@ -8,8 +8,6 @@ final class MenuBarController: NSObject {
     private let openDebug: () -> Void
     private let toggleStudio: () -> Void
     private let studioVisible: () -> Bool
-    private let cleanCanvas: () -> Bool
-    private let setCleanCanvas: (Bool) -> Void
     private let model = MenuBarModel()
     private let spectrumImage = MenuBarSpectrumImage()
     private let statusItem = NSStatusBar.system.statusItem(withLength: MenuBarSpectrumImage.pointSize.width)
@@ -24,23 +22,18 @@ final class MenuBarController: NSObject {
         spike: ProcessTapSpike,
         openDebug: @escaping () -> Void,
         toggleStudio: @escaping () -> Void,
-        studioVisible: @escaping () -> Bool,
-        cleanCanvas: @escaping () -> Bool,
-        setCleanCanvas: @escaping (Bool) -> Void
+        studioVisible: @escaping () -> Bool
     ) {
         self.spike = spike
         self.openDebug = openDebug
         self.toggleStudio = toggleStudio
         self.studioVisible = studioVisible
-        self.cleanCanvas = cleanCanvas
-        self.setCleanCanvas = setCleanCanvas
         super.init()
         let root = MenuBarPopoverView(
             model: model,
             start: { [weak self] in self?.startCapture() },
             stop: { [weak self] in self?.stopCapture() },
             toggleStudio: { [weak self] in self?.toggleStudioWindow() },
-            setCleanCanvas: { [weak self] enabled in self?.updateCleanCanvas(enabled) },
             openDebug: { [weak self] in self?.showDebugWindow() },
             quit: { NSApp.terminate(nil) }
         )
@@ -94,11 +87,6 @@ final class MenuBarController: NSObject {
         toggleStudio()
     }
 
-    private func updateCleanCanvas(_ enabled: Bool) {
-        setCleanCanvas(enabled)
-        model.cleanCanvas = enabled
-    }
-
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusItem.button else { return }
         if popover.isShown {
@@ -139,8 +127,6 @@ final class MenuBarController: NSObject {
         if model.stopDisabled != presentation.stopDisabled { model.stopDisabled = presentation.stopDisabled }
         let studioOpen = studioVisible()
         if model.studioVisible != studioOpen { model.studioVisible = studioOpen }
-        let canvas = cleanCanvas()
-        if model.cleanCanvas != canvas { model.cleanCanvas = canvas }
         guard let button = statusItem.button else { return }
         let sequence = presentation.state == .receiving ? snapshot.sequence : nil
         if renderedState == presentation.state && renderedSequence == sequence { return }
@@ -199,9 +185,7 @@ struct MenuBarInstaller: View {
                         NSApp.activate()
                     },
                     toggleStudio: { studio.toggle() },
-                    studioVisible: { studio.isVisible },
-                    cleanCanvas: { studio.model.cleanCanvas },
-                    setCleanCanvas: { studio.setCleanCanvas($0) }
+                    studioVisible: { studio.isVisible }
                 )
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in

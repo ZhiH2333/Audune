@@ -14,16 +14,16 @@ nonisolated enum StudioChromeMotion {
 
 nonisolated enum StudioChrome {
     static let barHeight: CGFloat = 36
+    static let gripWidth: CGFloat = 28
+    static let gripHeight: CGFloat = 22
 
     static func isVisible(
-        cleanCanvas: Bool,
         pointerInside: Bool,
         pointerDown: Bool,
         holdsChrome: Bool,
         now: TimeInterval,
         exitedAt: TimeInterval?
     ) -> Bool {
-        if cleanCanvas == false { return true }
         if pointerInside || pointerDown || holdsChrome { return true }
         guard let exitedAt else { return true }
         return now - exitedAt < StudioChromeMotion.hideDelaySeconds

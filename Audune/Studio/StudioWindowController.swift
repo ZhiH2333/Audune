@@ -76,14 +76,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         currentPreferences().save()
     }
 
-    func setCleanCanvas(_ enabled: Bool) {
-        model.cleanCanvas = enabled
-        savePreferences()
-        if enabled == false {
-            setChromeVisible(true)
-        }
-    }
-
     func setBarCount(_ count: Int) {
         let normalized = StudioPreferences.normalizedBarCount(count)
         if model.barCount != normalized {
@@ -156,9 +148,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             close: { [weak self] in
                 self?.hide()
             },
-            setCleanCanvas: { [weak self] enabled in
-                self?.setCleanCanvas(enabled)
-            },
             setBarCount: { [weak self] count in
                 self?.setBarCount(count)
             },
@@ -204,15 +193,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.alwaysOnTop = preferences.alwaysOnTop
         model.backgroundOpacity = preferences.backgroundOpacity
         model.accent = preferences.accent
-        model.cleanCanvas = preferences.cleanCanvas
         model.barCount = preferences.barCount
         if model.studioSpectrum.count != preferences.barCount {
             model.studioSpectrum = Array(repeating: 0, count: preferences.barCount)
         }
         applyLevel()
-        if preferences.cleanCanvas == false {
-            setChromeVisible(true)
-        }
     }
 
     private func currentPreferences() -> StudioPreferences {
@@ -221,7 +206,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             alwaysOnTop: model.alwaysOnTop,
             backgroundOpacity: model.backgroundOpacity,
             accent: model.accent,
-            cleanCanvas: model.cleanCanvas,
             barCount: model.barCount
         )
     }

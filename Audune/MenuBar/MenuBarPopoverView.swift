@@ -11,7 +11,6 @@ final class MenuBarModel {
     var startDisabled = false
     var stopDisabled = true
     var studioVisible = false
-    var cleanCanvas = false
 }
 
 struct MenuBarPopoverView: View {
@@ -19,7 +18,6 @@ struct MenuBarPopoverView: View {
     var start: () -> Void
     var stop: () -> Void
     var toggleStudio: () -> Void
-    var setCleanCanvas: (Bool) -> Void
     var openDebug: () -> Void
     var quit: () -> Void
 
@@ -44,10 +42,6 @@ struct MenuBarPopoverView: View {
                     .disabled(model.stopDisabled)
             }
             Button(model.studioVisible ? "Hide Studio" : "Open Studio", action: toggleStudio)
-            Toggle("Clean Canvas", isOn: Binding(
-                get: { model.cleanCanvas },
-                set: { setCleanCanvas($0) }
-            ))
             Button("Open Debug Window", action: openDebug)
             Divider()
             Button("Quit Audune", action: quit)

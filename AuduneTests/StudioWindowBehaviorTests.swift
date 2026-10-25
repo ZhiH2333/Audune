@@ -14,16 +14,36 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertFalse(behavior.contains(.moveToActiveSpace))
     }
 
-    func testCanvasPointDragsAndControlPointDoesNot() {
+    func testGripDragsAndCanvasOrControlDoesNot() {
         let bounds = CGRect(x: 0, y: 0, width: 640, height: 400)
         let control = CGRect(x: 16, y: 300, width: 80, height: 28)
+        let grip = CGRect(x: 200, y: 360, width: 28, height: 22)
 
         XCTAssertEqual(
-            StudioDragRouting.route(point: CGPoint(x: 320, y: 120), bounds: bounds, controlFrames: [control]),
+            StudioDragRouting.route(
+                point: CGPoint(x: 320, y: 120),
+                bounds: bounds,
+                controlFrames: [control],
+                gripFrames: [grip]
+            ),
+            .idle
+        )
+        XCTAssertEqual(
+            StudioDragRouting.route(
+                point: CGPoint(x: 210, y: 370),
+                bounds: bounds,
+                controlFrames: [control],
+                gripFrames: [grip]
+            ),
             .drag
         )
         XCTAssertEqual(
-            StudioDragRouting.route(point: CGPoint(x: 40, y: 310), bounds: bounds, controlFrames: [control]),
+            StudioDragRouting.route(
+                point: CGPoint(x: 40, y: 310),
+                bounds: bounds,
+                controlFrames: [control],
+                gripFrames: [grip]
+            ),
             .control
         )
     }
@@ -38,7 +58,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         )
         XCTAssertEqual(
             StudioDragRouting.route(point: CGPoint(x: 10, y: 310), bounds: bounds, controlFrames: [control]),
-            .drag
+            .idle
         )
     }
 
@@ -151,18 +171,19 @@ final class StudioWindowBehaviorTests: XCTestCase {
     }
 
     @MainActor
-    func testBarCountAndCleanCanvasDoNotStartCapture() {
+    func testBarCountAndChromeDoNotStartCapture() {
         let spike = ProcessTapSpike()
         let controller = StudioWindowController(spike: spike)
         defer { controller.shutdown() }
 
         controller.setBarCount(64)
-        controller.setCleanCanvas(true)
+        controller.setChromeVisible(false)
 
         XCTAssertEqual(spike.phase, .idle)
         XCTAssertEqual(controller.model.barCount, 64)
         XCTAssertEqual(controller.model.studioSpectrum.count, 64)
-        XCTAssertTrue(controller.model.cleanCanvas)
+        XCTAssertFalse(controller.inspectWindowForTests().hasShadow)
+        XCTAssertFalse(controller.inspectWindowForTests().ignoresMouseEvents)
         XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior)
 
         controller.setBarCount(3)
