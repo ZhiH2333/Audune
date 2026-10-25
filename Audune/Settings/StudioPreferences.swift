@@ -58,9 +58,11 @@ nonisolated enum StudioPreferenceKey {
     static let windowHideDelay = "studio.window.hideDelaySeconds"
     static let windowAnimatesChrome = "studio.window.animatesChrome"
     static let windowFollowsReduceMotion = "studio.window.followsReduceMotion"
+    /// Versioned JSON for custom visual presets. Built-in presets are not stored here.
+    static let visualPresets = "studio.visualPresets"
 }
 
-nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
+nonisolated enum StudioVisualMode: String, Codable, CaseIterable, Identifiable {
     case spectrum
     case waveform
     case orbit
@@ -178,7 +180,7 @@ nonisolated enum StudioAccent: String, CaseIterable, Identifiable {
     }
 }
 
-nonisolated enum SpectrumScale: String, CaseIterable, Identifiable {
+nonisolated enum SpectrumScale: String, Codable, CaseIterable, Identifiable {
     case log
     case linear
 
@@ -263,7 +265,7 @@ nonisolated struct SpectrumPreferences: Equatable {
     }
 }
 
-nonisolated enum WaveformStyle: String, CaseIterable, Identifiable {
+nonisolated enum WaveformStyle: String, Codable, CaseIterable, Identifiable {
     case line
     case filled
 
@@ -625,5 +627,179 @@ nonisolated struct StudioPreferences: Equatable {
             }
             return legacy ?? fallback
         }
+    }
+}
+
+extension StudioColor: Codable {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let hex = try container.decode(String.self)
+        guard let color = StudioColor(hex: hex) else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Expected a #RRGGBB color.")
+        }
+        self = color
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(hex)
+    }
+}
+
+extension AppearancePreferences: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case color, strokeColor, opacity, lineWidth
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = Self.standard
+        self.init(
+            color: try container.decodeIfPresent(StudioColor.self, forKey: .color) ?? standard.color,
+            strokeColor: try container.decodeIfPresent(StudioColor.self, forKey: .strokeColor) ?? standard.strokeColor,
+            opacity: try container.decodeIfPresent(Double.self, forKey: .opacity) ?? standard.opacity,
+            lineWidth: try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? standard.lineWidth
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(color, forKey: .color)
+        try container.encode(strokeColor, forKey: .strokeColor)
+        try container.encode(opacity, forKey: .opacity)
+        try container.encode(lineWidth, forKey: .lineWidth)
+    }
+}
+
+extension SpectrumPreferences: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case barCount, scale, minHz, maxHz, barGap, cornerRadius, stroke
+        case sensitivity, amplitude, smoothing, attackMs, releaseMs, peakHold, peakHoldSeconds
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = Self.standard
+        self.init(
+            barCount: try container.decodeIfPresent(Int.self, forKey: .barCount) ?? standard.barCount,
+            scale: try container.decodeIfPresent(SpectrumScale.self, forKey: .scale) ?? standard.scale,
+            minHz: try container.decodeIfPresent(Double.self, forKey: .minHz) ?? standard.minHz,
+            maxHz: try container.decodeIfPresent(Double.self, forKey: .maxHz) ?? standard.maxHz,
+            barGap: try container.decodeIfPresent(Double.self, forKey: .barGap) ?? standard.barGap,
+            cornerRadius: try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? standard.cornerRadius,
+            stroke: try container.decodeIfPresent(Bool.self, forKey: .stroke) ?? standard.stroke,
+            sensitivity: try container.decodeIfPresent(Double.self, forKey: .sensitivity) ?? standard.sensitivity,
+            amplitude: try container.decodeIfPresent(Double.self, forKey: .amplitude) ?? standard.amplitude,
+            smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
+            attackMs: try container.decodeIfPresent(Double.self, forKey: .attackMs) ?? standard.attackMs,
+            releaseMs: try container.decodeIfPresent(Double.self, forKey: .releaseMs) ?? standard.releaseMs,
+            peakHold: try container.decodeIfPresent(Bool.self, forKey: .peakHold) ?? standard.peakHold,
+            peakHoldSeconds: try container.decodeIfPresent(Double.self, forKey: .peakHoldSeconds) ?? standard.peakHoldSeconds
+        )
+        self = clamped()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(barCount, forKey: .barCount)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(minHz, forKey: .minHz)
+        try container.encode(maxHz, forKey: .maxHz)
+        try container.encode(barGap, forKey: .barGap)
+        try container.encode(cornerRadius, forKey: .cornerRadius)
+        try container.encode(stroke, forKey: .stroke)
+        try container.encode(sensitivity, forKey: .sensitivity)
+        try container.encode(amplitude, forKey: .amplitude)
+        try container.encode(smoothing, forKey: .smoothing)
+        try container.encode(attackMs, forKey: .attackMs)
+        try container.encode(releaseMs, forKey: .releaseMs)
+        try container.encode(peakHold, forKey: .peakHold)
+        try container.encode(peakHoldSeconds, forKey: .peakHoldSeconds)
+    }
+
+    func clamped() -> SpectrumPreferences {
+        var prefs = StudioPreferences.standard
+        prefs.spectrum = self
+        return prefs.normalized().spectrum
+    }
+}
+
+extension WaveformPreferences: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case lineWidth, amplitude, smoothing, density, style, customColor
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = Self.standard
+        self.init(
+            lineWidth: try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? standard.lineWidth,
+            amplitude: try container.decodeIfPresent(Double.self, forKey: .amplitude) ?? standard.amplitude,
+            smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
+            density: try container.decodeIfPresent(Int.self, forKey: .density) ?? standard.density,
+            style: try container.decodeIfPresent(WaveformStyle.self, forKey: .style) ?? standard.style,
+            customColor: try container.decodeIfPresent(StudioColor.self, forKey: .customColor)
+        )
+        self = clamped()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(lineWidth, forKey: .lineWidth)
+        try container.encode(amplitude, forKey: .amplitude)
+        try container.encode(smoothing, forKey: .smoothing)
+        try container.encode(density, forKey: .density)
+        try container.encode(style, forKey: .style)
+        try container.encodeIfPresent(customColor, forKey: .customColor)
+    }
+
+    func clamped() -> WaveformPreferences {
+        var prefs = StudioPreferences.standard
+        prefs.waveform = self
+        return prefs.normalized().waveform
+    }
+}
+
+extension OrbitPreferences: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case barCount, inner, outerScale, gapDegrees, mirrored, stroke, lineWidth, amplitude, smoothing, customColor
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = Self.standard
+        self.init(
+            barCount: try container.decodeIfPresent(Int.self, forKey: .barCount) ?? standard.barCount,
+            inner: try container.decodeIfPresent(Double.self, forKey: .inner) ?? standard.inner,
+            outerScale: try container.decodeIfPresent(Double.self, forKey: .outerScale) ?? standard.outerScale,
+            gapDegrees: try container.decodeIfPresent(Double.self, forKey: .gapDegrees) ?? standard.gapDegrees,
+            mirrored: try container.decodeIfPresent(Bool.self, forKey: .mirrored) ?? standard.mirrored,
+            stroke: try container.decodeIfPresent(Bool.self, forKey: .stroke) ?? standard.stroke,
+            lineWidth: try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? standard.lineWidth,
+            amplitude: try container.decodeIfPresent(Double.self, forKey: .amplitude) ?? standard.amplitude,
+            smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
+            customColor: try container.decodeIfPresent(StudioColor.self, forKey: .customColor)
+        )
+        self = clamped()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(barCount, forKey: .barCount)
+        try container.encode(inner, forKey: .inner)
+        try container.encode(outerScale, forKey: .outerScale)
+        try container.encode(gapDegrees, forKey: .gapDegrees)
+        try container.encode(mirrored, forKey: .mirrored)
+        try container.encode(stroke, forKey: .stroke)
+        try container.encode(lineWidth, forKey: .lineWidth)
+        try container.encode(amplitude, forKey: .amplitude)
+        try container.encode(smoothing, forKey: .smoothing)
+        try container.encodeIfPresent(customColor, forKey: .customColor)
+    }
+
+    func clamped() -> OrbitPreferences {
+        var prefs = StudioPreferences.standard
+        prefs.orbit = self
+        return prefs.normalized().orbit
     }
 }
