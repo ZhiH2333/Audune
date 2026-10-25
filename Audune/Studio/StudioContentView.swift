@@ -165,11 +165,13 @@ struct StudioContentView: View {
         case .waveform:
             WaveformCanvas(
                 samples: model.displayWaveform,
-                color: fill,
+                color: (prefs.waveform.customColor ?? prefs.appearance.color).swiftUI,
                 opacity: prefs.appearance.opacity,
                 amplitude: prefs.waveform.amplitude,
                 lineWidth: prefs.waveform.lineWidth,
-                smoothing: prefs.waveform.smoothing
+                smoothing: prefs.waveform.smoothing,
+                density: prefs.waveform.density,
+                style: prefs.waveform.style
             )
         case .orbit:
             OrbitCanvas(

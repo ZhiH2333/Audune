@@ -400,6 +400,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func refreshWaveform() {
+        guard model.prefs.mode == .waveform else { return }
         smoothedWave = WaveformPath.mix(
             current: smoothedWave,
             toward: model.snapshot.waveform,

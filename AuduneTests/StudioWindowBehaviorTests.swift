@@ -314,6 +314,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         let controller = StudioWindowController(spike: spike)
         defer { controller.shutdown() }
 
+        controller.model.prefs.mode = .spectrum
         controller.setSpectrumBarCount(64)
         controller.setChromeVisible(false)
 

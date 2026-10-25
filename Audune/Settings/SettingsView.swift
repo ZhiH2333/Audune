@@ -156,9 +156,33 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var waveformPane: some View {
-        Section("Line") {
-            Text("Draws the real captured PCM samples.")
+        Section("Shape") {
+            Text("Draws the real captured PCM samples. Density only chooses how many of them are drawn.")
                 .foregroundStyle(.secondary)
+            Picker("Style", selection: $model.prefs.waveform.style) {
+                ForEach(WaveformStyle.allCases) { style in
+                    Text(style.title).tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+            Picker("Density", selection: $model.prefs.waveform.density) {
+                ForEach(StudioPreferences.densities, id: \.self) { density in
+                    Text("\(density)").tag(density)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        Section("Line") {
+            Toggle("Custom line color", isOn: Binding(
+                get: { model.prefs.waveform.customColor != nil },
+                set: { model.prefs.waveform.customColor = $0 ? model.prefs.appearance.color : nil }
+            ))
+            if model.prefs.waveform.customColor != nil {
+                ColorPicker("Line color", selection: Binding(
+                    get: { (model.prefs.waveform.customColor ?? model.prefs.appearance.color).swiftUI },
+                    set: { model.prefs.waveform.customColor = StudioColor($0) }
+                ), supportsOpacity: false)
+            }
             SettingsSlider(title: "Line width", value: $model.prefs.waveform.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
             SettingsSlider(title: "Amplitude", value: $model.prefs.waveform.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
             SettingsSlider(title: "Smoothing", value: $model.prefs.waveform.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)

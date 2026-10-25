@@ -77,6 +77,75 @@ final class WaveformSamplerTests: XCTestCase {
         XCTAssertEqual(WaveformPath.centerline(in: .zero), [])
     }
 
+    func testDensityKeepsRealSamplesAndNeverInventsMore() {
+        let samples = sine(frequency: 3, amplitude: 0.6, count: 128)
+        let half = WaveformPath.reduced(samples, to: 64)
+
+        XCTAssertEqual(half.count, 64)
+        XCTAssertEqual(WaveformPath.reduced(samples, to: 128), samples)
+        XCTAssertEqual(WaveformPath.reduced(samples, to: 256), samples, "no upsampling")
+        XCTAssertEqual(WaveformPath.reduced(Array(samples.prefix(40)), to: 64).count, 40)
+        for (index, value) in half.enumerated() {
+            XCTAssertTrue(samples[index * 2] == value || samples[index * 2 + 1] == value, "bucket \(index) is a real sample")
+        }
+        XCTAssertEqual(WaveformPath.reduced([.nan, 2, -3, .infinity], to: 2), [1, -1])
+    }
+
+    func testEdgesFadeToTheBaselineAndTheMiddleKeepsRealValues() {
+        let steady = Array(repeating: Float(0.5), count: 64)
+        let faded = WaveformPath.tapered(steady)
+
+        XCTAssertEqual(faded.first ?? 1, 0, accuracy: 0.000_1)
+        XCTAssertEqual(faded.last ?? 1, 0, accuracy: 0.000_1)
+        XCTAssertEqual(faded[32], 0.5, accuracy: 0.000_1)
+        XCTAssertTrue(faded.allSatisfy { $0 >= 0 && $0 <= 0.5 })
+        XCTAssertEqual(WaveformPath.tapered([.nan, 1, .infinity]), [0, 1, 0])
+    }
+
+    func testPreparedSilenceIsAFlatBaselineAtEveryDensity() {
+        for density in WaveformPath.densities {
+            let prepared = WaveformPath.prepared(Array(repeating: 0, count: 128), density: density, smoothing: 0.5)
+            let bounds = CGRect(x: 0, y: 0, width: 300, height: 100)
+            let points = WaveformPath.points(samples: prepared, in: bounds, amplitude: WaveformPath.displayGain)
+
+            XCTAssertEqual(prepared.count, density)
+            XCTAssertTrue(points.allSatisfy { abs($0.y - bounds.midY) < 0.001 })
+        }
+        XCTAssertEqual(WaveformPath.prepared(Array(repeating: 0, count: 128), density: 7, smoothing: 0).count, 128)
+    }
+
+    func testCurveControlPointsStayInsideBounds() {
+        let samples = sine(frequency: 5, amplitude: 1, count: 128)
+        for bounds in [CGRect(x: 0, y: 0, width: 8, height: 4), CGRect(x: 10, y: 12, width: 900, height: 500)] {
+            let points = WaveformPath.points(samples: samples, in: bounds, amplitude: 3)
+            let segments = WaveformPath.segments(through: points, in: bounds)
+
+            XCTAssertEqual(segments.count, points.count - 1)
+            for segment in segments {
+                for point in [segment.control1, segment.control2, segment.end] {
+                    XCTAssertTrue(inside(point, bounds), "\(point) outside \(bounds)")
+                }
+            }
+            for point in WaveformPath.mirrored(points, in: bounds) {
+                XCTAssertTrue(inside(point, bounds))
+            }
+        }
+        XCTAssertTrue(WaveformPath.segments(through: [.zero], in: CGRect(x: 0, y: 0, width: 10, height: 10)).isEmpty)
+        XCTAssertTrue(WaveformPath.segments(through: [.zero, CGPoint(x: CGFloat.nan, y: 0)], in: CGRect(x: 0, y: 0, width: 10, height: 10)).isEmpty)
+        XCTAssertTrue(WaveformPath.mirrored([.zero], in: .zero).isEmpty)
+    }
+
+    func testMirroredPointsReflectThroughTheMidline() {
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let mirrored = WaveformPath.mirrored([CGPoint(x: 10, y: 20), CGPoint(x: 20, y: 50)], in: bounds)
+
+        XCTAssertEqual(mirrored, [CGPoint(x: 10, y: 80), CGPoint(x: 20, y: 50)])
+    }
+
+    private func inside(_ point: CGPoint, _ bounds: CGRect) -> Bool {
+        point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
+    }
+
     private func sine(frequency: Float, amplitude: Float, count: Int) -> [Float] {
         (0..<count).map { index in
             amplitude * sin(2 * Float.pi * frequency * Float(index) / Float(count))

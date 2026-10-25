@@ -81,7 +81,14 @@ final class StudioPreferencesTests: XCTestCase {
             peakHold: true,
             peakHoldSeconds: 1.2
         )
-        stored.waveform = WaveformPreferences(lineWidth: 2.5, amplitude: 2, smoothing: 0.6)
+        stored.waveform = WaveformPreferences(
+            lineWidth: 2.5,
+            amplitude: 2,
+            smoothing: 0.6,
+            density: 128,
+            style: .filled,
+            customColor: StudioColor(red: 0.5, green: 0.25, blue: 0.75)
+        )
         stored.orbit = OrbitPreferences(barCount: 16, inner: 0.4, lineWidth: 2, amplitude: 1.2, smoothing: 0.1)
         stored.save(to: defaults)
 
@@ -157,6 +164,21 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(spectrum.scale, .log)
         XCTAssertEqual(spectrum.barCount, 32)
         XCTAssertEqual(spectrum.floorDecibels, -80, accuracy: 0.000_1)
+    }
+
+    func testWaveformChoicesNormalizeAndCustomColorCanBeCleared() {
+        defaults.set(50, forKey: StudioPreferenceKey.waveformDensity)
+        defaults.set("ribbon", forKey: StudioPreferenceKey.waveformStyle)
+        defaults.set("#0000FF", forKey: StudioPreferenceKey.waveformColor)
+        var loaded = StudioPreferences.load(from: defaults)
+
+        XCTAssertEqual(loaded.waveform.density, 64)
+        XCTAssertEqual(loaded.waveform.style, .line)
+        XCTAssertEqual(loaded.waveform.customColor, StudioColor(red: 0, green: 0, blue: 1))
+        loaded.waveform.customColor = nil
+        loaded.save(to: defaults)
+        XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.waveformColor))
+        XCTAssertNil(StudioPreferences.load(from: defaults).waveform.customColor)
     }
 
     func testStudioColorRoundTripsThroughHex() {

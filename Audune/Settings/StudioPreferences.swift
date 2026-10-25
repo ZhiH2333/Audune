@@ -38,6 +38,9 @@ nonisolated enum StudioPreferenceKey {
     static let waveformLineWidth = "studio.waveform.lineWidth"
     static let waveformAmplitude = "studio.waveform.amplitude"
     static let waveformSmoothing = "studio.waveform.smoothing"
+    static let waveformDensity = "studio.waveform.density"
+    static let waveformStyle = "studio.waveform.style"
+    static let waveformColor = "studio.waveform.color"
 
     static let orbitBarCount = "studio.orbit.barCount"
     static let orbitLineWidth = "studio.orbit.lineWidth"
@@ -248,12 +251,38 @@ nonisolated struct SpectrumPreferences: Equatable {
     }
 }
 
+nonisolated enum WaveformStyle: String, CaseIterable, Identifiable {
+    case line
+    case filled
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .line: return "Line"
+        case .filled: return "Filled"
+        }
+    }
+}
+
 nonisolated struct WaveformPreferences: Equatable {
     var lineWidth: Double
     var amplitude: Double
     var smoothing: Double
+    /// How many of the real PCM points are drawn. Never more than the snapshot provides.
+    var density: Int
+    var style: WaveformStyle
+    /// `nil` follows the Appearance color.
+    var customColor: StudioColor?
 
-    static let standard = WaveformPreferences(lineWidth: 1.5, amplitude: 1, smoothing: 0.35)
+    static let standard = WaveformPreferences(
+        lineWidth: 1.5,
+        amplitude: 1,
+        smoothing: 0.35,
+        density: 64,
+        style: .line,
+        customColor: nil
+    )
 }
 
 nonisolated struct OrbitPreferences: Equatable {
@@ -288,6 +317,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let releaseMsRange: ClosedRange<Double> = 60...1_000
     static let peakHoldSecondsRange: ClosedRange<Double> = 0.1...2
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
+    static let densities = [32, 64, 128]
 
     static let standard = StudioPreferences(
         mode: .spectrum,
@@ -341,7 +371,10 @@ nonisolated struct StudioPreferences: Equatable {
             waveform: WaveformPreferences(
                 lineWidth: reader.double(StudioPreferenceKey.waveformLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.waveform.lineWidth),
                 amplitude: reader.double(StudioPreferenceKey.waveformAmplitude, legacy: legacyAmplitude, range: amplitudeRange, fallback: standard.waveform.amplitude),
-                smoothing: reader.double(StudioPreferenceKey.waveformSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.waveform.smoothing)
+                smoothing: reader.double(StudioPreferenceKey.waveformSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.waveform.smoothing),
+                density: reader.density(StudioPreferenceKey.waveformDensity, fallback: standard.waveform.density),
+                style: defaults.string(forKey: StudioPreferenceKey.waveformStyle).flatMap(WaveformStyle.init(rawValue:)) ?? standard.waveform.style,
+                customColor: defaults.string(forKey: StudioPreferenceKey.waveformColor).flatMap(StudioColor.init(hex:))
             ),
             orbit: OrbitPreferences(
                 barCount: reader.barCount(StudioPreferenceKey.orbitBarCount, legacy: legacyCount, fallback: standard.orbit.barCount),
@@ -373,6 +406,7 @@ nonisolated struct StudioPreferences: Equatable {
         result.waveform.lineWidth = Self.clamped(waveform.lineWidth, to: Self.lineWidthRange, fallback: standard.waveform.lineWidth)
         result.waveform.amplitude = Self.clamped(waveform.amplitude, to: Self.amplitudeRange, fallback: standard.waveform.amplitude)
         result.waveform.smoothing = Self.clamped(waveform.smoothing, to: Self.smoothingRange, fallback: standard.waveform.smoothing)
+        result.waveform.density = Self.densities.contains(waveform.density) ? waveform.density : standard.waveform.density
         result.orbit.barCount = Self.normalizedBarCount(orbit.barCount)
         result.orbit.inner = Self.clamped(orbit.inner, to: Self.orbitInnerRange, fallback: standard.orbit.inner)
         result.orbit.lineWidth = Self.clamped(orbit.lineWidth, to: Self.lineWidthRange, fallback: standard.orbit.lineWidth)
@@ -412,6 +446,13 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.waveform.lineWidth, forKey: StudioPreferenceKey.waveformLineWidth)
         defaults.set(p.waveform.amplitude, forKey: StudioPreferenceKey.waveformAmplitude)
         defaults.set(p.waveform.smoothing, forKey: StudioPreferenceKey.waveformSmoothing)
+        defaults.set(p.waveform.density, forKey: StudioPreferenceKey.waveformDensity)
+        defaults.set(p.waveform.style.rawValue, forKey: StudioPreferenceKey.waveformStyle)
+        if let custom = p.waveform.customColor {
+            defaults.set(custom.hex, forKey: StudioPreferenceKey.waveformColor)
+        } else {
+            defaults.removeObject(forKey: StudioPreferenceKey.waveformColor)
+        }
 
         defaults.set(p.orbit.barCount, forKey: StudioPreferenceKey.orbitBarCount)
         defaults.set(p.orbit.inner, forKey: StudioPreferenceKey.orbitInner)
@@ -470,6 +511,12 @@ nonisolated struct StudioPreferences: Equatable {
 
         func color(_ key: String, fallback: StudioColor) -> StudioColor {
             defaults.string(forKey: key).flatMap(StudioColor.init(hex:)) ?? fallback
+        }
+
+        func density(_ key: String, fallback: Int) -> Int {
+            guard defaults.object(forKey: key) != nil else { return fallback }
+            let stored = defaults.integer(forKey: key)
+            return StudioPreferences.densities.contains(stored) ? stored : fallback
         }
 
         func optionalBarCount(_ key: String) -> Int? {
