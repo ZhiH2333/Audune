@@ -24,9 +24,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var permissionChecks: Set<String> = []
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
+    private let defaults: UserDefaults
 
-    init(spike: ProcessTapSpike) {
+    init(spike: ProcessTapSpike, defaults: UserDefaults = .standard) {
         self.spike = spike
+        self.defaults = defaults
         panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: StudioFrame.defaultSize),
             styleMask: [.borderless, .resizable, .nonactivatingPanel],
@@ -34,7 +36,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         super.init()
-        apply(StudioPreferences.load())
+        apply(StudioPreferences.load(from: defaults))
         configurePanel()
     }
 
@@ -160,7 +162,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     func savePreferences() {
         saveTask?.cancel()
         saveTask = nil
-        currentPreferences().save()
+        currentPreferences().save(to: defaults)
     }
 
     /// Slider drags call this on every tick; the write happens once the value settles.
@@ -186,12 +188,27 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         refreshStudioSpectrum(dt: 0)
     }
 
+    @discardableResult
+    func applyVisualPreset(_ preset: VisualPreset) -> Bool {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        switch library.apply(preset, to: model.prefs, in: defaults) {
+        case .success(let updated):
+            model.prefs = updated
+            savePreferences()
+            refreshStudioSpectrum(dt: 0)
+            refreshWaveform()
+            return true
+        case .failure:
+            return false
+        }
+    }
+
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
     }
 
     func resetPreferences() {
-        StudioPreferences.reset()
+        StudioPreferences.reset(in: defaults)
         smoothedStudio = []
         smoothedWave = []
         spectrumState = SpectrumDynamicsState()

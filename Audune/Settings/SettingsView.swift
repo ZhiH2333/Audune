@@ -43,6 +43,7 @@ struct SettingsView: View {
     let island: IslandWindowController
     @Bindable var model: StudioModel
     @Bindable var islandModel: IslandModel
+    @State private var presetLibrary = VisualPresetCatalog.restoring()
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -158,6 +159,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var spectrumPane: some View {
+        visualPresetSection(.spectrum)
         Section("Bars") {
             Picker("Bars", selection: Binding(get: { model.prefs.spectrum.barCount }, set: { studio.setSpectrumBarCount($0) })) {
                 ForEach(StudioPreferences.barCounts, id: \.self) { count in
@@ -202,6 +204,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var waveformPane: some View {
+        visualPresetSection(.waveform)
         Section("Shape") {
             Text("Draws the real captured PCM samples. Density only chooses how many of them are drawn.")
                 .foregroundStyle(.secondary)
@@ -240,6 +243,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var orbitPane: some View {
+        visualPresetSection(.orbit)
         Section("Ring") {
             Picker("Bars", selection: Binding(get: { model.prefs.orbit.barCount }, set: { studio.setOrbitBarCount($0) })) {
                 ForEach(StudioPreferences.barCounts, id: \.self) { count in
@@ -444,6 +448,13 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Text("Automation has not been verified on a real Mac yet.")
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private func visualPresetSection(_ mode: StudioVisualMode) -> some View {
+        VisualPresetSelector(mode: mode, preferences: model.prefs, library: presetLibrary) { preset in
+            studio.applyVisualPreset(preset)
+            presetLibrary = VisualPresetCatalog.restoring()
         }
     }
 

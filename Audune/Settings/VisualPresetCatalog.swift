@@ -138,4 +138,15 @@ nonisolated enum VisualPresetMatch: Equatable {
     case applied(VisualPreset)
     case modified(VisualPreset)
     case unsaved
+
+    var statusText: String {
+        switch self {
+        case .applied(let preset):
+            return preset.kind == .builtIn ? "\(preset.name) · Built-in" : "\(preset.name) · Custom"
+        case .modified(let preset):
+            return "\(preset.name) · Modified"
+        case .unsaved:
+            return "Unsaved settings"
+        }
+    }
 }
