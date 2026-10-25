@@ -3,6 +3,18 @@ import CoreGraphics
 import XCTest
 @testable import Audune
 
+final class RecordingIslandHaptics: IslandHapticPerforming {
+    var patterns: [NSHapticFeedbackManager.FeedbackPattern] = []
+
+    func perform(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {
+        patterns.append(pattern)
+    }
+}
+
+final class SilentIslandHaptics: IslandHapticPerforming {
+    func perform(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {}
+}
+
 final class IslandWindowControllerTests: XCTestCase {
     private let suite = "AuduneIslandWindowControllerTests"
     private var defaults: UserDefaults!
@@ -201,11 +213,66 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().frame, movedGeometry.expandedFrame)
         controller.simulateEscapePressed()
 
+        let haptics = RecordingIslandHaptics()
+        let hapticController = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            screenProvider: { [movedScreen] },
+            allowsOrderFront: false,
+            haptics: haptics
+        )
+        defer { hapticController.shutdown() }
+        hapticController.model.prefs.hapticStrength = .medium
+        hapticController.simulatePointerEntered(at: 1)
+        hapticController.simulatePointerExited(at: 1.1)
+        hapticController.simulateExpandTimerFired(now: 2)
+        XCTAssertTrue(hapticController.model.hoverArmed == false)
+        XCTAssertEqual(hapticController.inspectWindowForTests().state, .compact)
+        XCTAssertTrue(haptics.patterns.isEmpty)
+
+        hapticController.simulatePointerEntered(at: 3)
+        hapticController.simulateExpandTimerFired(now: 3.35)
+        XCTAssertEqual(haptics.patterns, [.generic])
+        hapticController.simulatePointerEntered(at: 4)
+        XCTAssertEqual(haptics.patterns, [.generic])
+        hapticController.togglePin()
+        XCTAssertEqual(hapticController.inspectWindowForTests().state, .pinned)
+        XCTAssertEqual(haptics.patterns, [.generic])
+
+        hapticController.simulateEscapePressed()
+        hapticController.model.prefs.hapticStrength = .off
+        hapticController.expand()
+        XCTAssertEqual(hapticController.inspectWindowForTests().state, .expanded)
+        XCTAssertTrue(haptics.patterns.isEmpty == false)
+        XCTAssertEqual(haptics.patterns.count, 1)
+
+        hapticController.collapse()
+        hapticController.togglePin()
+        XCTAssertEqual(hapticController.inspectWindowForTests().state, .pinned)
+        XCTAssertEqual(haptics.patterns.count, 1)
+
         controller.selectMode(.waveform)
         controller.selectMode(.orbit)
         controller.setCompactBarCountPerSide(6)
         XCTAssertEqual(controller.model.prefs.mode, .orbit)
         XCTAssertEqual(controller.model.prefs.compactBarCountPerSide, 6)
         XCTAssertEqual(spike.phase, .idle)
+    }
+
+    @MainActor
+    func testSilentHapticsDoNotChangeTheExpandedTransition() throws {
+        let screen = notchedScreen()
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            screenProvider: { [screen] },
+            allowsOrderFront: false,
+            haptics: SilentIslandHaptics()
+        )
+        defer { controller.shutdown() }
+        controller.model.prefs.hapticStrength = .strong
+        controller.expand()
+        XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, try IslandGeometry.analyze(screen: screen).get().expandedFrame)
     }
 }

@@ -391,6 +391,13 @@ struct SettingsView: View {
                 range: IslandPreferences.expandDelayRange,
                 step: 0.05
             )
+            Picker("Haptic feedback", selection: $islandModel.prefs.hapticStrength) {
+                ForEach(IslandHapticStrength.allCases) { strength in
+                    Text(strength.title).tag(strength)
+                }
+            }
+            Text("Light, Medium, and Strong use the Alignment, Generic, and Level Change trackpad patterns. macOS does not expose haptic amplitude, and a Mac without a Force Touch trackpad will not vibrate.")
+                .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Collapse delay (s)",
                 value: $islandModel.prefs.collapseDelaySeconds,

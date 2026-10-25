@@ -76,6 +76,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let defaults: UserDefaults
     private let screenProvider: () -> [IslandScreenDescriptor]
     private let allowsOrderFront: Bool
+    private let haptics: any IslandHapticPerforming
+    private var hapticToken = 0
     let model = IslandModel()
     private let panel: NSPanel
     private var stateContext = IslandStateContext(state: .compact)
@@ -115,12 +117,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         spike: ProcessTapSpike,
         defaults: UserDefaults = .standard,
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
-        allowsOrderFront: Bool = true
+        allowsOrderFront: Bool = true,
+        haptics: any IslandHapticPerforming = SystemIslandHaptics()
     ) {
         self.spike = spike
         self.defaults = defaults
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
+        self.haptics = haptics
         panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 252, height: 32),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -143,6 +147,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         guard didShutdown == false else { return }
         didShutdown = true
         timingGeneration += 1
+        hapticToken += 1
         collapseTask?.cancel()
         collapseTask = nil
         expandTask?.cancel()
@@ -455,7 +460,21 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let expanding = stateContext.state.isExpandedOrPinned && previousState == .compact
         let collapsing = stateContext.state == .compact && previousState.isExpandedOrPinned
         let shouldAnimate = animated && (expanding || collapsing) && allowsOrderFront
-        updatePanelFrame(targetFrame, expanding: expanding, animated: shouldAnimate)
+        let hapticPattern = IslandHapticCue.pattern(
+            from: previousState,
+            to: stateContext.state,
+            strength: model.prefs.hapticStrength
+        )
+        if hapticPattern != nil {
+            hapticToken += 1
+        }
+        updatePanelFrame(
+            targetFrame,
+            expanding: expanding,
+            animated: shouldAnimate,
+            hapticPattern: hapticPattern,
+            hapticToken: hapticToken
+        )
 
         if allowsOrderFront && panel.isVisible == false {
             panel.orderFrontRegardless()
@@ -534,8 +553,17 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         )
     }
 
-    private func updatePanelFrame(_ targetFrame: CGRect, expanding: Bool, animated: Bool) {
-        guard panel.frame != targetFrame else { return }
+    private func updatePanelFrame(
+        _ targetFrame: CGRect,
+        expanding: Bool,
+        animated: Bool,
+        hapticPattern: NSHapticFeedbackManager.FeedbackPattern?,
+        hapticToken token: Int
+    ) {
+        guard panel.frame != targetFrame else {
+            performHaptic(hapticPattern, token: token)
+            return
+        }
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let duration = animated
             ? IslandMotion.transitionSeconds(
@@ -549,10 +577,20 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 context.duration = duration
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 panel.animator().setFrame(targetFrame, display: panel.isVisible)
+            } completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.performHaptic(hapticPattern, token: token)
+                }
             }
         } else {
             panel.setFrame(targetFrame, display: panel.isVisible)
+            performHaptic(hapticPattern, token: token)
         }
+    }
+
+    private func performHaptic(_ pattern: NSHapticFeedbackManager.FeedbackPattern?, token: Int) {
+        guard let pattern, token == hapticToken, stateContext.state == .expanded, didShutdown == false else { return }
+        haptics.perform(pattern)
     }
 
     private func updateKeyMonitor(active: Bool) {

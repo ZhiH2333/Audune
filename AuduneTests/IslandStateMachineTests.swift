@@ -203,6 +203,22 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertEqual(IslandMotion.prefeedbackScale(hoverArmed: false, reduceMotion: false), 1)
     }
 
+    func testHapticCueFiresOnlyForCompactToExpanded() {
+        XCTAssertEqual(IslandHapticStrength.light.feedbackPattern, .alignment)
+        XCTAssertEqual(IslandHapticStrength.medium.feedbackPattern, .generic)
+        XCTAssertEqual(IslandHapticStrength.strong.feedbackPattern, .levelChange)
+        XCTAssertNil(IslandHapticStrength.off.feedbackPattern)
+
+        XCTAssertEqual(IslandHapticCue.pattern(from: .compact, to: .expanded, strength: .light), .alignment)
+        XCTAssertEqual(IslandHapticCue.pattern(from: .compact, to: .expanded, strength: .medium), .generic)
+        XCTAssertEqual(IslandHapticCue.pattern(from: .compact, to: .expanded, strength: .strong), .levelChange)
+        XCTAssertNil(IslandHapticCue.pattern(from: .compact, to: .expanded, strength: .off))
+        XCTAssertNil(IslandHapticCue.pattern(from: .compact, to: .pinned, strength: .strong))
+        XCTAssertNil(IslandHapticCue.pattern(from: .expanded, to: .expanded, strength: .strong))
+        XCTAssertNil(IslandHapticCue.pattern(from: .expanded, to: .compact, strength: .medium))
+        XCTAssertNil(IslandHapticCue.pattern(from: .pinned, to: .expanded, strength: .light))
+    }
+
     @MainActor
     func testIslandModelStatusAndShapeBoundsStaySafe() {
         let model = IslandModel()

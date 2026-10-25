@@ -7,6 +7,7 @@ nonisolated enum IslandPreferenceKey {
     static let hoverToExpand = "island.hoverToExpand"
     static let collapseDelaySeconds = "island.collapseDelaySeconds"
     static let expandDelaySeconds = "island.expandDelaySeconds"
+    static let hapticStrength = "island.hapticStrength"
     static let compactBarCountPerSide = "island.compactBarCountPerSide"
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
@@ -19,6 +20,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var hoverToExpand: Bool
     var collapseDelaySeconds: Double
     var expandDelaySeconds: Double
+    var hapticStrength: IslandHapticStrength
     var compactBarCountPerSide: Int
     var showsInFullScreen: Bool
     var followsReduceMotion: Bool
@@ -34,6 +36,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         hoverToExpand: true,
         collapseDelaySeconds: 0.35,
         expandDelaySeconds: 0.35,
+        hapticStrength: .off,
         compactBarCountPerSide: 5,
         showsInFullScreen: false,
         followsReduceMotion: true
@@ -75,6 +78,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         } else {
             expandDelay = standard.expandDelaySeconds
         }
+        let hapticStrength = defaults.string(forKey: IslandPreferenceKey.hapticStrength)
+            .flatMap(IslandHapticStrength.init(rawValue:)) ?? standard.hapticStrength
         let compactBarCount: Int
         if defaults.object(forKey: IslandPreferenceKey.compactBarCountPerSide) != nil {
             let stored = defaults.integer(forKey: IslandPreferenceKey.compactBarCountPerSide)
@@ -96,6 +101,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             hoverToExpand: hoverToExpand,
             collapseDelaySeconds: collapseDelay,
             expandDelaySeconds: expandDelay,
+            hapticStrength: hapticStrength,
             compactBarCountPerSide: compactBarCount,
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion
@@ -134,6 +140,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.hoverToExpand, forKey: IslandPreferenceKey.hoverToExpand)
         defaults.set(normalized.collapseDelaySeconds, forKey: IslandPreferenceKey.collapseDelaySeconds)
         defaults.set(normalized.expandDelaySeconds, forKey: IslandPreferenceKey.expandDelaySeconds)
+        defaults.set(normalized.hapticStrength.rawValue, forKey: IslandPreferenceKey.hapticStrength)
         defaults.set(normalized.compactBarCountPerSide, forKey: IslandPreferenceKey.compactBarCountPerSide)
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
