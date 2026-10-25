@@ -16,6 +16,21 @@ nonisolated enum VisualPresetEditError: String, Error, Equatable {
     case limitReached
     case modeMismatch
     case persistFailed
+
+    var message: String {
+        switch self {
+        case .unreadableStore: return "Saved presets could not be read."
+        case .emptyName: return "Enter a name."
+        case .nameTooLong: return "Use 40 characters or fewer."
+        case .duplicateName: return "That name is already used for this mode."
+        case .builtInLocked: return "Built-in presets cannot be changed."
+        case .notFound: return "That preset is no longer available."
+        case .duplicateID: return "A new preset id could not be created."
+        case .limitReached: return "This mode already has 24 custom presets."
+        case .modeMismatch: return "The preset does not match this visual mode."
+        case .persistFailed: return "The preset could not be saved."
+        }
+    }
 }
 
 /// One visual snapshot for a single Studio mode. Built-in values live in code; only custom presets are stored.

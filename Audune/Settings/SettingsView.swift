@@ -198,6 +198,8 @@ struct SettingsView: View {
             Button("Reset Spectrum") {
                 model.prefs.spectrum = .standard
                 studio.setSpectrumBarCount(SpectrumPreferences.standard.barCount)
+                studio.clearAppliedVisualPreset(for: .spectrum)
+                reloadPresetLibrary()
             }
         }
     }
@@ -237,7 +239,11 @@ struct SettingsView: View {
             SettingsSlider(title: "Smoothing", value: $model.prefs.waveform.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
         }
         Section {
-            Button("Reset Waveform") { model.prefs.waveform = .standard }
+            Button("Reset Waveform") {
+                model.prefs.waveform = .standard
+                studio.clearAppliedVisualPreset(for: .waveform)
+                reloadPresetLibrary()
+            }
         }
     }
 
@@ -281,6 +287,8 @@ struct SettingsView: View {
             Button("Reset Orbit") {
                 model.prefs.orbit = .standard
                 studio.setOrbitBarCount(OrbitPreferences.standard.barCount)
+                studio.clearAppliedVisualPreset(for: .orbit)
+                reloadPresetLibrary()
             }
         }
     }
@@ -321,7 +329,9 @@ struct SettingsView: View {
             }
             Button("Reset All Studio Settings") {
                 studio.resetPreferences()
+                studio.clearAppliedVisualPresets()
                 island.updateAppearance(StudioPreferences.standard.appearance)
+                reloadPresetLibrary()
             }
         }
     }
@@ -452,10 +462,44 @@ struct SettingsView: View {
     }
 
     private func visualPresetSection(_ mode: StudioVisualMode) -> some View {
-        VisualPresetSelector(mode: mode, preferences: model.prefs, library: presetLibrary) { preset in
-            studio.applyVisualPreset(preset)
-            presetLibrary = VisualPresetCatalog.restoring()
-        }
+        VisualPresetSelector(
+            mode: mode,
+            preferences: model.prefs,
+            library: presetLibrary,
+            apply: { preset in
+                studio.applyVisualPreset(preset)
+                reloadPresetLibrary()
+            },
+            save: { name in
+                let result = studio.saveCurrentVisualPreset(name: name, mode: mode)
+                reloadPresetLibrary()
+                return result
+            },
+            duplicate: { preset in
+                let result = studio.duplicateVisualPreset(id: preset.id)
+                reloadPresetLibrary()
+                return result
+            },
+            rename: { preset, name in
+                let result = studio.renameVisualPreset(id: preset.id, to: name)
+                reloadPresetLibrary()
+                return result
+            },
+            delete: { preset in
+                let result = studio.deleteVisualPreset(id: preset.id)
+                reloadPresetLibrary()
+                return result
+            },
+            resetLibrary: {
+                let didReset = studio.resetVisualPresetLibrary()
+                reloadPresetLibrary()
+                return didReset
+            }
+        )
+    }
+
+    private func reloadPresetLibrary() {
+        presetLibrary = VisualPresetCatalog.restoring()
     }
 
     private var presetBinding: Binding<StudioAccent?> {

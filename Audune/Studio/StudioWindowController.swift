@@ -203,6 +203,56 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    func saveCurrentVisualPreset(name: String, mode: StudioVisualMode) -> Result<VisualPreset, VisualPresetEditError> {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        let saved: Result<VisualPreset, VisualPresetEditError>
+        switch mode {
+        case .spectrum:
+            saved = library.addCustom(name: name, mode: mode, spectrum: model.prefs.spectrum, to: defaults)
+        case .waveform:
+            saved = library.addCustom(name: name, mode: mode, waveform: model.prefs.waveform, to: defaults)
+        case .orbit:
+            saved = library.addCustom(name: name, mode: mode, orbit: model.prefs.orbit, to: defaults)
+        }
+        guard case .success(let preset) = saved else { return saved }
+        switch library.setAppliedID(preset.id, for: mode, in: defaults) {
+        case .success:
+            return .success(preset)
+        case .failure(let error):
+            return .failure(error)
+        }
+    }
+
+    func duplicateVisualPreset(id: String) -> Result<VisualPreset, VisualPresetEditError> {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        return library.duplicate(id: id, to: defaults)
+    }
+
+    func renameVisualPreset(id: String, to name: String) -> Result<Void, VisualPresetEditError> {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        return library.rename(id: id, to: name, in: defaults)
+    }
+
+    func deleteVisualPreset(id: String) -> Result<Void, VisualPresetEditError> {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        return library.delete(id: id, in: defaults)
+    }
+
+    func clearAppliedVisualPreset(for mode: StudioVisualMode) {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        _ = library.setAppliedID(nil, for: mode, in: defaults)
+    }
+
+    func clearAppliedVisualPresets() {
+        StudioVisualMode.allCases.forEach { clearAppliedVisualPreset(for: $0) }
+    }
+
+    @discardableResult
+    func resetVisualPresetLibrary() -> Bool {
+        var library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
+        return library.resetLibrary(in: defaults)
+    }
+
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
     }
