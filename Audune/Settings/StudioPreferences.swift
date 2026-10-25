@@ -374,7 +374,7 @@ nonisolated struct WindowPreferences: Equatable {
         hideDelaySeconds: 0.8,
         animatesChrome: true,
         followsReduceMotion: true,
-        passesMouseThrough: false,
+        passesMouseThrough: true,
         autoHidesControls: true,
         summonRegion: .bottomEdge
     )
@@ -443,7 +443,7 @@ nonisolated struct StudioPreferences: Equatable {
                 hideDelaySeconds: reader.double(StudioPreferenceKey.windowHideDelay, range: hideDelayRange, fallback: standard.window.hideDelaySeconds),
                 animatesChrome: reader.bool(StudioPreferenceKey.windowAnimatesChrome, fallback: standard.window.animatesChrome),
                 followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion),
-                passesMouseThrough: reader.bool(StudioPreferenceKey.windowPassesMouseThrough, fallback: standard.window.passesMouseThrough),
+                passesMouseThrough: true,
                 autoHidesControls: reader.bool(StudioPreferenceKey.windowAutoHidesControls, fallback: standard.window.autoHidesControls),
                 summonRegion: defaults.string(forKey: StudioPreferenceKey.windowSummonRegion).flatMap(StudioSummonRegion.init(rawValue:)) ?? standard.window.summonRegion
             ),
@@ -497,6 +497,7 @@ nonisolated struct StudioPreferences: Equatable {
         var result = self
         let standard = Self.standard
         result.window.hideDelaySeconds = Self.clamped(window.hideDelaySeconds, to: Self.hideDelayRange, fallback: standard.window.hideDelaySeconds)
+        result.window.passesMouseThrough = true
         result.appearance.opacity = Self.clamped(appearance.opacity, to: Self.opacityRange, fallback: standard.appearance.opacity)
         result.appearance.lineWidth = Self.clamped(appearance.lineWidth, to: Self.lineWidthRange, fallback: standard.appearance.lineWidth)
         result.spectrum.barCount = Self.normalizedBarCount(spectrum.barCount)

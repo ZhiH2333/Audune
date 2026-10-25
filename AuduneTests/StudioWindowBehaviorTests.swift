@@ -267,7 +267,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertFalse(inspection.isOpaque)
         XCTAssertEqual(inspection.backgroundAlpha, 0)
         XCTAssertFalse(inspection.hasShadow)
-        XCTAssertFalse(inspection.ignoresMouseEvents)
+        XCTAssertTrue(inspection.ignoresMouseEvents)
         XCTAssertFalse(inspection.hostIsOpaque)
         controller.setChromeVisible(true)
         XCTAssertFalse(controller.inspectWindowForTests().hasShadow)
@@ -290,7 +290,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertFalse(inspection.isFloatingPanel)
         XCTAssertFalse(inspection.hidesOnDeactivate)
         XCTAssertEqual(inspection.collectionBehavior, [.canJoinAllSpaces])
-        XCTAssertFalse(inspection.ignoresMouseEvents)
+        XCTAssertTrue(inspection.ignoresMouseEvents)
 
         controller.setWindowMode(.asWindow)
         inspection = controller.inspectWindowForTests()
@@ -298,6 +298,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(inspection.level, .normal)
         XCTAssertFalse(inspection.isFloatingPanel)
         XCTAssertEqual(inspection.collectionBehavior, [])
+        XCTAssertTrue(inspection.ignoresMouseEvents)
 
         controller.setWindowMode(.onTop)
         inspection = controller.inspectWindowForTests()
@@ -321,7 +322,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertFalse(locked.isResizable)
         XCTAssertEqual(locked.frame, before.frame)
         XCTAssertEqual(locked.level, before.level)
-        XCTAssertFalse(locked.ignoresMouseEvents)
+        XCTAssertTrue(locked.ignoresMouseEvents)
         XCTAssertFalse(controller.allowsDragForTests)
 
         controller.model.prefs.window.allowsResize = true
@@ -374,7 +375,7 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(controller.model.prefs.spectrum.barCount, 64)
         XCTAssertEqual(controller.model.studioSpectrum.count, 64)
         XCTAssertFalse(controller.inspectWindowForTests().hasShadow)
-        XCTAssertFalse(controller.inspectWindowForTests().ignoresMouseEvents)
+        XCTAssertTrue(controller.inspectWindowForTests().ignoresMouseEvents)
         XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior(for: .onTop))
 
         controller.setSpectrumBarCount(3)

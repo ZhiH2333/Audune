@@ -318,7 +318,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.title = "Audune Studio"
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.ignoresMouseEvents = false
+        panel.ignoresMouseEvents = true
         panel.minSize = StudioFrame.minimumSize
         panel.contentMinSize = StudioFrame.minimumSize
         let root = StudioContentView(
@@ -437,7 +437,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func refreshPointerInside() {
-        let frame = model.prefs.window.passesMouseThrough ? (interactionPanel?.frame ?? .zero) : panel.frame
+        let frame = interactionPanel?.frame ?? .zero
         let inside = StudioChrome.pointerIsInside(windowFrame: frame, cursor: NSEvent.mouseLocation)
         if model.pointerInside != inside {
             model.pointerInside = inside
@@ -722,13 +722,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func performPassthroughSync() {
-        let enabled = model.prefs.window.passesMouseThrough
-        panel.ignoresMouseEvents = enabled
+        panel.ignoresMouseEvents = true
         applyHiddenInteractionSizeIfNeeded()
-        guard enabled else {
-            orderOutPassthroughWindows()
-            return
-        }
         let interaction = ensureInteractionPanel()
         matchVisualBehavior(interaction)
         let frame = StudioPassthroughLayout.interactionFrame(visual: panel.frame, contentSize: interactionContentSize)

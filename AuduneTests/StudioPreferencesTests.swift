@@ -228,7 +228,7 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(standard.hideDelaySeconds, 0.8, accuracy: 0.000_1)
         XCTAssertTrue(standard.animatesChrome)
         XCTAssertTrue(standard.followsReduceMotion)
-        XCTAssertFalse(standard.passesMouseThrough)
+        XCTAssertTrue(standard.passesMouseThrough)
         XCTAssertTrue(standard.autoHidesControls)
         XCTAssertEqual(standard.summonRegion, .bottomEdge)
 
@@ -247,9 +247,11 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertFalse(missing.allowsDrag)
         defaults.set("sideways", forKey: StudioPreferenceKey.windowSummonRegion)
         defaults.set(false, forKey: StudioPreferenceKey.windowAutoHidesControls)
+        defaults.set(false, forKey: StudioPreferenceKey.windowPassesMouseThrough)
         let stored = StudioPreferences.load(from: defaults).window
         XCTAssertEqual(stored.summonRegion, .bottomEdge)
         XCTAssertFalse(stored.autoHidesControls)
+        XCTAssertTrue(stored.passesMouseThrough)
     }
 
     func testStudioColorRoundTripsThroughHex() {

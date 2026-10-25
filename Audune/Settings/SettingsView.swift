@@ -316,8 +316,7 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Controls") {
-            Toggle("Pass mouse events through the canvas", isOn: $model.prefs.window.passesMouseThrough)
-            Text("When this is on, clicks on the visualization reach the app underneath. The summon region stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
+            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The summon region stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
                 .foregroundStyle(.secondary)
             Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
             SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)

@@ -45,8 +45,8 @@ struct StudioContentView: View {
             chrome
                 .fixedSize()
                 .padding(8)
-                .opacity(model.prefs.window.passesMouseThrough ? 0 : (showsChrome ? 1 : 0))
-                .allowsHitTesting(model.prefs.window.passesMouseThrough == false && showsChrome)
+                .opacity(0)
+                .allowsHitTesting(false)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(warmWhite)

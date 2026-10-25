@@ -258,11 +258,10 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 
 ### Studio mouse passthrough and auto-hide
 
-`StudioPassthroughTests` checks separate-panel frames, that the visual panel ignores mouse events only while passthrough is on, and that a canvas point is absent from that panel's window-server hit list. `StudioChromeTests` checks hide timing, cancellation, and summon-region geometry. `StudioPreferencesTests` checks defaults and clamping. None of these is a click in another app. These rows stay `NOT TESTED`.
+`StudioPassthroughTests` checks separate-panel frames, that the visual panel ignores mouse events in On Top, On Desktop, and As Window, and that a canvas point is absent from that panel's window-server hit list. `StudioChromeTests` checks hide timing, cancellation, and summon-region geometry. `StudioPreferencesTests` checks defaults and clamping. None of these is a click in another app. These rows stay `NOT TESTED`.
 
-- [ ] `NOT TESTED` — With mouse passthrough off, a click on the blank canvas stays in Studio and does not reach the app underneath. Dragging the grip, resizing the edges, and the three window modes still work.
-- [ ] `NOT TESTED` — With mouse passthrough on, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
-- [ ] `NOT TESTED` — Turning passthrough off restores the old full-window hit behavior. Hiding Studio, or switching away, leaves no invisible control or resize overlay.
+- [ ] `NOT TESTED` — In On Top, On Desktop, and As Window, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
+- [ ] `NOT TESTED` — Hiding Studio, or switching away, leaves no invisible control or resize overlay. A saved "passthrough off" value does not bring the full-window hit target back.
 - [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves, the controls fade following the hide delay (default 0.8 seconds). Returning before the delay cancels the hide. Clicks, dragging, resizing, and an open menu keep the controls up.
 - [ ] `NOT TESTED` — Hidden controls do not receive clicks. With passthrough on, moving into the bottom-edge summon region (or the grip, if that option is selected) shows the controls again. Hovering where a hidden button used to be is not required. Clicking the grip while the controls are hidden shows them and does not drag.
 - [ ] `NOT TESTED` — Auto-hide off keeps the controls visible. Reduce Motion removes the fade and does not remove the hide delay. A missing preference key does not reset the other window settings.

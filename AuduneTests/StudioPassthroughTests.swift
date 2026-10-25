@@ -61,7 +61,7 @@ final class StudioPassthroughTests: XCTestCase {
         let defaults = UserDefaults(suiteName: "AudunePassthroughDefaults")!
         defaults.removePersistentDomain(forName: "AudunePassthroughDefaults")
         let loaded = StudioPreferences.load(from: defaults)
-        XCTAssertFalse(loaded.window.passesMouseThrough)
+        XCTAssertTrue(loaded.window.passesMouseThrough)
         var changed = loaded
         changed.window.passesMouseThrough = true
         changed.save(to: defaults)
@@ -74,10 +74,9 @@ final class StudioPassthroughTests: XCTestCase {
         let controller = StudioWindowController(spike: ProcessTapSpike())
         defer { controller.shutdown() }
         let inspection = controller.inspectPassthroughForTests()
-        XCTAssertFalse(inspection.visualIgnoresMouseEvents)
+        XCTAssertTrue(inspection.visualIgnoresMouseEvents)
         XCTAssertFalse(inspection.interactionVisible)
-        XCTAssertTrue(inspection.edgeFrames.isEmpty)
-        XCTAssertFalse(controller.inspectWindowForTests().ignoresMouseEvents)
+        XCTAssertTrue(controller.inspectWindowForTests().ignoresMouseEvents)
     }
 
     @MainActor
@@ -120,10 +119,20 @@ final class StudioPassthroughTests: XCTestCase {
         XCTAssertFalse(controller.isVisible)
 
         controller.model.prefs.window.passesMouseThrough = false
-        controller.applyWindowPreferences()
-        let restored = controller.inspectPassthroughForTests()
-        XCTAssertFalse(restored.visualIgnoresMouseEvents)
-        XCTAssertFalse(restored.interactionVisible)
+        for mode in [StudioWindowMode.asWindow, .onDesktop, .onTop] {
+            controller.setWindowMode(mode)
+            controller.show()
+            let restored = controller.inspectPassthroughForTests()
+            let current = controller.inspectWindowForTests().frame
+            XCTAssertTrue(restored.visualIgnoresMouseEvents)
+            XCTAssertEqual(restored.interactionLevel, StudioWindowBehavior.level(for: mode))
+            XCTAssertFalse(restored.interactionFrame.contains(CGPoint(x: current.midX, y: current.midY)))
+            XCTAssertTrue(StudioPassthroughLayout.canvasCenterIsOpen(
+                visual: controller.inspectWindowForTests().frame,
+                interaction: restored.interactionFrame,
+                edges: restored.edgeFrames
+            ))
+        }
     }
 
     @MainActor
