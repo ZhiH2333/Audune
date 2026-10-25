@@ -100,7 +100,8 @@ final class StudioDragView: NSView {
             point: point,
             bounds: content.bounds,
             controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height)
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height),
+            chromeVisible: hitMap.chromeVisible
         )
     }
 }
@@ -156,13 +157,22 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = superview.map { convert(point, from: $0) } ?? point
         switch currentRoute(local) {
-        case .resize, .idle:
+        case .resize:
             return nil
-        case .drag:
-            return dragView(containing: local)
+        case .idle, .drag:
+            return self
         case .control:
-            return super.hitTest(point)
+            return super.hitTest(point) ?? self
         }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let local = convert(event.locationInWindow, from: nil)
+        guard currentRoute(local) == .drag, let window else {
+            super.mouseDown(with: event)
+            return
+        }
+        StudioWindowDrag.track(window)
     }
 
     private func currentRoute(_ point: CGPoint) -> StudioDragRoute {
@@ -171,25 +181,9 @@ final class StudioHostingView<Content: View>: NSHostingView<Content> {
             point: point,
             bounds: bounds,
             controlFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.controlFramesTopLeft, containerHeight: height),
-            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height)
+            gripFrames: StudioDragRouting.appKitFrames(fromTopLeft: hitMap.gripFramesTopLeft, containerHeight: height),
+            chromeVisible: hitMap.chromeVisible
         )
-    }
-
-    private func dragView(containing point: NSPoint) -> StudioDragView? {
-        func walk(_ view: NSView) -> StudioDragView? {
-            for subview in view.subviews.reversed() {
-                let local = subview.convert(point, from: self)
-                guard subview.bounds.contains(local) else { continue }
-                if let drag = subview as? StudioDragView {
-                    return drag
-                }
-                if let found = walk(subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-        return walk(self)
     }
 }
 #endif

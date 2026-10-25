@@ -124,6 +124,21 @@ final class StudioWindowBehaviorTests: XCTestCase {
         )
     }
 
+    func testHiddenChromeKeepsTheGripFromDragging() {
+        let bounds = CGRect(x: 0, y: 0, width: 640, height: 400)
+        let grip = CGRect(x: 200, y: 360, width: 28, height: 22)
+        let point = CGPoint(x: 210, y: 370)
+
+        XCTAssertEqual(
+            StudioDragRouting.route(point: point, bounds: bounds, controlFrames: [], gripFrames: [grip], chromeVisible: false),
+            .idle
+        )
+        XCTAssertEqual(
+            StudioDragRouting.route(point: point, bounds: bounds, controlFrames: [], gripFrames: [grip], chromeVisible: true),
+            .drag
+        )
+    }
+
     func testScreenDeltaMovesWindowOrigin() {
         XCTAssertEqual(
             StudioWindowDrag.origin(
@@ -144,6 +159,26 @@ final class StudioWindowBehaviorTests: XCTestCase {
             ),
             CGPoint(x: 12, y: 18)
         )
+    }
+
+    @MainActor
+    func testApplyingScreenDeltaChangesPanelOrigin() {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 80, y: 90, width: 200, height: 120),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+
+        StudioWindowDrag.apply(
+            to: panel,
+            startOrigin: panel.frame.origin,
+            startMouse: CGPoint(x: 0, y: 0),
+            currentMouse: CGPoint(x: 15, y: -8)
+        )
+
+        XCTAssertEqual(panel.frame.origin.x, 95, accuracy: 0.001)
+        XCTAssertEqual(panel.frame.origin.y, 82, accuracy: 0.001)
     }
 
     @MainActor

@@ -24,7 +24,8 @@ nonisolated enum StudioDragRouting {
         controlFrames: [CGRect],
         gripFrames: [CGRect] = [],
         edge: CGFloat = StudioWindowBehavior.resizeMargin,
-        controlSlop: CGFloat = StudioWindowBehavior.controlSlop
+        controlSlop: CGFloat = StudioWindowBehavior.controlSlop,
+        chromeVisible: Bool = true
     ) -> StudioDragRoute {
         guard bounds.width > edge * 2, bounds.height > edge * 2, point.x.isFinite, point.y.isFinite else {
             return .control
@@ -37,6 +38,7 @@ nonisolated enum StudioDragRouting {
             return .resize
         }
         let slop = controlSlop.isFinite && controlSlop > 0 ? controlSlop : 0
+        guard chromeVisible else { return .idle }
         if controlFrames.contains(where: { $0.insetBy(dx: -slop, dy: -slop).contains(point) }) {
             return .control
         }
@@ -66,6 +68,8 @@ nonisolated enum StudioDragRouting {
 final class StudioHitMap {
     var controlFramesTopLeft: [CGRect] = []
     var gripFramesTopLeft: [CGRect] = []
+    /// Hidden controls keep their rectangles. Routing ignores them until this is true.
+    var chromeVisible = true
 }
 
 enum StudioWindowDrag {
@@ -79,15 +83,43 @@ enum StudioWindowDrag {
     }
 
     @MainActor
+    static func apply(to window: NSWindow, startOrigin: CGPoint, startMouse: CGPoint, currentMouse: CGPoint) {
+        window.setFrameOrigin(origin(startOrigin: startOrigin, startMouse: startMouse, currentMouse: currentMouse))
+    }
+
+    /// Moves a borderless panel from screen coordinates.
+    /// `performDrag(with:)` is not used: on this panel it ends immediately and logs
+    /// "Window move completed without beginning" without moving the window.
+    @MainActor
     static func track(_ window: NSWindow) {
         let startMouse = NSEvent.mouseLocation
         let startOrigin = window.frame.origin
+        let mask: NSEvent.EventTypeMask = [.leftMouseDragged, .leftMouseUp]
+        let monitor = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
+            if event.type != .leftMouseUp, event.window === window || event.window == nil {
+                apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+            }
+            return event
+        }
+        defer {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
         while true {
-            guard let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) else { return }
-            if next.type == .leftMouseUp { return }
-            window.setFrameOrigin(
-                origin(startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+            let next = window.nextEvent(
+                matching: mask,
+                until: Date(timeIntervalSinceNow: 1.0 / 60.0),
+                inMode: .eventTracking,
+                dequeue: true
             )
+            if next?.type == .leftMouseUp {
+                return
+            }
+            if NSEvent.pressedMouseButtons & 1 == 0 {
+                return
+            }
+            apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
         }
     }
 }

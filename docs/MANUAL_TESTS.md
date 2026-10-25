@@ -115,6 +115,14 @@ Superseded by Studio Transparent Canvas. Do not mark these rows `PASS`. The full
 - [ ] `NOT TESTED` — Clicking the transparent area around the visualization. Record whether the app underneath receives the click. The panel does not set `ignoresMouseEvents`; this row is not click-through success.
 - [ ] `NOT TESTED` — Showing or hiding Studio, or changing bar count, does not restart menu-bar capture.
 
+### Studio v1.3 drag
+
+`StudioWindowBehaviorTests` checks that a hidden grip does not route to drag, and that one screen-coordinate delta changes an offscreen panel origin. Neither test is a real pointer drag. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Dragging the grip moves the Studio window on a real Mac. The console does not log `Window move completed without beginning`.
+- [ ] `NOT TESTED` — Dragging the blank canvas, a button, a slider, or a picker does not move the window.
+- [ ] `NOT TESTED` — Resizing from the window edges still works after the grip tracking change.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

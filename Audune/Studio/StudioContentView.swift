@@ -49,10 +49,10 @@ struct StudioContentView: View {
         .coordinateSpace(name: StudioCoordinateSpace.name)
         .animation(chromeAnimation, value: showsChrome)
         .onPreferenceChange(StudioControlFramesKey.self) { frames in
-            hitMap.controlFramesTopLeft = showsChrome ? frames : []
+            hitMap.controlFramesTopLeft = frames
         }
         .onPreferenceChange(StudioGripFramesKey.self) { frames in
-            hitMap.gripFramesTopLeft = showsChrome ? frames : []
+            hitMap.gripFramesTopLeft = frames
         }
         .onChange(of: model.mode) { _, _ in savePreferences() }
         .onChange(of: model.accent) { _, _ in savePreferences() }
@@ -79,13 +79,11 @@ struct StudioContentView: View {
             }
         }
         .onChange(of: showsChrome) { _, visible in
-            if visible == false {
-                hitMap.controlFramesTopLeft = []
-                hitMap.gripFramesTopLeft = []
-            }
+            hitMap.chromeVisible = visible
             setChromeVisible(visible)
         }
         .onAppear {
+            hitMap.chromeVisible = showsChrome
             if model.pointerInside == false, showsAppearance == false {
                 beginHideCountdown()
             }
