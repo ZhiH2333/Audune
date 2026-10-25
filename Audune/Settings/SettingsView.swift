@@ -93,7 +93,7 @@ struct SettingsView: View {
         .toolbar(removing: .sidebarToggle)
         .onChange(of: model.prefs) { _, newValue in
             studio.preferencesDidChange()
-            island.updateAppearance(newValue.appearance)
+            island.updateSharedVisuals(newValue)
         }
         .onChange(of: islandModel.prefs) { _, _ in
             island.preferencesDidChange()
@@ -330,7 +330,7 @@ struct SettingsView: View {
             Button("Reset All Studio Settings") {
                 studio.resetPreferences()
                 studio.clearAppliedVisualPresets()
-                island.updateAppearance(StudioPreferences.standard.appearance)
+                island.updateSharedVisuals(StudioPreferences.standard)
                 reloadPresetLibrary()
             }
         }

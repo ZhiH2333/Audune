@@ -4,20 +4,20 @@ import SwiftUI
 @MainActor
 @Observable
 final class IslandModel {
-    static let expandedSpectrumBarCount = 24
-    static let expandedOrbitBarCount = 32
-    static let expandedWaveformDensity = 64
-
     var snapshot = AudioSnapshot.zero
     var prefs = IslandPreferences.standard
     var appearance = AppearancePreferences.standard
+    var spectrum = SpectrumPreferences.standard
+    var waveform = WaveformPreferences.standard
+    var orbit = OrbitPreferences.standard
     var state: IslandPresentationState = .compact
     var geometry: IslandNotchGeometry?
     var availableScreens: [IslandScreenDescriptor] = []
     var unsupportedReason: IslandUnsupportedReason?
     var usedFallbackScreen = false
     var compactLevels = Array(repeating: Float(0), count: IslandPreferences.standard.compactBarCountPerSide)
-    var expandedSpectrum = Array(repeating: Float(0), count: expandedSpectrumBarCount)
+    var expandedSpectrum: [Float] = []
+    var expandedPeaks: [Float] = []
     var expandedWaveform = AudioSnapshot.zero.waveform
     var pointerInside = false
     var pointerDown = false
@@ -277,43 +277,43 @@ struct IslandContentView: View {
         case .spectrum:
             SpectrumCanvas(
                 spectrum: model.expandedSpectrum,
-                peaks: [],
+                peaks: model.expandedPeaks,
                 drawsBars: drawsBars,
                 color: fill,
                 strokeColor: stroke,
                 opacity: model.appearance.opacity,
-                amplitude: 1,
+                amplitude: model.spectrum.amplitude,
                 lineWidth: model.appearance.lineWidth,
-                cornerRadius: 2,
-                barGap: 2,
-                drawsStroke: false
+                cornerRadius: model.spectrum.cornerRadius,
+                barGap: model.spectrum.barGap,
+                drawsStroke: model.spectrum.stroke
             )
         case .waveform:
             WaveformCanvas(
                 samples: model.expandedWaveform,
-                color: fill,
+                color: (model.waveform.customColor ?? model.appearance.color).swiftUI,
                 opacity: model.appearance.opacity,
-                amplitude: 1,
-                lineWidth: model.appearance.lineWidth,
-                smoothing: 0.35,
-                density: IslandModel.expandedWaveformDensity,
-                style: .line
+                amplitude: model.waveform.amplitude,
+                lineWidth: model.waveform.lineWidth,
+                smoothing: model.waveform.smoothing,
+                density: model.waveform.density,
+                style: model.waveform.style
             )
         case .orbit:
             OrbitCanvas(
                 spectrum: model.expandedSpectrum,
                 drawsLevels: drawsBars,
-                barCount: IslandModel.expandedOrbitBarCount,
-                mirrored: true,
-                color: fill,
+                barCount: model.orbit.barCount,
+                mirrored: model.orbit.mirrored,
+                color: (model.orbit.customColor ?? model.appearance.color).swiftUI,
                 strokeColor: stroke,
-                drawsStroke: false,
+                drawsStroke: model.orbit.stroke,
                 opacity: model.appearance.opacity,
-                amplitude: 1,
-                lineWidth: model.appearance.lineWidth,
-                innerRatio: 0.52,
-                outerScale: 0.92,
-                gapDegrees: 3
+                amplitude: model.orbit.amplitude,
+                lineWidth: model.orbit.lineWidth,
+                innerRatio: model.orbit.inner,
+                outerScale: model.orbit.outerScale,
+                gapDegrees: model.orbit.gapDegrees
             )
         }
     }

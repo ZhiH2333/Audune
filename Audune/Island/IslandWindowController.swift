@@ -89,6 +89,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var smoothedCompact: [Float] = []
     private var smoothedExpanded: [Float] = []
     private var smoothedWaveform: [Float] = []
+    private var spectrumState = SpectrumDynamicsState()
+    private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
 
     var openStudio: (() -> Void)?
@@ -125,7 +127,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         )
         super.init()
         model.prefs = IslandPreferences.load(from: defaults)
-        model.appearance = StudioPreferences.load(from: defaults).appearance
+        updateSharedVisuals(StudioPreferences.load(from: defaults))
         model.compactLevels = Array(repeating: 0, count: model.prefs.compactBarCountPerSide)
         configurePanel()
         evaluateScreensAndApply(animated: false)
@@ -161,8 +163,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.state = .disabled
     }
 
-    func updateAppearance(_ appearance: AppearancePreferences) {
-        model.appearance = appearance
+    func updateSharedVisuals(_ preferences: StudioPreferences) {
+        if preferences.spectrum.barCount != model.spectrum.barCount || preferences.orbit.bandCount != model.orbit.bandCount {
+            spectrumState = SpectrumDynamicsState()
+            smoothedExpanded = []
+        }
+        model.appearance = preferences.appearance
+        model.spectrum = preferences.spectrum
+        model.waveform = preferences.waveform
+        model.orbit = preferences.orbit
+        refreshVisuals()
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -515,6 +525,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func tick() {
+        let now = ContinuousClock.now
+        let dt = lastTick.map { Double((now - $0).components.seconds) + Double((now - $0).components.attoseconds) / 1e18 } ?? 0
+        lastTick = now
         model.snapshot = spike.snapshots.load()
         if allowsOrderFront,
            stateContext.state == .expanded,
@@ -524,10 +537,10 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         {
             applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
         }
-        refreshVisuals()
+        refreshVisuals(dt: dt)
     }
 
-    private func refreshVisuals() {
+    private func refreshVisuals(dt: Double = 0) {
         let snapshot = model.snapshot
         let compactCount = model.prefs.compactBarCountPerSide
         let compactTarget = SpectrumBands.levels(
@@ -546,22 +559,23 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         guard model.state.isExpandedOrPinned else { return }
         switch model.prefs.mode {
         case .spectrum:
-            let count = IslandModel.expandedSpectrumBarCount
-            let target = SpectrumBands.levels(
+            let levels = SpectrumBands.levels(
                 binMagnitudes: snapshot.binMagnitudes,
                 sampleRate: snapshot.sampleRate,
-                count: count
+                count: model.spectrum.barCount,
+                layout: model.spectrum.layout
             )
-            smoothedExpanded = SpectrumBands.displayMix(
-                current: smoothedExpanded,
-                toward: target,
-                count: count,
-                smoothing: 0.3
+            spectrumState = SpectrumDynamics.step(
+                state: spectrumState,
+                target: levels,
+                dt: dt,
+                settings: model.spectrum.dynamics
             )
-            model.expandedSpectrum = smoothedExpanded
+            model.expandedSpectrum = spectrumState.levels
+            model.expandedPeaks = model.spectrum.peakHold ? spectrumState.peaks : []
 
         case .orbit:
-            let count = OrbitLayout.bandCount(barCount: IslandModel.expandedOrbitBarCount, mirrored: true)
+            let count = model.orbit.bandCount
             let target = SpectrumBands.levels(
                 binMagnitudes: snapshot.binMagnitudes,
                 sampleRate: snapshot.sampleRate,
@@ -571,17 +585,19 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 current: smoothedExpanded,
                 toward: target,
                 count: count,
-                smoothing: 0.35
+                smoothing: Float(model.orbit.smoothing)
             )
             model.expandedSpectrum = smoothedExpanded
+            model.expandedPeaks = []
 
         case .waveform:
             smoothedWaveform = WaveformPath.mix(
                 current: smoothedWaveform,
                 toward: snapshot.waveform,
-                smoothing: 0.35
+                smoothing: Float(model.waveform.smoothing)
             )
             model.expandedWaveform = smoothedWaveform
+            model.expandedPeaks = []
         }
     }
 }
