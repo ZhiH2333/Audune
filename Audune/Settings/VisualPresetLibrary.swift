@@ -40,6 +40,60 @@ nonisolated struct VisualPresetLibrary {
         builtIns.filter { $0.mode == mode } + customPresets.filter { $0.mode == mode }
     }
 
+    func preset(id: String) -> VisualPreset? {
+        builtIns.first { $0.id == id } ?? customPresets.first { $0.id == id }
+    }
+
+    /// Replaces only the preset's mode. Appearance, window settings, and the other modes stay as they are.
+    mutating func apply(
+        _ preset: VisualPreset,
+        to preferences: StudioPreferences,
+        in defaults: UserDefaults
+    ) -> Result<StudioPreferences, VisualPresetEditError> {
+        guard let source = self.preset(id: preset.id), source.mode == preset.mode, source.hasMatchingPayload() else {
+            return .failure(.notFound)
+        }
+        var updated = preferences
+        switch source.mode {
+        case .spectrum:
+            guard let spectrum = source.spectrum?.clamped() else { return .failure(.modeMismatch) }
+            updated.spectrum = spectrum
+        case .waveform:
+            guard let waveform = source.waveform?.clamped() else { return .failure(.modeMismatch) }
+            updated.waveform = waveform
+        case .orbit:
+            guard let orbit = source.orbit?.clamped() else { return .failure(.modeMismatch) }
+            updated.orbit = orbit
+        }
+        if canPersist {
+            let stored = setAppliedID(source.id, for: source.mode, in: defaults)
+            if case .failure(let error) = stored { return .failure(error) }
+        }
+        return .success(updated)
+    }
+
+    mutating func duplicate(id: String, to defaults: UserDefaults) -> Result<VisualPreset, VisualPresetEditError> {
+        guard let source = preset(id: id) else { return .failure(.notFound) }
+        return addCustom(
+            name: copyName(for: source),
+            mode: source.mode,
+            spectrum: source.spectrum,
+            waveform: source.waveform,
+            orbit: source.orbit,
+            to: defaults
+        )
+    }
+
+    func match(in preferences: StudioPreferences, mode: StudioVisualMode) -> VisualPresetMatch {
+        if let id = appliedID(for: mode), let preset = preset(id: id), preset.mode == mode {
+            return samePayload(preset, preferences) ? .applied(preset) : .modified(preset)
+        }
+        if let preset = presets(for: mode).first(where: { samePayload($0, preferences) }) {
+            return .applied(preset)
+        }
+        return .unsaved
+    }
+
     @discardableResult
     func save(to defaults: UserDefaults) -> Bool {
         guard canPersist else { return false }
@@ -194,6 +248,37 @@ nonisolated struct VisualPresetLibrary {
             if taken == false { return id }
         }
         return nil
+    }
+
+    private func copyName(for source: VisualPreset) -> String {
+        func candidate(_ suffix: String) -> String {
+            let room = max(0, Self.maximumNameLength - suffix.count)
+            return String(source.name.prefix(room)) + suffix
+        }
+        let first = candidate(" Copy")
+        if case .success = validatedName(first, mode: source.mode, ignoringID: nil) {
+            return first
+        }
+        var index = 2
+        while index < 100 {
+            let next = candidate(" Copy \(index)")
+            if case .success = validatedName(next, mode: source.mode, ignoringID: nil) {
+                return next
+            }
+            index += 1
+        }
+        return first
+    }
+
+    private func samePayload(_ preset: VisualPreset, _ preferences: StudioPreferences) -> Bool {
+        switch preset.mode {
+        case .spectrum:
+            return preset.spectrum?.clamped() == preferences.spectrum.clamped()
+        case .waveform:
+            return preset.waveform?.clamped() == preferences.waveform.clamped()
+        case .orbit:
+            return preset.orbit?.clamped() == preferences.orbit.clamped()
+        }
     }
 
     private static func isReadable(_ document: VisualPresetDocument) -> Bool {
