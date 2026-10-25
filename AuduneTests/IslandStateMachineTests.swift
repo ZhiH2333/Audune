@@ -124,4 +124,27 @@ final class IslandStateMachineTests: XCTestCase {
             accuracy: 0.000_1
         )
     }
+
+    @MainActor
+    func testIslandModelStatusAndShapeBoundsStaySafe() {
+        let model = IslandModel()
+        XCTAssertFalse(model.isSupported)
+        XCTAssertEqual(model.captureLabel(phase: .idle), "Not listening")
+        XCTAssertEqual(model.captureLabel(phase: .running), "No audio")
+        XCTAssertFalse(model.drawsActiveVisuals(phase: .running))
+
+        var activeSnapshot = AudioSnapshot.zero
+        activeSnapshot.isSilent = false
+        model.snapshot = activeSnapshot
+        XCTAssertEqual(model.captureLabel(phase: .running), "Listening")
+        XCTAssertTrue(model.drawsActiveVisuals(phase: .running))
+        XCTAssertFalse(model.drawsActiveVisuals(phase: .idle))
+
+        let shape = IslandShape(bottomRadius: 16)
+        let rect = CGRect(x: 0, y: 0, width: 320, height: 132)
+        let path = shape.path(in: rect)
+        XCTAssertFalse(path.isEmpty)
+        XCTAssertTrue(rect.insetBy(dx: -0.01, dy: -0.01).contains(path.boundingRect))
+        XCTAssertTrue(IslandShape(bottomRadius: 16).path(in: .zero).isEmpty)
+    }
 }
