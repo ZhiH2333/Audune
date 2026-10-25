@@ -1,0 +1,588 @@
+#if os(macOS)
+import AppKit
+import SwiftUI
+
+struct IslandWindowInspection: Equatable {
+    var frame: NSRect
+    var isVisible: Bool
+    var state: IslandPresentationState
+    var level: NSWindow.Level
+    var isFloatingPanel: Bool
+    var hidesOnDeactivate: Bool
+    var collectionBehavior: NSWindow.CollectionBehavior
+    var isMovable: Bool
+    var isMovableByWindowBackground: Bool
+    var isOpaque: Bool
+    var backgroundAlpha: CGFloat
+    var hasShadow: Bool
+    var ignoresMouseEvents: Bool
+    var hostIsOpaque: Bool
+    var isTimerRunning: Bool
+    var unsupportedReason: IslandUnsupportedReason?
+}
+
+final class IslandHostingView<Content: View>: NSHostingView<Content> {
+    var onPointerEntered: (() -> Void)?
+    var onPointerExited: (() -> Void)?
+    private var pointerTracking: NSTrackingArea?
+
+    override var isOpaque: Bool { false }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        clearLayerBackground()
+    }
+
+    override func layout() {
+        super.layout()
+        clearLayerBackground()
+    }
+
+    private func clearLayerBackground() {
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let pointerTracking {
+            removeTrackingArea(pointerTracking)
+        }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect, .enabledDuringMouseDrag],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        pointerTracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onPointerEntered?()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onPointerExited?()
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+@MainActor
+final class IslandWindowController: NSObject, NSWindowDelegate {
+    private let spike: ProcessTapSpike
+    private let defaults: UserDefaults
+    private let screenProvider: () -> [IslandScreenDescriptor]
+    private let allowsOrderFront: Bool
+    let model = IslandModel()
+    private let panel: NSPanel
+    private var stateContext = IslandStateContext(state: .compact)
+    private var timer: Timer?
+    private var collapseTask: Task<Void, Never>?
+    private var saveTask: Task<Void, Never>?
+    private var screenObserver: NSObjectProtocol?
+    private var wakeObserver: NSObjectProtocol?
+    private var pointerMonitor: Any?
+    private var keyMonitor: Any?
+    private var smoothedCompact: [Float] = []
+    private var smoothedExpanded: [Float] = []
+    private var smoothedWaveform: [Float] = []
+    private var didShutdown = false
+
+    var openStudio: (() -> Void)?
+    var openSettings: (() -> Void)?
+
+    static func systemScreens() -> [IslandScreenDescriptor] {
+        NSScreen.screens.enumerated().map { index, screen in
+            IslandScreenDescriptor.from(screen, index: index)
+        }
+    }
+
+    nonisolated static func collectionBehavior(showsInFullScreen: Bool) -> NSWindow.CollectionBehavior {
+        if showsInFullScreen {
+            return [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        }
+        return [.canJoinAllSpaces, .stationary, .ignoresCycle]
+    }
+
+    init(
+        spike: ProcessTapSpike,
+        defaults: UserDefaults = .standard,
+        screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
+        allowsOrderFront: Bool = true
+    ) {
+        self.spike = spike
+        self.defaults = defaults
+        self.screenProvider = screenProvider
+        self.allowsOrderFront = allowsOrderFront
+        panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 252, height: 32),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        super.init()
+        model.prefs = IslandPreferences.load(from: defaults)
+        model.appearance = StudioPreferences.load(from: defaults).appearance
+        model.compactLevels = Array(repeating: 0, count: model.prefs.compactBarCountPerSide)
+        configurePanel()
+        evaluateScreensAndApply(animated: false)
+    }
+
+    var isVisible: Bool {
+        panel.isVisible || (allowsOrderFront == false && model.state.isVisible && model.isSupported)
+    }
+
+    func shutdown() {
+        guard didShutdown == false else { return }
+        didShutdown = true
+        collapseTask?.cancel()
+        collapseTask = nil
+        saveTask?.cancel()
+        saveTask = nil
+        stopDisplayTimer()
+        updateKeyMonitor(active: false)
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+            self.screenObserver = nil
+        }
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+            self.wakeObserver = nil
+        }
+        if let pointerMonitor {
+            NSEvent.removeMonitor(pointerMonitor)
+            self.pointerMonitor = nil
+        }
+        panel.orderOut(nil)
+        stateContext = IslandStateContext(state: .disabled)
+        model.state = .disabled
+    }
+
+    func updateAppearance(_ appearance: AppearancePreferences) {
+        model.appearance = appearance
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        model.prefs.isEnabled = enabled
+        savePreferences()
+        evaluateScreensAndApply(animated: true)
+    }
+
+    func toggleEnabled() {
+        setEnabled(model.prefs.isEnabled == false)
+    }
+
+    func selectMode(_ mode: StudioVisualMode) {
+        model.prefs.mode = mode
+        savePreferences()
+        refreshVisuals()
+    }
+
+    func setCompactBarCountPerSide(_ count: Int) {
+        let normalized = IslandPreferences.compactBarCounts.contains(count)
+            ? count
+            : IslandPreferences.standard.compactBarCountPerSide
+        model.prefs.compactBarCountPerSide = normalized
+        savePreferences()
+        refreshVisuals()
+    }
+
+    func setTargetScreenID(_ id: String) {
+        model.prefs.targetScreenID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        savePreferences()
+        evaluateScreensAndApply(animated: false)
+    }
+
+    func expand() {
+        applyEvent(.expandRequested, animated: true)
+    }
+
+    func collapse() {
+        applyEvent(.collapseRequested, animated: true)
+    }
+
+    func togglePin() {
+        applyEvent(.togglePin(at: Date().timeIntervalSinceReferenceDate), animated: true)
+    }
+
+    func preferencesDidChange() {
+        model.prefs = model.prefs.normalized()
+        applyCollectionBehavior()
+        evaluateScreensAndApply(animated: false)
+        refreshVisuals()
+        saveTask?.cancel()
+        saveTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(200))
+            guard Task.isCancelled == false else { return }
+            self?.savePreferences()
+        }
+    }
+
+    func savePreferences() {
+        saveTask?.cancel()
+        saveTask = nil
+        model.prefs = model.prefs.normalized()
+        model.prefs.save(to: defaults)
+    }
+
+    func resetPreferences() {
+        IslandPreferences.reset(in: defaults)
+        smoothedCompact = []
+        smoothedExpanded = []
+        smoothedWaveform = []
+        model.prefs = IslandPreferences.standard
+        applyCollectionBehavior()
+        evaluateScreensAndApply(animated: false)
+        refreshVisuals()
+    }
+
+    func evaluateScreensAndApply(animated: Bool = false) {
+        guard didShutdown == false else { return }
+        let screens = screenProvider()
+        model.availableScreens = screens
+        let resolution = IslandGeometry.selectScreen(from: screens, target: model.prefs.targetScreenMode)
+        switch resolution {
+        case .supported(let geometry, let usedFallback):
+            model.geometry = geometry
+            model.unsupportedReason = nil
+            model.usedFallbackScreen = usedFallback
+        case .unsupported(let reason):
+            model.geometry = nil
+            model.unsupportedReason = reason
+            model.usedFallbackScreen = false
+        }
+        applyCollectionBehavior()
+        applyEvent(
+            .availabilityChanged(isEnabled: model.prefs.isEnabled, isSupported: model.isSupported),
+            animated: animated
+        )
+    }
+
+    // MARK: Test Entry Points
+
+    func simulatePointerEntered() {
+        applyEvent(.pointerEntered(hoverToExpand: model.prefs.hoverToExpand), animated: false)
+    }
+
+    func simulatePointerExited(at timestamp: TimeInterval) {
+        applyEvent(.pointerExited(at: timestamp), animated: false)
+    }
+
+    func simulateCollapseTimerFired(now: TimeInterval) {
+        applyEvent(.collapseTimerFired(now: now), animated: false)
+    }
+
+    func simulateEscapePressed() {
+        applyEvent(.escapePressed, animated: false)
+    }
+
+    func inspectWindowForTests() -> IslandWindowInspection {
+        IslandWindowInspection(
+            frame: panel.frame,
+            isVisible: isVisible,
+            state: model.state,
+            level: panel.level,
+            isFloatingPanel: panel.isFloatingPanel,
+            hidesOnDeactivate: panel.hidesOnDeactivate,
+            collectionBehavior: panel.collectionBehavior,
+            isMovable: panel.isMovable,
+            isMovableByWindowBackground: panel.isMovableByWindowBackground,
+            isOpaque: panel.isOpaque,
+            backgroundAlpha: panel.backgroundColor?.alphaComponent ?? 1,
+            hasShadow: panel.hasShadow,
+            ignoresMouseEvents: panel.ignoresMouseEvents,
+            hostIsOpaque: (panel.contentView as? IslandHostingView<IslandContentView>)?.isOpaque ?? true,
+            isTimerRunning: timer != nil,
+            unsupportedReason: model.unsupportedReason
+        )
+    }
+
+    // MARK: Private Setup & Event Handling
+
+    private func configurePanel() {
+        panel.delegate = self
+        panel.isReleasedWhenClosed = false
+        panel.isFloatingPanel = true
+        panel.level = .statusBar
+        panel.hidesOnDeactivate = false
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.isMovable = false
+        panel.isMovableByWindowBackground = false
+        panel.hasShadow = false
+        panel.title = "Audune Notch Island"
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.ignoresMouseEvents = false
+        applyCollectionBehavior()
+
+        let root = IslandContentView(
+            spike: spike,
+            model: model,
+            selectMode: { [weak self] mode in
+                self?.selectMode(mode)
+            },
+            togglePin: { [weak self] in
+                self?.togglePin()
+            },
+            expand: { [weak self] in
+                self?.expand()
+            },
+            collapse: { [weak self] in
+                self?.collapse()
+            },
+            openStudio: { [weak self] in
+                self?.openStudio?()
+            },
+            openSettings: { [weak self] in
+                self?.openSettings?()
+            }
+        )
+        let host = IslandHostingView(rootView: root)
+        host.onPointerEntered = { [weak self] in
+            self?.handleLivePointerEntered()
+        }
+        host.onPointerExited = { [weak self] in
+            self?.handleLivePointerExited()
+        }
+        panel.contentView = host
+
+        pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, event.window === self.panel else { return }
+                let now = Date().timeIntervalSinceReferenceDate
+                self.applyEvent(.pointerDownChanged(event.type == .leftMouseDown, at: now), animated: true)
+            }
+            return event
+        }
+
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.evaluateScreensAndApply(animated: false)
+            }
+        }
+
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.evaluateScreensAndApply(animated: false)
+            }
+        }
+    }
+
+    private func applyCollectionBehavior() {
+        panel.collectionBehavior = Self.collectionBehavior(showsInFullScreen: model.prefs.showsInFullScreen)
+    }
+
+    private func handleLivePointerEntered() {
+        applyEvent(.pointerEntered(hoverToExpand: model.prefs.hoverToExpand), animated: true)
+    }
+
+    private func handleLivePointerExited() {
+        // When the window resizes from Compact to Expanded, AppKit can rebuild tracking areas and
+        // deliver a transient mouseExited while the pointer is still inside the expanded frame.
+        if IslandStateMachine.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation) {
+            return
+        }
+        applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
+    }
+
+    private func applyEvent(_ event: IslandEvent, animated: Bool) {
+        guard didShutdown == false else { return }
+        let previousState = stateContext.state
+        stateContext = IslandStateMachine.reduce(
+            context: stateContext,
+            event: event,
+            collapseDelay: model.prefs.collapseDelaySeconds
+        )
+        model.state = stateContext.state
+        model.pointerInside = stateContext.pointerInside
+        model.pointerDown = stateContext.pointerDown
+
+        scheduleCollapseTimerIfNeeded()
+
+        guard stateContext.state != .disabled, let geometry = model.geometry else {
+            stopDisplayTimer()
+            updateKeyMonitor(active: false)
+            panel.orderOut(nil)
+            return
+        }
+
+        let targetFrame = stateContext.state.isExpandedOrPinned ? geometry.expandedFrame : geometry.compactFrame
+        let expanding = stateContext.state.isExpandedOrPinned && previousState == .compact
+        let collapsing = stateContext.state == .compact && previousState.isExpandedOrPinned
+        let shouldAnimate = animated && (expanding || collapsing) && allowsOrderFront
+        updatePanelFrame(targetFrame, expanding: expanding, animated: shouldAnimate)
+
+        if allowsOrderFront && panel.isVisible == false {
+            panel.orderFrontRegardless()
+        }
+        startDisplayTimer()
+        updateKeyMonitor(active: stateContext.state.isExpandedOrPinned)
+    }
+
+    private func scheduleCollapseTimerIfNeeded() {
+        collapseTask?.cancel()
+        collapseTask = nil
+        guard stateContext.state == .expanded,
+              stateContext.pointerInside == false,
+              stateContext.pointerDown == false,
+              let exitedAt = stateContext.exitedAt
+        else {
+            return
+        }
+        let delay = model.prefs.collapseDelaySeconds
+        collapseTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard Task.isCancelled == false, let self else { return }
+            if self.allowsOrderFront,
+               IslandStateMachine.pointerIsInside(windowFrame: self.panel.frame, cursor: NSEvent.mouseLocation)
+            {
+                self.applyEvent(.pointerEntered(hoverToExpand: self.model.prefs.hoverToExpand), animated: true)
+                return
+            }
+            self.applyEvent(.collapseTimerFired(now: exitedAt + delay), animated: true)
+        }
+    }
+
+    private func updatePanelFrame(_ targetFrame: CGRect, expanding: Bool, animated: Bool) {
+        guard panel.frame != targetFrame else { return }
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let duration = animated
+            ? IslandMotion.transitionSeconds(
+                expanding: expanding,
+                reduceMotion: reduceMotion,
+                followsReduceMotion: model.prefs.followsReduceMotion
+            )
+            : 0
+        if duration > 0 {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = duration
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().setFrame(targetFrame, display: panel.isVisible)
+            }
+        } else {
+            panel.setFrame(targetFrame, display: panel.isVisible)
+        }
+    }
+
+    private func updateKeyMonitor(active: Bool) {
+        if active {
+            guard keyMonitor == nil else { return }
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                if event.keyCode == 53 {
+                    MainActor.assumeIsolated {
+                        self?.applyEvent(.escapePressed, animated: true)
+                    }
+                    return nil
+                }
+                return event
+            }
+        } else if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
+    }
+
+    private func startDisplayTimer() {
+        guard timer == nil else { return }
+        tick()
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            self?.tickFromTimer()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    private func stopDisplayTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func tickFromTimer() {
+        MainActor.assumeIsolated {
+            tick()
+        }
+    }
+
+    private func tick() {
+        model.snapshot = spike.snapshots.load()
+        if allowsOrderFront,
+           stateContext.state == .expanded,
+           stateContext.pointerInside,
+           stateContext.pointerDown == false,
+           IslandStateMachine.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation) == false
+        {
+            applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
+        }
+        refreshVisuals()
+    }
+
+    private func refreshVisuals() {
+        let snapshot = model.snapshot
+        let compactCount = model.prefs.compactBarCountPerSide
+        let compactTarget = SpectrumBands.levels(
+            binMagnitudes: snapshot.binMagnitudes,
+            sampleRate: snapshot.sampleRate,
+            count: compactCount
+        )
+        smoothedCompact = SpectrumBands.displayMix(
+            current: smoothedCompact,
+            toward: compactTarget,
+            count: compactCount,
+            smoothing: 0.25
+        )
+        model.compactLevels = smoothedCompact
+
+        guard model.state.isExpandedOrPinned else { return }
+        switch model.prefs.mode {
+        case .spectrum:
+            let count = IslandModel.expandedSpectrumBarCount
+            let target = SpectrumBands.levels(
+                binMagnitudes: snapshot.binMagnitudes,
+                sampleRate: snapshot.sampleRate,
+                count: count
+            )
+            smoothedExpanded = SpectrumBands.displayMix(
+                current: smoothedExpanded,
+                toward: target,
+                count: count,
+                smoothing: 0.3
+            )
+            model.expandedSpectrum = smoothedExpanded
+
+        case .orbit:
+            let count = OrbitLayout.bandCount(barCount: IslandModel.expandedOrbitBarCount, mirrored: true)
+            let target = SpectrumBands.levels(
+                binMagnitudes: snapshot.binMagnitudes,
+                sampleRate: snapshot.sampleRate,
+                count: count
+            )
+            smoothedExpanded = SpectrumBands.displayMix(
+                current: smoothedExpanded,
+                toward: target,
+                count: count,
+                smoothing: 0.35
+            )
+            model.expandedSpectrum = smoothedExpanded
+
+        case .waveform:
+            smoothedWaveform = WaveformPath.mix(
+                current: smoothedWaveform,
+                toward: snapshot.waveform,
+                smoothing: 0.35
+            )
+            model.expandedWaveform = smoothedWaveform
+        }
+    }
+}
+#endif
