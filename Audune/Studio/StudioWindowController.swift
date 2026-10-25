@@ -19,6 +19,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var smoothedWave: [Float] = []
     private var didShutdown = false
     private var saveTask: Task<Void, Never>?
+    private var settingsWindowVisible = false
+    private var permissionCache: [String: AutomationPermission] = [:]
+    private var permissionChecks: Set<String> = []
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
 
@@ -48,14 +51,30 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.orderFrontRegardless()
         model.isShown = true
         startDisplayTimer()
-        startPlaybackTimer()
+        updatePlaybackTimer()
     }
 
     func hide() {
         stopDisplayTimer()
-        stopPlaybackTimer()
         panel.orderOut(nil)
         model.isShown = false
+        updatePlaybackTimer()
+    }
+
+    /// The Settings window reports when it opens or closes, so Playback status can refresh while it is open.
+    func setSettingsWindowVisible(_ visible: Bool) {
+        settingsWindowVisible = visible
+        updatePlaybackTimer()
+    }
+
+    /// Status is polled only while Studio is visible, or while Settings is open on the Playback page.
+    func updatePlaybackTimer() {
+        let needed = panel.isVisible || (settingsWindowVisible && model.settingsCategory == .playback)
+        if needed {
+            startPlaybackTimer()
+        } else {
+            stopPlaybackTimer()
+        }
     }
 
     func refreshPlaybackNow() {
@@ -107,6 +126,29 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         let result = player.togglePlayPause()
         applyPlayback(result)
         model.playbackBusy = false
+    }
+
+    /// Asks macOS for Automation access to the selected player. This is the only place that can show the prompt.
+    /// The call may wait for the user, so it runs off the main thread.
+    func requestPlayerAccess() {
+        guard model.playbackRequesting == false, let player = selectedPlayer() else { return }
+        let id = player.id
+        let bundleIdentifier = player.bundleIdentifier
+        model.playbackRequesting = true
+        Task { @MainActor [weak self] in
+            let result = await Task.detached {
+                AutomationPermissionCheck.determine(bundleIdentifier: bundleIdentifier, askUserIfNeeded: true)
+            }.value
+            guard let self else { return }
+            self.model.playbackRequesting = false
+            self.permissionCache[id] = result
+            self.refreshPlayback()
+        }
+    }
+
+    func openAutomationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     func setWindowMode(_ mode: StudioWindowMode) {
@@ -239,7 +281,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         let storedPlayer = UserDefaults.standard.string(forKey: PlayerSelectionKey.selected) ?? ""
         model.playerID = players.contains(where: { $0.id == storedPlayer }) ? storedPlayer : ""
         if let player = selectedPlayer() {
-            let gate = player.availability()
+            let gate = effectiveAvailability(of: player)
             model.playbackAvailability = gate
             model.playbackDetail = playbackDetail(gate)
         } else {
@@ -357,7 +399,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func startPlaybackTimer() {
         guard playbackTimer == nil else { return }
         refreshPlayback()
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.refreshPlayback()
             }
@@ -379,7 +421,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.playbackDetail = "Choose a player"
             return
         }
-        let gate = player.availability()
+        let gate = effectiveAvailability(of: player)
         guard gate == .ready else {
             model.playbackAvailability = gate
             model.playbackState = .unknown
@@ -392,6 +434,40 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.playbackBusy = false
     }
 
+    /// Installed and running first, then the cached Automation permission. Nothing here can block the main thread.
+    /// A missing or not-yet-granted permission starts a background check without a prompt.
+    private func effectiveAvailability(of player: any PlayerControlling) -> PlayerAvailability {
+        let base = player.availability()
+        guard base == .ready else {
+            permissionCache[player.id] = nil
+            return base
+        }
+        let cached = permissionCache[player.id]
+        if cached != .granted {
+            checkPermission(of: player)
+        }
+        return cached?.availability ?? .checking
+    }
+
+    private func checkPermission(of player: any PlayerControlling) {
+        let id = player.id
+        let bundleIdentifier = player.bundleIdentifier
+        guard permissionChecks.contains(id) == false else { return }
+        permissionChecks.insert(id)
+        Task { @MainActor [weak self] in
+            let result = await Task.detached {
+                AutomationPermissionCheck.determine(bundleIdentifier: bundleIdentifier, askUserIfNeeded: false)
+            }.value
+            guard let self else { return }
+            self.permissionChecks.remove(id)
+            let changed = self.permissionCache[id] != result
+            self.permissionCache[id] = result
+            if changed, self.selectedPlayer()?.id == id {
+                self.refreshPlayback()
+            }
+        }
+    }
+
     private func applyPlayback(_ result: PlayerCommandResult) {
         switch result {
         case .state(let state):
@@ -399,6 +475,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.playbackState = state
             model.playbackDetail = ""
         case .unavailable(let availability):
+            if availability == .automationDenied || availability == .automationNotRequested, let id = selectedPlayer()?.id {
+                permissionCache[id] = availability == .automationDenied ? .denied : .notRequested
+            }
             model.playbackAvailability = availability
             model.playbackState = .unknown
             model.playbackDetail = playbackDetail(availability)
@@ -419,6 +498,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             return "The selected player is not installed."
         case .notRunning:
             return "The selected player is not running."
+        case .checking:
+            return "Checking Automation access\u{2026}"
+        case .automationNotRequested:
+            return "Audune has not been allowed to control this player yet. Use Request Access in Settings > Playback."
         case .automationDenied:
             return "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation."
         case .failed(let message):

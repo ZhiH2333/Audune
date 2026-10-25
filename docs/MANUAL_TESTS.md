@@ -227,6 +227,26 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Hide delay, fade on/off, and Follow system Reduce Motion change the control fade as described. Studio never gets a window background.
 - [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
 
+### Studio v1.4 Playback and signed-build check
+
+Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook Pro), Debug build signed by `xcodebuild test` without `CODE_SIGNING_ALLOWED=NO`:
+
+- `codesign -dvv`: signed by `Apple Development`, team `334R786Y6V`, identifier `devplaceholder.UFJKN3LA.Audune` (a placeholder bundle identifier), no hardened runtime flag.
+- `codesign --verify --strict`: `valid on disk`, `satisfies its Designated Requirement`.
+- Entitlements include `get-task-allow` and `files.user-selected.read-only`, plus two Xcode-added `temporary-exception` keys; there is no `app-sandbox` and no Apple Events entitlement. Debug has the sandbox off, so Apple Events are governed by the Automation prompt only.
+- `Info.plist` has non-empty `NSAppleEventsUsageDescription` and `NSAudioCaptureUsageDescription`, and no microphone key. `PlayerControlTests` asserts this on the built app bundle.
+- Finding: `AEDeterminePermissionToAutomateTarget` called on the main thread with `askUserIfNeeded = false` hung the app at launch in the test host (sampled: main thread inside the call). It now runs only off the main thread.
+
+None of this shows that Automation works. `PlayerControlTests` covers status-code mapping and button gating only; no Apple Event was sent by any test. These rows stay `NOT TESTED` until you run them on a real Mac. To repeat the first-run prompt, `tccutil reset AppleEvents devplaceholder.UFJKN3LA.Audune` clears the saved choice (it changes your TCC data; run it yourself).
+
+- [ ] `NOT TESTED` — With no player selected, Play/Pause is disabled and nothing is sent. Settings > Playback says to choose Music or Spotify.
+- [ ] `NOT TESTED` — Music running, never allowed: Playback shows "Not requested yet" and Play/Pause stays disabled. Request Access shows the macOS Automation prompt; after Allow, Play/Pause changes Music's real playback and the title follows `player state`.
+- [ ] `NOT TESTED` — Choosing Don't Allow shows "Denied", keeps Play/Pause disabled, and Open Automation Settings opens the Automation page.
+- [ ] `NOT TESTED` — Quitting Music shows "Not running" and disables the button; reopening Music restores the state without relaunching Audune.
+- [ ] `NOT TESTED` — Spotify behaves the same and never controls Music.
+- [ ] `NOT TESTED` — With only a browser playing, Audune does not claim it can pause it; the Playback page says only Music and Spotify are supported.
+- [ ] `NOT TESTED` — The first launch with a saved player does not hang, and the Studio window opens normally.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

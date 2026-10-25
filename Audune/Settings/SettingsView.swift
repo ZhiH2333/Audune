@@ -38,7 +38,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     let studio: StudioWindowController
     @Bindable var model: StudioModel
-    @State private var selection: SettingsCategory = .appearance
 
     init(studio: StudioWindowController) {
         self.studio = studio
@@ -47,7 +46,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsCategory.allCases, selection: $selection) { category in
+            List(SettingsCategory.allCases, selection: $model.settingsCategory) { category in
                 Label(category.title, systemImage: category.symbol)
                     .tag(category)
             }
@@ -58,7 +57,7 @@ struct SettingsView: View {
                 Section {
                     studioPreviewRow
                 }
-                switch selection {
+                switch model.settingsCategory {
                 case .appearance: appearancePane
                 case .spectrum: spectrumPane
                 case .waveform: waveformPane
@@ -68,10 +67,14 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(selection.title)
+            .navigationTitle(model.settingsCategory.title)
         }
         .onChange(of: model.prefs) { _, _ in
             studio.preferencesDidChange()
+        }
+        .onChange(of: model.settingsCategory) { _, _ in
+            studio.updatePlaybackTimer()
+            studio.refreshPlaybackNow()
         }
     }
 
@@ -283,9 +286,26 @@ struct SettingsView: View {
                     Text(choice.title).tag(choice.id)
                 }
             }
-            LabeledContent("Status") {
-                Text(playbackStatus)
+            if model.playerID.isEmpty == false {
+                LabeledContent("Installed") { Text(installedText) }
+                LabeledContent("Running") { Text(runningText) }
+                LabeledContent("Automation") { Text(automationText) }
+                LabeledContent("Playback") { Text(playbackStateText) }
+                if model.playbackDetail.isEmpty == false {
+                    Text(model.playbackDetail)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Choose Music or Spotify to enable Play/Pause in Studio.")
+                    .foregroundStyle(.secondary)
             }
+        }
+        Section("Control") {
+            Button(model.playbackRequesting ? "Waiting for macOS" : "Request Access") {
+                studio.requestPlayerAccess()
+            }
+            .disabled(model.playbackAvailability != .automationNotRequested || model.playbackRequesting)
+            Button("Open Automation Settings") { studio.openAutomationSettings() }
             Button(PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState)) {
                 studio.togglePlayback()
             }
@@ -296,10 +316,11 @@ struct SettingsView: View {
             ) == false)
         }
         Section {
-            Text("Audune can only control Music or Spotify. It cannot pause browser audio or other system output.")
+            Text("Audune can only control Music or Spotify, and only after you allow it. It cannot pause browser audio or other system output. Open the player first, then choose Request Access.")
+                .foregroundStyle(.secondary)
+            Text("Automation has not been verified on a real Mac yet.")
                 .foregroundStyle(.secondary)
         }
-        .onAppear { studio.refreshPlaybackNow() }
     }
 
     private var presetBinding: Binding<StudioAccent?> {
@@ -340,9 +361,31 @@ struct SettingsView: View {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
-    private var playbackStatus: String {
-        if model.playerID.isEmpty { return "Choose a player" }
-        if model.playbackDetail.isEmpty == false { return model.playbackDetail }
+    private var installedText: String {
+        model.playbackAvailability == .notInstalled ? "No" : "Yes"
+    }
+
+    private var runningText: String {
+        switch model.playbackAvailability {
+        case .notInstalled, .noSelection: return "Unknown"
+        case .notRunning: return "No"
+        default: return "Yes"
+        }
+    }
+
+    private var automationText: String {
+        switch model.playbackAvailability {
+        case .ready: return "Allowed"
+        case .automationNotRequested: return "Not requested yet"
+        case .automationDenied: return "Denied"
+        case .checking: return "Checking\u{2026}"
+        case .notInstalled, .notRunning, .noSelection: return "Unknown until the player is running"
+        case .failed: return "Unavailable"
+        }
+    }
+
+    private var playbackStateText: String {
+        guard model.playbackAvailability == .ready else { return "Not available" }
         switch model.playbackState {
         case .playing: return "Playing"
         case .paused: return "Paused"

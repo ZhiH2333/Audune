@@ -14,6 +14,8 @@ final class StudioModel {
     var playbackState: PlayerPlaybackState = .unknown
     var playbackDetail = "Choose a player"
     var playbackBusy = false
+    var playbackRequesting = false
+    var settingsCategory: SettingsCategory = .appearance
     var pointerInside = false
     var pointerDown = false
     var isShown = false

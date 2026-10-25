@@ -9,6 +9,10 @@ enum PlayerAvailability: Equatable {
     case ready
     case notInstalled
     case notRunning
+    /// Installed and running; the Automation permission is still being looked up off the main thread.
+    case checking
+    /// macOS has not asked yet. The user has to choose "Request Access"; polling never prompts.
+    case automationNotRequested
     case automationDenied
     case failed(String)
 }
@@ -37,17 +41,70 @@ enum PlayerSelectionKey {
 
 enum AppleEventFailure {
     static let automationDenied = -1743
+    static let wouldRequireConsent = -1744
     static let applicationNotRunning = -600
+    static let timedOut = -1712
 
     static func availability(status: Int) -> PlayerAvailability {
         switch status {
         case automationDenied:
             return .automationDenied
+        case wouldRequireConsent:
+            return .automationNotRequested
         case applicationNotRunning:
             return .notRunning
+        case timedOut:
+            return .failed("The player did not answer in time.")
         default:
             return .failed("Apple Event \(status)")
         }
+    }
+}
+
+/// The result of asking macOS whether Audune may send Apple Events to one player.
+enum AutomationPermission: Equatable {
+    case granted
+    case notRequested
+    case denied
+    case targetNotRunning
+    case failed(Int)
+
+    /// Maps the `OSStatus` from `AEDeterminePermissionToAutomateTarget`.
+    static func from(status: Int) -> AutomationPermission {
+        switch status {
+        case 0: return .granted
+        case AppleEventFailure.wouldRequireConsent: return .notRequested
+        case AppleEventFailure.automationDenied: return .denied
+        case AppleEventFailure.applicationNotRunning: return .targetNotRunning
+        default: return .failed(status)
+        }
+    }
+
+    var availability: PlayerAvailability {
+        switch self {
+        case .granted: return .ready
+        case .notRequested: return .automationNotRequested
+        case .denied: return .automationDenied
+        case .targetNotRunning: return .notRunning
+        case .failed(let status): return .failed("Apple Event \(status)")
+        }
+    }
+}
+
+enum AutomationPermissionCheck {
+    /// Public API from `ApplicationServices`. With `askUserIfNeeded` false it never shows a prompt and
+    /// does not send an event. Even so, it can wait on the system permission service and hung the main thread
+    /// at launch in testing, so every call must run off the main thread. With true it may wait for the user.
+    nonisolated static func determine(bundleIdentifier: String, askUserIfNeeded: Bool) -> AutomationPermission {
+        let target = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+        guard let address = target.aeDesc else { return .failed(-1) }
+        let status = AEDeterminePermissionToAutomateTarget(
+            address,
+            AEEventClass(typeWildCard),
+            AEEventID(typeWildCard),
+            askUserIfNeeded
+        )
+        return AutomationPermission.from(status: Int(status))
     }
 }
 
@@ -91,6 +148,10 @@ enum PlaybackButton {
             return "Missing"
         case .notRunning:
             return "Not running"
+        case .checking:
+            return "Checking"
+        case .automationNotRequested:
+            return "Needs access"
         case .automationDenied:
             return "Denied"
         case .failed:
@@ -119,6 +180,7 @@ protocol PlayerControlling: AnyObject {
 }
 
 enum AppleScriptPlayer {
+    /// Installed and running only. It never calls the Automation permission API; the caller does that off the main thread.
     static func availability(bundleIdentifier: String) -> PlayerAvailability {
         guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil else {
             return .notInstalled
@@ -130,8 +192,9 @@ enum AppleScriptPlayer {
     }
 
     /// Sends one Apple Event on the main actor. Callers must not use this from the audio callback.
-    static func run(application name: String, source body: String) -> PlayerCommandResult {
-        let source = "tell application \"\(name)\"\n\(body)\nend tell"
+    /// Callers only reach this after the permission preflight says `.ready`; the timeout keeps a stuck player from freezing the UI.
+    static func run(bundleIdentifier: String, source body: String) -> PlayerCommandResult {
+        let source = "with timeout of 2 seconds\ntell application id \"\(bundleIdentifier)\"\n\(body)\nend tell\nend timeout"
         guard let script = NSAppleScript(source: source) else {
             return .failed("The play command could not be prepared.")
         }
@@ -172,14 +235,14 @@ final class MusicPlayerController: PlayerControlling {
     func playbackState() -> PlayerCommandResult {
         let gate = availability()
         guard gate == .ready else { return .unavailable(gate) }
-        return AppleScriptPlayer.run(application: "Music", source: "return player state as string")
+        return AppleScriptPlayer.run(bundleIdentifier: bundleIdentifier, source: "return player state as string")
     }
 
     func togglePlayPause() -> PlayerCommandResult {
         let gate = availability()
         guard gate == .ready else { return .unavailable(gate) }
         return AppleScriptPlayer.run(
-            application: "Music",
+            bundleIdentifier: bundleIdentifier,
             source: "playpause\nreturn player state as string"
         )
     }
@@ -198,14 +261,14 @@ final class SpotifyPlayerController: PlayerControlling {
     func playbackState() -> PlayerCommandResult {
         let gate = availability()
         guard gate == .ready else { return .unavailable(gate) }
-        return AppleScriptPlayer.run(application: "Spotify", source: "return player state as string")
+        return AppleScriptPlayer.run(bundleIdentifier: bundleIdentifier, source: "return player state as string")
     }
 
     func togglePlayPause() -> PlayerCommandResult {
         let gate = availability()
         guard gate == .ready else { return .unavailable(gate) }
         return AppleScriptPlayer.run(
-            application: "Spotify",
+            bundleIdentifier: bundleIdentifier,
             source: "playpause\nreturn player state as string"
         )
     }

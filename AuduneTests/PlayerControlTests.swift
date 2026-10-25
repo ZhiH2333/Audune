@@ -16,6 +16,36 @@ final class PlayerControlTests: XCTestCase {
         XCTAssertEqual(AppleEventFailure.availability(status: AppleEventFailure.automationDenied), .automationDenied)
         XCTAssertEqual(AppleEventFailure.availability(status: AppleEventFailure.applicationNotRunning), .notRunning)
         XCTAssertEqual(AppleEventFailure.availability(status: -1), .failed("Apple Event -1"))
+        XCTAssertEqual(AppleEventFailure.availability(status: AppleEventFailure.wouldRequireConsent), .automationNotRequested)
+        XCTAssertEqual(AppleEventFailure.availability(status: AppleEventFailure.timedOut), .failed("The player did not answer in time."))
+    }
+
+    func testAutomationPermissionStatusCodesMapToDistinctStates() {
+        XCTAssertEqual(AutomationPermission.from(status: 0), .granted)
+        XCTAssertEqual(AutomationPermission.from(status: -1744), .notRequested)
+        XCTAssertEqual(AutomationPermission.from(status: -1743), .denied)
+        XCTAssertEqual(AutomationPermission.from(status: -600), .targetNotRunning)
+        XCTAssertEqual(AutomationPermission.from(status: -50), .failed(-50))
+        XCTAssertEqual(AutomationPermission.granted.availability, .ready)
+        XCTAssertEqual(AutomationPermission.notRequested.availability, .automationNotRequested)
+        XCTAssertEqual(AutomationPermission.denied.availability, .automationDenied)
+        XCTAssertEqual(AutomationPermission.targetNotRunning.availability, .notRunning)
+    }
+
+    func testOnlyAGrantedPermissionEnablesPlayback() {
+        for availability in [PlayerAvailability.checking, .automationNotRequested, .automationDenied, .notRunning, .notInstalled] {
+            XCTAssertFalse(PlaybackButton.isEnabled(selection: "music", availability: availability, busy: false))
+        }
+        XCTAssertEqual(PlaybackButton.title(availability: .automationNotRequested, state: .unknown), "Needs access")
+        XCTAssertEqual(PlaybackButton.title(availability: .checking, state: .unknown), "Checking")
+    }
+
+    func testAppBundleExplainsAudioCaptureAndAppleEventsAndNothingElse() {
+        let info = Bundle(for: MusicPlayerController.self).infoDictionary ?? [:]
+
+        XCTAssertFalse((info["NSAudioCaptureUsageDescription"] as? String ?? "").isEmpty)
+        XCTAssertFalse((info["NSAppleEventsUsageDescription"] as? String ?? "").isEmpty)
+        XCTAssertNil(info["NSMicrophoneUsageDescription"], "Audune never asks for the microphone")
     }
 
     func testPlaybackButtonStaysDisabledWithoutAReadyTarget() {
@@ -37,7 +67,7 @@ final class PlayerControlTests: XCTestCase {
         switch music.availability() {
         case .ready, .notRunning:
             break
-        case .notInstalled, .noSelection, .automationDenied, .failed:
+        case .notInstalled, .noSelection, .checking, .automationNotRequested, .automationDenied, .failed:
             XCTFail("Music.app should be installed")
         }
     }
@@ -48,7 +78,7 @@ final class PlayerControlTests: XCTestCase {
         switch spotify.availability() {
         case .ready, .notRunning:
             break
-        case .notInstalled, .noSelection, .automationDenied, .failed:
+        case .notInstalled, .noSelection, .checking, .automationNotRequested, .automationDenied, .failed:
             XCTFail("Spotify.app should be installed")
         }
     }
