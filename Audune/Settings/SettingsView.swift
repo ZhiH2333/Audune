@@ -200,8 +200,28 @@ struct SettingsView: View {
                     Text("\(count)").tag(count)
                 }
             }
-            SettingsSlider(title: "Inner ring", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
-            SettingsSlider(title: "Line width", value: $model.prefs.orbit.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+            Toggle("Mirror left and right", isOn: $model.prefs.orbit.mirrored)
+            Text(model.prefs.orbit.mirrored
+                ? "Mirrored rings read \(model.prefs.orbit.bandCount) real bands and show each twice, low at the top."
+                : "Each bar reads its own real band.")
+                .foregroundStyle(.secondary)
+            SettingsSlider(title: "Inner radius", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
+            SettingsSlider(title: "Outer radius", value: $model.prefs.orbit.outerScale, range: StudioPreferences.orbitOuterRange, step: 0.02)
+            SettingsSlider(title: "Angular gap (deg)", value: $model.prefs.orbit.gapDegrees, range: StudioPreferences.orbitGapRange, step: 0.5, fractionDigits: 1)
+        }
+        Section("Style") {
+            Toggle("Custom color", isOn: Binding(
+                get: { model.prefs.orbit.customColor != nil },
+                set: { model.prefs.orbit.customColor = $0 ? model.prefs.appearance.color : nil }
+            ))
+            if model.prefs.orbit.customColor != nil {
+                ColorPicker("Color", selection: Binding(
+                    get: { (model.prefs.orbit.customColor ?? model.prefs.appearance.color).swiftUI },
+                    set: { model.prefs.orbit.customColor = StudioColor($0) }
+                ), supportsOpacity: false)
+            }
+            Toggle("Bar stroke", isOn: $model.prefs.orbit.stroke)
+            SettingsSlider(title: "Stroke width", value: $model.prefs.orbit.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
         }
         Section("Response") {
             SettingsSlider(title: "Amplitude", value: $model.prefs.orbit.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)

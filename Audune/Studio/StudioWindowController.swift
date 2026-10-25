@@ -304,7 +304,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.studioSpectrum = spectrumState.levels
             model.spectrumPeaks = prefs.spectrum.peakHold ? spectrumState.peaks : []
         case .orbit:
-            let count = prefs.orbit.barCount
+            let count = prefs.orbit.bandCount
             let levels = SpectrumBands.levels(
                 binMagnitudes: model.snapshot.binMagnitudes,
                 sampleRate: model.snapshot.sampleRate,

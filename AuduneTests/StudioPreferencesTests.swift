@@ -89,7 +89,18 @@ final class StudioPreferencesTests: XCTestCase {
             style: .filled,
             customColor: StudioColor(red: 0.5, green: 0.25, blue: 0.75)
         )
-        stored.orbit = OrbitPreferences(barCount: 16, inner: 0.4, lineWidth: 2, amplitude: 1.2, smoothing: 0.1)
+        stored.orbit = OrbitPreferences(
+            barCount: 16,
+            inner: 0.4,
+            outerScale: 0.8,
+            gapDegrees: 4,
+            mirrored: false,
+            stroke: true,
+            lineWidth: 2,
+            amplitude: 1.2,
+            smoothing: 0.1,
+            customColor: StudioColor(red: 0.1, green: 0.8, blue: 0.3)
+        )
         stored.save(to: defaults)
 
         XCTAssertEqual(StudioPreferences.load(from: defaults), stored)
@@ -179,6 +190,23 @@ final class StudioPreferencesTests: XCTestCase {
         loaded.save(to: defaults)
         XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.waveformColor))
         XCTAssertNil(StudioPreferences.load(from: defaults).waveform.customColor)
+    }
+
+    func testOrbitDefaultsAndRangesNormalize() {
+        let standard = StudioPreferences.standard.orbit
+        XCTAssertEqual(standard.barCount, 48)
+        XCTAssertTrue(standard.mirrored)
+        XCTAssertEqual(standard.bandCount, 24)
+        XCTAssertNil(standard.customColor)
+
+        defaults.set(5.0, forKey: StudioPreferenceKey.orbitOuterScale)
+        defaults.set(-3.0, forKey: StudioPreferenceKey.orbitGapDegrees)
+        defaults.set(false, forKey: StudioPreferenceKey.orbitMirrored)
+        let loaded = StudioPreferences.load(from: defaults).orbit
+        XCTAssertEqual(loaded.outerScale, 1)
+        XCTAssertEqual(loaded.gapDegrees, 0)
+        XCTAssertFalse(loaded.mirrored)
+        XCTAssertEqual(loaded.bandCount, loaded.barCount)
     }
 
     func testStudioColorRoundTripsThroughHex() {

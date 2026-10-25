@@ -177,11 +177,17 @@ struct StudioContentView: View {
             OrbitCanvas(
                 spectrum: model.studioSpectrum,
                 drawsLevels: drawsBars,
-                color: fill,
+                barCount: prefs.orbit.barCount,
+                mirrored: prefs.orbit.mirrored,
+                color: (prefs.orbit.customColor ?? prefs.appearance.color).swiftUI,
+                strokeColor: prefs.appearance.strokeColor.swiftUI,
+                drawsStroke: prefs.orbit.stroke,
                 opacity: prefs.appearance.opacity,
                 amplitude: prefs.orbit.amplitude,
                 lineWidth: prefs.orbit.lineWidth,
-                innerRatio: prefs.orbit.inner
+                innerRatio: prefs.orbit.inner,
+                outerScale: prefs.orbit.outerScale,
+                gapDegrees: prefs.orbit.gapDegrees
             )
         }
     }

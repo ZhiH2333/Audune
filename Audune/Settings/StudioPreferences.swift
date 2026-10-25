@@ -46,6 +46,11 @@ nonisolated enum StudioPreferenceKey {
     static let orbitLineWidth = "studio.orbit.lineWidth"
     static let orbitAmplitude = "studio.orbit.amplitude"
     static let orbitSmoothing = "studio.orbit.smoothing"
+    static let orbitOuterScale = "studio.orbit.outerScale"
+    static let orbitGapDegrees = "studio.orbit.gapDegrees"
+    static let orbitMirrored = "studio.orbit.mirrored"
+    static let orbitStroke = "studio.orbit.stroke"
+    static let orbitColor = "studio.orbit.color"
 }
 
 nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
@@ -286,13 +291,37 @@ nonisolated struct WaveformPreferences: Equatable {
 }
 
 nonisolated struct OrbitPreferences: Equatable {
+    /// Total bars around the ring. Mirrored rings read half as many bands and show each twice.
     var barCount: Int
+    /// Inner radius as a share of the outer radius.
     var inner: Double
+    /// Outer radius as a share of the half of the shorter canvas side.
+    var outerScale: Double
+    var gapDegrees: Double
+    var mirrored: Bool
+    var stroke: Bool
     var lineWidth: Double
     var amplitude: Double
     var smoothing: Double
+    /// `nil` follows the Appearance color.
+    var customColor: StudioColor?
 
-    static let standard = OrbitPreferences(barCount: 32, inner: 0.55, lineWidth: 1.5, amplitude: 1, smoothing: 0.35)
+    static let standard = OrbitPreferences(
+        barCount: 48,
+        inner: 0.55,
+        outerScale: 0.92,
+        gapDegrees: 2.5,
+        mirrored: true,
+        stroke: false,
+        lineWidth: 1.5,
+        amplitude: 1,
+        smoothing: 0.35,
+        customColor: nil
+    )
+
+    var bandCount: Int {
+        OrbitLayout.bandCount(barCount: barCount, mirrored: mirrored)
+    }
 }
 
 nonisolated struct StudioPreferences: Equatable {
@@ -310,6 +339,8 @@ nonisolated struct StudioPreferences: Equatable {
     static let barGapRange: ClosedRange<Double> = 0...8
     static let cornerRadiusRange: ClosedRange<Double> = 0...8
     static let orbitInnerRange: ClosedRange<Double> = 0.35...0.8
+    static let orbitOuterRange: ClosedRange<Double> = 0.6...1
+    static let orbitGapRange: ClosedRange<Double> = 0...10
     static let minHzRange: ClosedRange<Double> = 20...500
     static let maxHzRange: ClosedRange<Double> = 2_000...20_000
     static let sensitivityRange: ClosedRange<Double> = 0...1
@@ -379,9 +410,14 @@ nonisolated struct StudioPreferences: Equatable {
             orbit: OrbitPreferences(
                 barCount: reader.barCount(StudioPreferenceKey.orbitBarCount, legacy: legacyCount, fallback: standard.orbit.barCount),
                 inner: reader.double(StudioPreferenceKey.orbitInner, range: orbitInnerRange, fallback: standard.orbit.inner),
+                outerScale: reader.double(StudioPreferenceKey.orbitOuterScale, range: orbitOuterRange, fallback: standard.orbit.outerScale),
+                gapDegrees: reader.double(StudioPreferenceKey.orbitGapDegrees, range: orbitGapRange, fallback: standard.orbit.gapDegrees),
+                mirrored: reader.bool(StudioPreferenceKey.orbitMirrored, fallback: standard.orbit.mirrored),
+                stroke: reader.bool(StudioPreferenceKey.orbitStroke, fallback: standard.orbit.stroke),
                 lineWidth: reader.double(StudioPreferenceKey.orbitLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.orbit.lineWidth),
                 amplitude: reader.double(StudioPreferenceKey.orbitAmplitude, legacy: legacyAmplitude, range: amplitudeRange, fallback: standard.orbit.amplitude),
-                smoothing: reader.double(StudioPreferenceKey.orbitSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.orbit.smoothing)
+                smoothing: reader.double(StudioPreferenceKey.orbitSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.orbit.smoothing),
+                customColor: defaults.string(forKey: StudioPreferenceKey.orbitColor).flatMap(StudioColor.init(hex:))
             )
         ).normalized()
     }
@@ -409,6 +445,8 @@ nonisolated struct StudioPreferences: Equatable {
         result.waveform.density = Self.densities.contains(waveform.density) ? waveform.density : standard.waveform.density
         result.orbit.barCount = Self.normalizedBarCount(orbit.barCount)
         result.orbit.inner = Self.clamped(orbit.inner, to: Self.orbitInnerRange, fallback: standard.orbit.inner)
+        result.orbit.outerScale = Self.clamped(orbit.outerScale, to: Self.orbitOuterRange, fallback: standard.orbit.outerScale)
+        result.orbit.gapDegrees = Self.clamped(orbit.gapDegrees, to: Self.orbitGapRange, fallback: standard.orbit.gapDegrees)
         result.orbit.lineWidth = Self.clamped(orbit.lineWidth, to: Self.lineWidthRange, fallback: standard.orbit.lineWidth)
         result.orbit.amplitude = Self.clamped(orbit.amplitude, to: Self.amplitudeRange, fallback: standard.orbit.amplitude)
         result.orbit.smoothing = Self.clamped(orbit.smoothing, to: Self.smoothingRange, fallback: standard.orbit.smoothing)
@@ -459,6 +497,15 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.orbit.lineWidth, forKey: StudioPreferenceKey.orbitLineWidth)
         defaults.set(p.orbit.amplitude, forKey: StudioPreferenceKey.orbitAmplitude)
         defaults.set(p.orbit.smoothing, forKey: StudioPreferenceKey.orbitSmoothing)
+        defaults.set(p.orbit.outerScale, forKey: StudioPreferenceKey.orbitOuterScale)
+        defaults.set(p.orbit.gapDegrees, forKey: StudioPreferenceKey.orbitGapDegrees)
+        defaults.set(p.orbit.mirrored, forKey: StudioPreferenceKey.orbitMirrored)
+        defaults.set(p.orbit.stroke, forKey: StudioPreferenceKey.orbitStroke)
+        if let custom = p.orbit.customColor {
+            defaults.set(custom.hex, forKey: StudioPreferenceKey.orbitColor)
+        } else {
+            defaults.removeObject(forKey: StudioPreferenceKey.orbitColor)
+        }
     }
 
     static func resolvedWindowMode(from defaults: UserDefaults) -> StudioWindowMode {

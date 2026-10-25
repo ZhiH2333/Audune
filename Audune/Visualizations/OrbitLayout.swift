@@ -1,50 +1,109 @@
 import CoreGraphics
 import SwiftUI
 
-nonisolated struct OrbitSpoke: Equatable {
-    var start: CGPoint
-    var end: CGPoint
+nonisolated struct OrbitGeometry: Equatable {
+    var center: CGPoint
+    /// Radius where every bar starts, measured to the middle of its rounded cap.
+    var startRadius: CGFloat
+    /// Farthest radius a bar's cap middle can reach. The cap edge stays inside the canvas.
+    var endRadius: CGFloat
+    var barWidth: CGFloat
 }
 
-/// Ring of spokes driven by real band energy. Silence stays on the inner ring.
+nonisolated struct OrbitBar: Equatable {
+    /// Direction from the center, in radians. Zero points right; the first slot is just right of the top.
+    var angle: CGFloat
+    var start: CGPoint
+    var end: CGPoint
+    var width: CGFloat
+}
+
+/// Ring of rounded radial bars driven by real band energy. Silence leaves a ring of dots; nothing rotates.
 nonisolated enum OrbitLayout {
-    static func spokes(
+    static let defaultInnerRatio: CGFloat = 0.55
+    static let defaultOuterScale: CGFloat = 0.92
+    static let defaultGapDegrees: CGFloat = 2.5
+
+    /// With mirroring, the left and right halves show the same bands, low at the top and high at the bottom.
+    static func bandCount(barCount: Int, mirrored: Bool) -> Int {
+        guard barCount > 0 else { return 0 }
+        return mirrored ? max(barCount / 2, 1) : barCount
+    }
+
+    static func geometry(
+        in bounds: CGRect,
+        count: Int,
+        innerRatio: CGFloat = defaultInnerRatio,
+        outerScale: CGFloat = defaultOuterScale,
+        gapDegrees: CGFloat = defaultGapDegrees
+    ) -> OrbitGeometry? {
+        guard count > 0, isDrawable(bounds) else { return nil }
+        let limit = min(bounds.width, bounds.height)
+        let half = limit / 2
+        let scale = outerScale.isFinite ? min(max(outerScale, 0.5), 1) : defaultOuterScale
+        let ratio = innerRatio.isFinite ? min(max(innerRatio, 0.2), 0.9) : defaultInnerRatio
+        let outer = half * scale
+        let inner = outer * ratio
+        let slot = 2 * CGFloat.pi / CGFloat(count)
+        let gapRadians = (gapDegrees.isFinite ? max(gapDegrees, 0) : defaultGapDegrees) * CGFloat.pi / 180
+        let span = max(slot - min(gapRadians, slot * 0.75), slot * 0.25)
+        let width = min(max(inner * span, 0.75), max(0.75, limit * 0.1))
+        let start = inner + width / 2
+        let end = max(start, outer - width / 2)
+        guard start.isFinite, end.isFinite, width.isFinite, end + width / 2 <= half + 0.001 else { return nil }
+        return OrbitGeometry(
+            center: CGPoint(x: bounds.midX, y: bounds.midY),
+            startRadius: start,
+            endRadius: end,
+            barWidth: width
+        )
+    }
+
+    static func bars(
         spectrum: [Float],
         in bounds: CGRect,
-        count: Int = AudioSnapshot.bandCount,
-        innerRatio: CGFloat = 0.55,
-        amplitude: CGFloat = 1
-    ) -> [OrbitSpoke] {
-        guard count > 0, isDrawable(bounds) else { return [] }
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        let limit = min(bounds.width, bounds.height)
-        let outer = limit / 2 - limit * 0.04
-        guard outer.isFinite, outer > 0 else { return [] }
-        let ratio = innerRatio.isFinite ? min(max(innerRatio, 0.2), 0.9) : 0.55
-        let inner = outer * ratio
+        count: Int,
+        innerRatio: CGFloat = defaultInnerRatio,
+        outerScale: CGFloat = defaultOuterScale,
+        gapDegrees: CGFloat = defaultGapDegrees,
+        amplitude: CGFloat = 1,
+        mirrored: Bool = true
+    ) -> [OrbitBar] {
+        guard let geometry = geometry(in: bounds, count: count, innerRatio: innerRatio, outerScale: outerScale, gapDegrees: gapDegrees) else {
+            return []
+        }
         let gain = amplitude.isFinite ? max(amplitude, 0) : 1
-        var spokes: [OrbitSpoke] = []
-        spokes.reserveCapacity(count)
+        let slot = 2 * CGFloat.pi / CGFloat(count)
+        let bands = bandCount(barCount: count, mirrored: mirrored)
+        var bars: [OrbitBar] = []
+        bars.reserveCapacity(count)
         for index in 0..<count {
-            let raw = index < spectrum.count ? spectrum[index] : 0
+            let band = mirrored && index >= bands ? count - 1 - index : index
+            let raw = band < spectrum.count ? spectrum[band] : 0
             let level = raw.isFinite ? min(max(CGFloat(raw) * gain, 0), 1) : 0
-            let travel = max(outer - inner, 0)
-            let span = max(min(1.5, travel), travel * level)
-            let radius = min(outer, inner + span)
-            guard radius.isFinite, radius >= 0, radius <= outer + 0.001 else { return [] }
-            let angle = (CGFloat(index) / CGFloat(count)) * 2 * CGFloat.pi - CGFloat.pi / 2
-            let end = CGPoint(
-                x: center.x + cos(angle) * radius,
-                y: center.y + sin(angle) * radius
-            )
+            let angle = -CGFloat.pi / 2 + (CGFloat(index) + 0.5) * slot
+            let radius = geometry.startRadius + (geometry.endRadius - geometry.startRadius) * level
+            let direction = CGPoint(x: cos(angle), y: sin(angle))
             let start = CGPoint(
-                x: center.x + cos(angle) * inner,
-                y: center.y + sin(angle) * inner
+                x: geometry.center.x + direction.x * geometry.startRadius,
+                y: geometry.center.y + direction.y * geometry.startRadius
+            )
+            let end = CGPoint(
+                x: geometry.center.x + direction.x * radius,
+                y: geometry.center.y + direction.y * radius
             )
             guard inside(start, bounds), inside(end, bounds) else { return [] }
-            spokes.append(OrbitSpoke(start: start, end: end))
+            bars.append(OrbitBar(angle: angle, start: start, end: end, width: geometry.barWidth))
         }
-        return spokes
+        return bars
+    }
+
+    /// A rounded bar from `start` to `end` with caps of diameter `width`.
+    static func capsule(for bar: OrbitBar) -> Path {
+        let length = hypot(bar.end.x - bar.start.x, bar.end.y - bar.start.y)
+        let rect = CGRect(x: -bar.width / 2, y: -bar.width / 2, width: length + bar.width, height: bar.width)
+        let transform = CGAffineTransform(translationX: bar.start.x, y: bar.start.y).rotated(by: bar.angle)
+        return Path(roundedRect: rect, cornerRadius: bar.width / 2).applying(transform)
     }
 
     private static func isDrawable(_ rect: CGRect) -> Bool {
@@ -62,34 +121,57 @@ nonisolated enum OrbitLayout {
 struct OrbitCanvas: View {
     var spectrum: [Float]
     var drawsLevels: Bool
+    var barCount: Int
+    var mirrored = true
     var color: Color
+    var strokeColor: Color
+    var drawsStroke = false
     var opacity: Double = 1
     var amplitude: Double = 1
     var lineWidth: Double = 1.5
     var innerRatio: Double = 0.55
+    var outerScale: Double = 0.92
+    var gapDegrees: Double = 2.5
 
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let count = spectrum.isEmpty ? AudioSnapshot.bandCount : spectrum.count
-            let source = drawsLevels ? spectrum : Array(repeating: Float(0), count: count)
-            let spokes = OrbitLayout.spokes(
+            let bands = OrbitLayout.bandCount(barCount: barCount, mirrored: mirrored)
+            let source = drawsLevels ? spectrum : Array(repeating: Float(0), count: max(bands, 1))
+            guard let geometry = OrbitLayout.geometry(
+                in: bounds,
+                count: barCount,
+                innerRatio: CGFloat(innerRatio),
+                outerScale: CGFloat(outerScale),
+                gapDegrees: CGFloat(gapDegrees)
+            ) else { return }
+            let bars = OrbitLayout.bars(
                 spectrum: source,
                 in: bounds,
-                count: count,
+                count: barCount,
                 innerRatio: CGFloat(innerRatio),
-                amplitude: CGFloat(amplitude)
+                outerScale: CGFloat(outerScale),
+                gapDegrees: CGFloat(gapDegrees),
+                amplitude: CGFloat(amplitude),
+                mirrored: mirrored
             )
-            var path = Path()
-            for spoke in spokes {
-                path.move(to: spoke.start)
-                path.addLine(to: spoke.end)
+            let ring = Path(ellipseIn: CGRect(
+                x: geometry.center.x - geometry.startRadius,
+                y: geometry.center.y - geometry.startRadius,
+                width: geometry.startRadius * 2,
+                height: geometry.startRadius * 2
+            ))
+            context.stroke(ring, with: .color(color.opacity(opacity * 0.22)), style: StrokeStyle(lineWidth: 0.5))
+
+            let fill = GraphicsContext.Shading.color(color.opacity(opacity))
+            let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
+            for bar in bars {
+                let shape = OrbitLayout.capsule(for: bar)
+                context.fill(shape, with: fill)
+                if drawsStroke {
+                    context.stroke(shape, with: outline, style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineJoin: .round))
+                }
             }
-            context.stroke(
-                path,
-                with: .color(color.opacity(opacity)),
-                style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
-            )
         }
         .accessibilityLabel(drawsLevels ? "Orbit" : "Orbit baseline")
     }

@@ -209,6 +209,14 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Real playback changes the shape, quiet passages still move off the baseline, and silence settles to a flat line.
 - [ ] `NOT TESTED` — Line and Filled styles, density 32/64/128, custom line color, width, amplitude, and smoothing apply immediately, survive relaunch, and Reset Waveform restores them.
 
+### Studio v1.4 Orbit
+
+`OrbitLayoutTests` uses synthetic spectra. It checks that bars and their rounded caps stay inside the canvas, silence is an even ring, mirroring is symmetric and reads half the bands, and gap and radius settings move the geometry. It does not judge appearance or real playback. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — The default Orbit looks deliberate: a centered ring of rounded bars, low frequencies at the top, left and right mirrored, not the old thin spokes.
+- [ ] `NOT TESTED` — Real playback moves the bars; silence settles to a ring of dots and does not rotate; resizing keeps the ring centered and inside the window.
+- [ ] `NOT TESTED` — Bars 8 to 64, mirror, inner and outer radius, angular gap, stroke, custom color, amplitude, and smoothing apply immediately, survive relaunch, and Reset Orbit restores them.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.
