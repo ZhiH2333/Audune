@@ -241,14 +241,13 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - Core MVP 不依赖歌曲标题或专辑封面；这些信息等播放器集成阶段再显示。
 - 展开状态下可以切换可视化模式、打开 Studio 或收起。
 
-#### 交互
+#### 交互与实现细节（Notch Island v1）
 
-- 悬停可触发展开；点击可固定展开/收起。
-- 鼠标离开后的收起有延时，避免用户移向控制按钮时突然收起。
-- `Escape` 可关闭展开面板；用户主动固定展开时不应自动收起。
-- 展开/收起动画默认 150–250ms，遵守 Reduce Motion 设置。
-- 处理屏幕切换、分辨率/缩放变化、外接屏插拔与系统唤醒。
-- 必须进行技术 spike 验证：窗口层级、刘海区域命中测试、菜单栏交互是否被阻挡、全屏空间行为。不可只凭截图认定完成。
+- **刘海几何校验**：同时检查 `NSScreen.safeAreaInsets.top`（16–64 pt）和左右 `auxiliaryTopLeftArea`、`auxiliaryTopRightArea` 的有效性、顶边对齐与中心对称性。缺少辅助区域或无刘海屏幕一律判定为不支持（`.noNotch` / `.invalidGeometry`），隐藏窗口并停止 Island 刷新计时器。
+- **窗口与鼠标命中架构**：使用无边框 `NSPanel`（`.borderless, .nonactivatingPanel`，`level = .statusBar`）。Compact 状态下窗口 frame 仅包裹物理刘海及左右各约 34 pt 的窄侧翼，外侧菜单栏完全不在窗口 frame 内，因此不拦截正常菜单栏点击，也不需要 Accessibility 或 Input Monitoring 权限。
+- **悬停展开与防抖收起**：通过视图级 `NSTrackingArea` 检测鼠标进入 Compact 窗口并平滑扩展窗口 frame 至 Expanded 尺寸（Expanded frame 严格包含 Compact frame，避免尺寸切换引发瞬时 `mouseExited` 抖动）。鼠标离开窗口（含 6 pt 边缘容差）后按配置的延迟（0.15–1.5s，默认 0.35s）自动收起，延时内重新进入立即取消收起。
+- **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。展开/收起动画默认 200ms/180ms，遵守系统 Reduce Motion 设置。
+- **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 绝不擅自启动或停止系统音频捕获。
 
 #### 验收
 

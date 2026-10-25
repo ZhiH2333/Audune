@@ -256,15 +256,20 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `NOT TESTED` — Switching modes repeatedly creates no duplicate capture tasks.
 - [ ] `NOT TESTED` — Very small and large window sizes do not crash or draw invalid geometry.
 
-## F. Island (only after the Island milestone)
+## F. Island (Notch Island v1)
 
-- [ ] `NOT TESTED` — Notch location uses actual display geometry on a supported MacBook.
-- [ ] `NOT TESTED` — Collapsed state is compact and does not block normal menu-bar controls.
-- [ ] `NOT TESTED` — Hover expansion, click-to-pin, delayed collapse, and Escape behave correctly.
-- [ ] `NOT TESTED` — Opening/closing Island does not restart capture.
-- [ ] `NOT TESTED` — Built-in and external display switching recalculates location correctly.
-- [ ] `NOT TESTED` — On a no-notch display, Island is disabled or degrades as documented without covering unrelated system UI.
-- [ ] `NOT TESTED` — Full-screen applications do not cause stuck, invisible, or click-blocking windows.
+`IslandGeometryTests`, `IslandPreferencesTests`, `IslandStateMachineTests`, and `IslandWindowControllerTests` cover pure screen-geometry validation, multi-display fallback, symmetric compact bar rects, preferences persistence/clamping, state transitions (Disabled / Compact / Expanded / Pinned), delayed collapse cancellation, and offscreen panel flags. They do not verify physical notch alignment, real pointer hover, menu-bar click pass-through outside the compact frame, Spaces, or full-screen behavior on a real desktop. All rows below stay `NOT TESTED` until run in a real macOS GUI session.
+
+- [ ] `NOT TESTED` — Notch location uses actual display geometry (`safeAreaInsets.top` + `auxiliaryTopLeftArea` + `auxiliaryTopRightArea`) on a supported MacBook and blends cleanly with the camera housing.
+- [ ] `NOT TESTED` — Collapsed (Compact) state shows a symmetric live spectrum on both sides of the notch during playback, settles to a minimal static baseline during silence, keeps a fixed window width, and does not block normal menu-bar items or status-bar icons outside the compact wings.
+- [ ] `NOT TESTED` — Moving the pointer into the compact island smoothly expands the panel without jitter; moving out waits for the configured collapse delay and collapses; re-entering before the delay elapses cancels the collapse.
+- [ ] `NOT TESTED` — Clicking Pin in the expanded island keeps it open when the pointer leaves; clicking Unpin restores delayed collapse; pressing `Escape` or Collapse returns to Compact immediately.
+- [ ] `NOT TESTED` — Expanded state switches cleanly among Spectrum, Waveform, and Orbit, follows Appearance colors, and can open Studio or Settings (`Notch Island` pane) without stealing focus or showing a Dock icon.
+- [ ] `NOT TESTED` — Enabling, disabling, expanding, collapsing, or changing Notch Island settings never starts, stops, or restarts `ProcessTapSpike` capture.
+- [ ] `NOT TESTED` — Built-in and external display switching, resolution/scaling changes, and wake from sleep recalculate the island location or hide it cleanly when no notched display remains.
+- [ ] `NOT TESTED` — On a non-notched display (or clamshell mode with an external monitor only), Notch Island is disabled, hides its window, stops its display timer, and explains the requirement in the menu bar popover and Settings > Notch Island without covering the menu bar.
+- [ ] `NOT TESTED` — Switching desktop Spaces and entering/leaving full-screen applications (with "Show in full-screen apps" both off and on) do not leave stuck, invisible, or click-blocking windows.
+- [ ] `NOT TESTED` — Reduce Motion removes the expand/collapse frame animation when "Follow system Reduce Motion" is enabled while preserving the collapse delay.
 
 ## G. Desktop Magnet (only after the Magnet milestone)
 
