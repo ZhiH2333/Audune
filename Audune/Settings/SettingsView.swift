@@ -69,8 +69,8 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .navigationTitle(selection.title)
         }
-        .onChange(of: studio.currentPreferences()) { _, _ in
-            studio.savePreferences()
+        .onChange(of: model.prefs) { _, _ in
+            studio.preferencesDidChange()
         }
     }
 
@@ -89,56 +89,112 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var appearancePane: some View {
-        Section("Color") {
-            Picker("Color", selection: $model.accent) {
-                ForEach(StudioAccent.allCases) { accent in
-                    Text(accent.title).tag(accent)
+        Section("Preset") {
+            Picker("Preset", selection: presetBinding) {
+                ForEach(StudioAccent.allCases) { preset in
+                    Text(preset.title).tag(Optional(preset))
                 }
             }
             .pickerStyle(.segmented)
-            SettingsSlider(title: "Opacity", value: $model.backgroundOpacity, range: StudioPreferences.opacityRange, step: 0.01)
-            SettingsSlider(title: "Line width", value: $model.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+        }
+        Section("Colors") {
+            ColorPicker("Fill and line", selection: colorBinding(\.appearance.color), supportsOpacity: false)
+            ColorPicker("Stroke", selection: colorBinding(\.appearance.strokeColor), supportsOpacity: false)
+            SettingsSlider(title: "Opacity", value: $model.prefs.appearance.opacity, range: StudioPreferences.opacityRange, step: 0.01)
+            SettingsSlider(title: "Stroke width", value: $model.prefs.appearance.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
         }
         Section {
             Text("The Studio window background is always fully transparent. Opacity only changes the graphic.")
                 .foregroundStyle(.secondary)
-            Button("Reset All Studio Settings") { studio.resetPreferences() }
+            Button("Reset Appearance") { model.prefs.appearance = .standard }
         }
     }
 
     @ViewBuilder
     private var spectrumPane: some View {
         Section("Bars") {
-            barCountPicker
-            SettingsSlider(title: "Gap", value: $model.barGap, range: StudioPreferences.barGapRange, step: 0.5)
-            SettingsSlider(title: "Corner radius", value: $model.cornerRadius, range: StudioPreferences.cornerRadiusRange, step: 0.5)
-            Toggle("Bar stroke", isOn: $model.spectrumStroke)
+            Picker("Bars", selection: Binding(get: { model.prefs.spectrum.barCount }, set: { studio.setSpectrumBarCount($0) })) {
+                ForEach(StudioPreferences.barCounts, id: \.self) { count in
+                    Text("\(count)").tag(count)
+                }
+            }
+            Picker("Bands", selection: $model.prefs.spectrum.scale) {
+                ForEach(SpectrumScale.allCases) { scale in
+                    Text(scale.title).tag(scale)
+                }
+            }
+            .pickerStyle(.segmented)
+            SettingsSlider(title: "Low frequency (Hz)", value: $model.prefs.spectrum.minHz, range: StudioPreferences.minHzRange, step: 5, fractionDigits: 0)
+            SettingsSlider(title: "High frequency (Hz)", value: $model.prefs.spectrum.maxHz, range: StudioPreferences.maxHzRange, step: 100, fractionDigits: 0)
+            Text("Each bar reads real FFT bins. A bar narrower than one bin reads the bins on either side of it.")
+                .foregroundStyle(.secondary)
         }
-        responseSection
+        Section("Shape") {
+            SettingsSlider(title: "Gap", value: $model.prefs.spectrum.barGap, range: StudioPreferences.barGapRange, step: 0.5)
+            SettingsSlider(title: "Corner radius", value: $model.prefs.spectrum.cornerRadius, range: StudioPreferences.cornerRadiusRange, step: 0.5)
+            Toggle("Bar stroke", isOn: $model.prefs.spectrum.stroke)
+        }
+        Section("Response") {
+            SettingsSlider(title: "Sensitivity", value: $model.prefs.spectrum.sensitivity, range: StudioPreferences.sensitivityRange, step: 0.05)
+            SettingsSlider(title: "Amplitude", value: $model.prefs.spectrum.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
+            SettingsSlider(title: "Smoothing", value: $model.prefs.spectrum.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
+            SettingsSlider(title: "Attack (ms)", value: $model.prefs.spectrum.attackMs, range: StudioPreferences.attackMsRange, step: 5, fractionDigits: 0)
+            SettingsSlider(title: "Release (ms)", value: $model.prefs.spectrum.releaseMs, range: StudioPreferences.releaseMsRange, step: 10, fractionDigits: 0)
+        }
+        Section("Peaks") {
+            Toggle("Peak hold", isOn: $model.prefs.spectrum.peakHold)
+            SettingsSlider(title: "Hold time (s)", value: $model.prefs.spectrum.peakHoldSeconds, range: StudioPreferences.peakHoldSecondsRange, step: 0.1)
+                .disabled(model.prefs.spectrum.peakHold == false)
+        }
+        Section {
+            Button("Reset Spectrum") {
+                model.prefs.spectrum = .standard
+                studio.setSpectrumBarCount(SpectrumPreferences.standard.barCount)
+            }
+        }
     }
 
     @ViewBuilder
     private var waveformPane: some View {
-        Section {
+        Section("Line") {
             Text("Draws the real captured PCM samples.")
                 .foregroundStyle(.secondary)
+            SettingsSlider(title: "Line width", value: $model.prefs.waveform.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+            SettingsSlider(title: "Amplitude", value: $model.prefs.waveform.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
+            SettingsSlider(title: "Smoothing", value: $model.prefs.waveform.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
         }
-        responseSection
+        Section {
+            Button("Reset Waveform") { model.prefs.waveform = .standard }
+        }
     }
 
     @ViewBuilder
     private var orbitPane: some View {
         Section("Ring") {
-            barCountPicker
-            SettingsSlider(title: "Inner ring", value: $model.orbitInner, range: StudioPreferences.orbitInnerRange, step: 0.05)
+            Picker("Bars", selection: Binding(get: { model.prefs.orbit.barCount }, set: { studio.setOrbitBarCount($0) })) {
+                ForEach(StudioPreferences.barCounts, id: \.self) { count in
+                    Text("\(count)").tag(count)
+                }
+            }
+            SettingsSlider(title: "Inner ring", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
+            SettingsSlider(title: "Line width", value: $model.prefs.orbit.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
         }
-        responseSection
+        Section("Response") {
+            SettingsSlider(title: "Amplitude", value: $model.prefs.orbit.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
+            SettingsSlider(title: "Smoothing", value: $model.prefs.orbit.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
+        }
+        Section {
+            Button("Reset Orbit") {
+                model.prefs.orbit = .standard
+                studio.setOrbitBarCount(OrbitPreferences.standard.barCount)
+            }
+        }
     }
 
     @ViewBuilder
     private var windowPane: some View {
         Section("Window mode") {
-            Picker("Mode", selection: Binding(get: { model.windowMode }, set: { studio.setWindowMode($0) })) {
+            Picker("Mode", selection: Binding(get: { model.prefs.windowMode }, set: { studio.setWindowMode($0) })) {
                 ForEach(StudioWindowMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
@@ -182,23 +238,26 @@ struct SettingsView: View {
         .onAppear { studio.refreshPlaybackNow() }
     }
 
-    private var responseSection: some View {
-        Section("Response") {
-            SettingsSlider(title: "Amplitude", value: $model.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
-            SettingsSlider(title: "Smoothing", value: $model.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
-        }
+    private var presetBinding: Binding<StudioAccent?> {
+        Binding(
+            get: {
+                StudioAccent.matching(color: model.prefs.appearance.color, strokeColor: model.prefs.appearance.strokeColor)
+            },
+            set: { preset in
+                if let preset { model.prefs.appearance.apply(preset) }
+            }
+        )
     }
 
-    private var barCountPicker: some View {
-        Picker("Bars", selection: Binding(get: { model.barCount }, set: { studio.setBarCount($0) })) {
-            ForEach(StudioPreferences.barCounts, id: \.self) { count in
-                Text("\(count)").tag(count)
-            }
-        }
+    private func colorBinding(_ keyPath: WritableKeyPath<StudioPreferences, StudioColor>) -> Binding<Color> {
+        Binding(
+            get: { model.prefs[keyPath: keyPath].swiftUI },
+            set: { model.prefs[keyPath: keyPath] = StudioColor($0) }
+        )
     }
 
     private var windowModeDescription: String {
-        switch model.windowMode {
+        switch model.prefs.windowMode {
         case .onDesktop: return "On Desktop sits above the wallpaper and below ordinary windows."
         case .onTop: return "On Top stays above ordinary windows and can sit beside a full-screen app."
         case .asWindow: return "As Window behaves like an ordinary window and can be covered by others."
@@ -222,16 +281,17 @@ private struct SettingsSlider: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
     var step: Double
+    var fractionDigits = 2
 
     var body: some View {
         LabeledContent(title) {
             HStack {
                 Slider(value: $value, in: range, step: step)
                     .frame(minWidth: 160)
-                Text(value, format: .number.precision(.fractionLength(2)))
+                Text(value, format: .number.precision(.fractionLength(fractionDigits)))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .frame(width: 44, alignment: .trailing)
+                    .frame(width: 52, alignment: .trailing)
             }
         }
         .accessibilityElement(children: .combine)

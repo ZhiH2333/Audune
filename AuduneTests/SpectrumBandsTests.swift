@@ -48,6 +48,62 @@ final class SpectrumBandsTests: XCTestCase {
         )
     }
 
+    func testEveryBarReadsDifferentRealBinsAtCommonSampleRates() {
+        let bins = (0..<AudioSnapshot.binCount).map { 0.01 + Float($0) * 0.0015 }
+        for sampleRate in [44_100.0, 48_000.0, 96_000.0] {
+            for scale in SpectrumScale.allCases {
+                for count in counts {
+                    var layout = SpectrumBandLayout.standard
+                    layout.scale = scale
+                    let levels = SpectrumBands.levels(binMagnitudes: bins, sampleRate: sampleRate, count: count, layout: layout)
+
+                    XCTAssertEqual(levels.count, count)
+                    for index in 1..<count {
+                        XCTAssertNotEqual(
+                            levels[index], levels[index - 1], accuracy: 0.000_001,
+                            "bars \(index - 1) and \(index) repeat at \(sampleRate) Hz, \(scale), \(count) bars"
+                        )
+                    }
+                    XCTAssertTrue(levels.allSatisfy { $0 >= 0 && $0 <= 1 })
+                }
+            }
+        }
+    }
+
+    func testLinearScaleSpacesBarsEvenly() {
+        var layout = SpectrumBandLayout.standard
+        layout.scale = .linear
+        let first = SpectrumBands.binRange(sampleRate: 48_000, band: 0, count: 32, layout: layout)
+        let last = SpectrumBands.binRange(sampleRate: 48_000, band: 31, count: 32, layout: layout)
+
+        XCTAssertEqual(first.count, last.count, accuracy: 1)
+        let log = SpectrumBands.binRange(sampleRate: 48_000, band: 31, count: 32)
+        XCTAssertGreaterThan(log.count, SpectrumBands.binRange(sampleRate: 48_000, band: 0, count: 32).count)
+    }
+
+    func testFrequencyRangeLimitsWhichBarsMove() {
+        let tone = SpectrumAnalyzer(sampleRate: 48_000).process(sine(frequency: 8_000, amplitude: 0.5))
+        var layout = SpectrumBandLayout.standard
+        layout.maxHz = 4_000
+        let capped = SpectrumBands.levels(binMagnitudes: tone.binMagnitudes, sampleRate: 48_000, count: 32, layout: layout)
+        let full = SpectrumBands.levels(binMagnitudes: tone.binMagnitudes, sampleRate: 48_000, count: 32)
+
+        XCTAssertGreaterThan(full.max() ?? 0, 0.3)
+        XCTAssertLessThan(capped.max() ?? 1, (full.max() ?? 0) * 0.5, "8 kHz is outside a 4 kHz ceiling")
+    }
+
+    func testSensitivityMovesTheQuietEndOfTheWindow() {
+        let quiet = SpectrumAnalyzer(sampleRate: 48_000).process(sine(frequency: 1_000, amplitude: 0.002))
+        var sensitive = SpectrumBandLayout.standard
+        sensitive.floorDecibels = -80
+        var blunt = SpectrumBandLayout.standard
+        blunt.floorDecibels = -40
+        let high = SpectrumBands.levels(binMagnitudes: quiet.binMagnitudes, sampleRate: 48_000, count: 16, layout: sensitive)
+        let low = SpectrumBands.levels(binMagnitudes: quiet.binMagnitudes, sampleRate: 48_000, count: 16, layout: blunt)
+
+        XCTAssertGreaterThan(high.max() ?? 0, low.max() ?? 1)
+    }
+
     private func assertPeakCovers(frequency: Double, bands: [Float], count: Int, expected: Int) {
         let binHz = 48_000.0 / Double(SpectrumAnalyzer.fftLength)
         let bin = Int((frequency / binHz).rounded())

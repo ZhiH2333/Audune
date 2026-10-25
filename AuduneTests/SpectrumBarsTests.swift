@@ -62,6 +62,24 @@ final class SpectrumBarsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(quiet[1].minX - quiet[0].maxX, 9)
     }
 
+    func testPeakCapsSitAboveHigherPeaksInsideBounds() {
+        let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
+        let bars = SpectrumBars.bars(spectrum: [0.2, 0.5, 1], in: bounds, count: 3, gap: 4)
+        let caps = SpectrumBars.caps(peaks: [0.6, 0.5, 1], bars: bars, in: bounds)
+
+        XCTAssertEqual(caps.count, 1, "only the first bar has a peak above it")
+        XCTAssertLessThan(caps[0].maxY, bars[0].minY)
+        XCTAssertEqual(caps[0].minX, bars[0].minX)
+        XCTAssertEqual(caps[0].width, bars[0].width)
+        XCTAssertTrue(bounds.contains(caps[0]))
+
+        let full = SpectrumBars.caps(peaks: [1], bars: [CGRect(x: 0, y: 90, width: 10, height: 10)], in: bounds, amplitude: 3)
+        XCTAssertEqual(full.count, 1)
+        XCTAssertTrue(bounds.contains(full[0]))
+        XCTAssertTrue(SpectrumBars.caps(peaks: [.nan, .infinity], bars: bars, in: bounds).allSatisfy(bounds.contains))
+        XCTAssertTrue(SpectrumBars.caps(peaks: [1], bars: bars, in: .zero).isEmpty)
+    }
+
     func testEmptyOrInvalidBoundsProduceNoBars() {
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .zero).isEmpty)
         XCTAssertTrue(SpectrumBars.bars(spectrum: [1], in: .null).isEmpty)

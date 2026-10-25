@@ -5,19 +5,9 @@ import SwiftUI
 @Observable
 final class StudioModel {
     var snapshot = AudioSnapshot.zero
-    var studioSpectrum = Array(repeating: Float(0), count: StudioPreferences.standard.barCount)
-    var windowMode = StudioPreferences.standard.windowMode
-    var mode: StudioVisualMode = .spectrum
-    var backgroundOpacity = StudioPreferences.standard.backgroundOpacity
-    var accent: StudioAccent = .warm
-    var barCount = StudioPreferences.standard.barCount
-    var lineWidth = StudioPreferences.standard.lineWidth
-    var amplitude = StudioPreferences.standard.amplitude
-    var smoothing = StudioPreferences.standard.smoothing
-    var barGap = StudioPreferences.standard.barGap
-    var cornerRadius = StudioPreferences.standard.cornerRadius
-    var spectrumStroke = StudioPreferences.standard.spectrumStroke
-    var orbitInner = StudioPreferences.standard.orbitInner
+    var prefs = StudioPreferences.standard
+    var studioSpectrum = Array(repeating: Float(0), count: StudioPreferences.standard.spectrum.barCount)
+    var spectrumPeaks: [Float] = []
     var displayWaveform = AudioSnapshot.zero.waveform
     var playerID = ""
     var playbackAvailability: PlayerAvailability = .noSelection
@@ -122,9 +112,9 @@ struct StudioContentView: View {
                 StudioIconButton(
                     symbol: mode.symbol,
                     label: mode.title,
-                    selected: model.mode == mode
+                    selected: model.prefs.mode == mode
                 ) {
-                    model.mode = mode
+                    model.prefs.mode = mode
                     savePreferences()
                 }
             }
@@ -155,37 +145,41 @@ struct StudioContentView: View {
 
     @ViewBuilder
     private var visualization: some View {
-        switch model.mode {
+        let prefs = model.prefs
+        let fill = prefs.appearance.color.swiftUI
+        switch prefs.mode {
         case .spectrum:
             SpectrumCanvas(
                 spectrum: model.studioSpectrum,
+                peaks: model.spectrumPeaks,
                 drawsBars: drawsBars,
-                color: accentColor,
-                opacity: model.backgroundOpacity,
-                amplitude: model.amplitude,
-                lineWidth: model.lineWidth,
-                cornerRadius: model.cornerRadius,
-                barGap: model.barGap,
-                drawsStroke: model.spectrumStroke
+                color: fill,
+                strokeColor: prefs.appearance.strokeColor.swiftUI,
+                opacity: prefs.appearance.opacity,
+                amplitude: prefs.spectrum.amplitude,
+                lineWidth: prefs.appearance.lineWidth,
+                cornerRadius: prefs.spectrum.cornerRadius,
+                barGap: prefs.spectrum.barGap,
+                drawsStroke: prefs.spectrum.stroke
             )
         case .waveform:
             WaveformCanvas(
                 samples: model.displayWaveform,
-                color: accentColor,
-                opacity: model.backgroundOpacity,
-                amplitude: model.amplitude,
-                lineWidth: model.lineWidth,
-                smoothing: model.smoothing
+                color: fill,
+                opacity: prefs.appearance.opacity,
+                amplitude: prefs.waveform.amplitude,
+                lineWidth: prefs.waveform.lineWidth,
+                smoothing: prefs.waveform.smoothing
             )
         case .orbit:
             OrbitCanvas(
                 spectrum: model.studioSpectrum,
                 drawsLevels: drawsBars,
-                color: accentColor,
-                opacity: model.backgroundOpacity,
-                amplitude: model.amplitude,
-                lineWidth: model.lineWidth,
-                innerRatio: model.orbitInner
+                color: fill,
+                opacity: prefs.appearance.opacity,
+                amplitude: prefs.orbit.amplitude,
+                lineWidth: prefs.orbit.lineWidth,
+                innerRatio: prefs.orbit.inner
             )
         }
     }
@@ -228,10 +222,6 @@ struct StudioContentView: View {
 
     private var warmWhite: Color {
         Color(red: 0.96, green: 0.94, blue: 0.90)
-    }
-
-    private var accentColor: Color {
-        Color(red: model.accent.red, green: model.accent.green, blue: model.accent.blue)
     }
 
     private var failureLine: String {

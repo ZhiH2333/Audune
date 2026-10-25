@@ -42,6 +42,32 @@ nonisolated enum SpectrumBars {
         return rects
     }
 
+    /// Thin caps above bars whose held peak is higher than the bar. Always inside `bounds`.
+    static func caps(
+        peaks: [Float],
+        bars: [CGRect],
+        in bounds: CGRect,
+        amplitude: CGFloat = 1,
+        thickness: CGFloat = 2
+    ) -> [CGRect] {
+        guard isDrawable(bounds) else { return [] }
+        let gain = amplitude.isFinite ? max(amplitude, 0) : 1
+        let capHeight = min(max(thickness.isFinite ? thickness : 2, 0.5), bounds.height)
+        var caps: [CGRect] = []
+        for (index, bar) in bars.enumerated() where index < peaks.count {
+            let raw = peaks[index]
+            let level = raw.isFinite ? min(max(CGFloat(raw) * gain, 0), 1) : 0
+            let height = min(bounds.height, max(min(1, bounds.height), level * bounds.height))
+            guard height > bar.height + 0.5 else { continue }
+            let top = bounds.maxY - height
+            let y = min(max(bounds.minY, top - capHeight - 1), bounds.maxY - capHeight)
+            let rect = CGRect(x: bar.minX, y: y, width: bar.width, height: capHeight)
+            guard isDrawable(rect), bounds.contains(rect) else { continue }
+            caps.append(rect)
+        }
+        return caps
+    }
+
     static func baseline(in bounds: CGRect) -> CGRect {
         guard isDrawable(bounds) else { return .zero }
         let thickness = min(1, bounds.height)
@@ -56,8 +82,10 @@ nonisolated enum SpectrumBars {
 
 struct SpectrumCanvas: View {
     var spectrum: [Float]
+    var peaks: [Float] = []
     var drawsBars: Bool
     var color: Color
+    var strokeColor: Color
     var opacity: Double = 1
     var amplitude: Double = 1
     var lineWidth: Double = 1.5
@@ -77,6 +105,7 @@ struct SpectrumCanvas: View {
                     gap: CGFloat(barGap),
                     amplitude: CGFloat(amplitude)
                 )
+                let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
                 for rect in bars {
                     let radius = min(CGFloat(cornerRadius), rect.width / 2, rect.height / 2)
                     let path = Path(roundedRect: rect, cornerRadius: max(radius, 0))
@@ -84,10 +113,13 @@ struct SpectrumCanvas: View {
                     if drawsStroke {
                         context.stroke(
                             path,
-                            with: shade,
+                            with: outline,
                             style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                         )
                     }
+                }
+                for cap in SpectrumBars.caps(peaks: peaks, bars: bars, in: bounds, amplitude: CGFloat(amplitude)) {
+                    context.fill(Path(roundedRect: cap, cornerRadius: min(CGFloat(cornerRadius), cap.height / 2)), with: outline)
                 }
             } else {
                 let line = SpectrumBars.baseline(in: bounds)

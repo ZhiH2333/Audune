@@ -18,6 +18,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var smoothedStudio: [Float] = []
     private var smoothedWave: [Float] = []
     private var didShutdown = false
+    private var saveTask: Task<Void, Never>?
+    private var spectrumState = SpectrumDynamicsState()
+    private var lastTick: ContinuousClock.Instant?
 
     init(spike: ProcessTapSpike) {
         self.spike = spike
@@ -107,23 +110,37 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     func setWindowMode(_ mode: StudioWindowMode) {
-        model.windowMode = mode
+        model.prefs.windowMode = mode
         savePreferences()
         applyWindowMode()
     }
 
     func savePreferences() {
+        saveTask?.cancel()
+        saveTask = nil
         currentPreferences().save()
     }
 
-    func setBarCount(_ count: Int) {
-        let normalized = StudioPreferences.normalizedBarCount(count)
-        if model.barCount != normalized {
-            smoothedStudio = []
+    /// Slider drags call this on every tick; the write happens once the value settles.
+    func preferencesDidChange() {
+        saveTask?.cancel()
+        saveTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(200))
+            guard Task.isCancelled == false else { return }
+            self?.savePreferences()
         }
-        model.barCount = normalized
+    }
+
+    func setSpectrumBarCount(_ count: Int) {
+        model.prefs.spectrum.barCount = StudioPreferences.normalizedBarCount(count)
         savePreferences()
-        refreshStudioSpectrum()
+        refreshStudioSpectrum(dt: 0)
+    }
+
+    func setOrbitBarCount(_ count: Int) {
+        model.prefs.orbit.barCount = StudioPreferences.normalizedBarCount(count)
+        savePreferences()
+        refreshStudioSpectrum(dt: 0)
     }
 
     func setChromeVisible(_ visible: Bool) {
@@ -134,8 +151,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         StudioPreferences.reset()
         smoothedStudio = []
         smoothedWave = []
+        spectrumState = SpectrumDynamicsState()
         apply(StudioPreferences.standard)
-        refreshStudioSpectrum()
+        refreshStudioSpectrum(dt: 0)
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -235,9 +253,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func applyWindowMode() {
         let frame = panel.frame
         let visible = panel.isVisible
-        panel.isFloatingPanel = StudioWindowBehavior.isFloatingPanel(for: model.windowMode)
-        panel.level = StudioWindowBehavior.level(for: model.windowMode)
-        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior(for: model.windowMode)
+        panel.isFloatingPanel = StudioWindowBehavior.isFloatingPanel(for: model.prefs.windowMode)
+        panel.level = StudioWindowBehavior.level(for: model.prefs.windowMode)
+        panel.collectionBehavior = StudioWindowBehavior.collectionBehavior(for: model.prefs.windowMode)
         panel.hidesOnDeactivate = false
         if panel.frame != frame {
             panel.setFrame(frame, display: visible)
@@ -248,39 +266,16 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func apply(_ preferences: StudioPreferences) {
-        model.mode = preferences.mode
-        model.windowMode = preferences.windowMode
-        model.backgroundOpacity = preferences.backgroundOpacity
-        model.accent = preferences.accent
-        model.barCount = preferences.barCount
-        model.lineWidth = preferences.lineWidth
-        model.amplitude = preferences.amplitude
-        model.smoothing = preferences.smoothing
-        model.barGap = preferences.barGap
-        model.cornerRadius = preferences.cornerRadius
-        model.spectrumStroke = preferences.spectrumStroke
-        model.orbitInner = preferences.orbitInner
-        if model.studioSpectrum.count != preferences.barCount {
-            model.studioSpectrum = Array(repeating: 0, count: preferences.barCount)
+        model.prefs = preferences
+        let count = preferences.spectrum.barCount
+        if model.studioSpectrum.count != count {
+            model.studioSpectrum = Array(repeating: 0, count: count)
         }
         applyWindowMode()
     }
 
     func currentPreferences() -> StudioPreferences {
-        StudioPreferences(
-            mode: model.mode,
-            windowMode: model.windowMode,
-            backgroundOpacity: model.backgroundOpacity,
-            accent: model.accent,
-            barCount: model.barCount,
-            lineWidth: model.lineWidth,
-            amplitude: model.amplitude,
-            smoothing: model.smoothing,
-            barGap: model.barGap,
-            cornerRadius: model.cornerRadius,
-            spectrumStroke: model.spectrumStroke,
-            orbitInner: model.orbitInner
-        )
+        model.prefs
     }
 
     private func refreshPointerInside() {
@@ -290,20 +285,42 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func refreshStudioSpectrum() {
-        let count = model.barCount
-        let levels = SpectrumBands.levels(
-            binMagnitudes: model.snapshot.binMagnitudes,
-            sampleRate: model.snapshot.sampleRate,
-            count: count
-        )
-        smoothedStudio = SpectrumBands.displayMix(
-            current: smoothedStudio,
-            toward: levels,
-            count: count,
-            smoothing: Float(model.smoothing)
-        )
-        model.studioSpectrum = smoothedStudio
+    private func refreshStudioSpectrum(dt: Double) {
+        let prefs = model.prefs
+        switch prefs.mode {
+        case .spectrum:
+            let levels = SpectrumBands.levels(
+                binMagnitudes: model.snapshot.binMagnitudes,
+                sampleRate: model.snapshot.sampleRate,
+                count: prefs.spectrum.barCount,
+                layout: prefs.spectrum.layout
+            )
+            spectrumState = SpectrumDynamics.step(
+                state: spectrumState,
+                target: levels,
+                dt: dt,
+                settings: prefs.spectrum.dynamics
+            )
+            model.studioSpectrum = spectrumState.levels
+            model.spectrumPeaks = prefs.spectrum.peakHold ? spectrumState.peaks : []
+        case .orbit:
+            let count = prefs.orbit.barCount
+            let levels = SpectrumBands.levels(
+                binMagnitudes: model.snapshot.binMagnitudes,
+                sampleRate: model.snapshot.sampleRate,
+                count: count
+            )
+            smoothedStudio = SpectrumBands.displayMix(
+                current: smoothedStudio,
+                toward: levels,
+                count: count,
+                smoothing: Float(prefs.orbit.smoothing)
+            )
+            model.studioSpectrum = smoothedStudio
+            model.spectrumPeaks = []
+        case .waveform:
+            break
+        }
     }
 
     private func selectedPlayer() -> (any PlayerControlling)? {
@@ -386,7 +403,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         smoothedWave = WaveformPath.mix(
             current: smoothedWave,
             toward: model.snapshot.waveform,
-            smoothing: Float(model.smoothing)
+            smoothing: Float(model.prefs.waveform.smoothing)
         )
         model.displayWaveform = smoothedWave
     }
@@ -402,6 +419,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func startDisplayTimer() {
         guard timer == nil else { return }
+        lastTick = nil
         tick()
         let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             self?.tickFromTimer()
@@ -422,9 +440,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func tick() {
+        let now = ContinuousClock.now
+        let dt = lastTick.map { Double((now - $0).components.seconds) + Double((now - $0).components.attoseconds) / 1e18 } ?? 0
+        lastTick = now
         model.snapshot = spike.snapshots.load()
         refreshPointerInside()
-        refreshStudioSpectrum()
+        refreshStudioSpectrum(dt: dt)
         refreshWaveform()
     }
 }

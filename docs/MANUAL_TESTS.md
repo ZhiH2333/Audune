@@ -192,6 +192,15 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Hiding Studio from Settings or the menu bar leaves Settings open. Show Studio brings Studio back.
 - [ ] `NOT TESTED` — The sidebar lists Appearance, Spectrum, Waveform, Orbit, Window, and Playback; every control changes Studio immediately and survives relaunch.
 
+### Studio v1.4 Appearance and Spectrum
+
+`StudioPreferencesTests`, `SpectrumBandsTests`, `SpectrumDynamicsTests`, and `SpectrumBarsTests` use synthetic bins and values. They check migration, ranges, that adjacent bars do not repeat a value, motion math, and peak-cap geometry. They do not judge appearance or real playback. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — Appearance presets, the two color pickers, opacity, and stroke width change Studio immediately and survive relaunch. The window around the graphic stays transparent.
+- [ ] `NOT TESTED` — Spectrum bar counts 8 to 64 follow real playback; Logarithmic and Linear look different; low and high frequency limits move which bars react.
+- [ ] `NOT TESTED` — Sensitivity, amplitude, smoothing, attack, release, and peak hold change the motion. Silence settles to the baseline. The menu bar stays at 16 bars.
+- [ ] `NOT TESTED` — Reset Appearance and Reset Spectrum restore their defaults only. Changing these settings does not start a second Process Tap.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

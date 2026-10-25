@@ -314,18 +314,18 @@ final class StudioWindowBehaviorTests: XCTestCase {
         let controller = StudioWindowController(spike: spike)
         defer { controller.shutdown() }
 
-        controller.setBarCount(64)
+        controller.setSpectrumBarCount(64)
         controller.setChromeVisible(false)
 
         XCTAssertEqual(spike.phase, .idle)
-        XCTAssertEqual(controller.model.barCount, 64)
+        XCTAssertEqual(controller.model.prefs.spectrum.barCount, 64)
         XCTAssertEqual(controller.model.studioSpectrum.count, 64)
         XCTAssertFalse(controller.inspectWindowForTests().hasShadow)
         XCTAssertFalse(controller.inspectWindowForTests().ignoresMouseEvents)
         XCTAssertEqual(controller.inspectWindowForTests().collectionBehavior, StudioWindowBehavior.collectionBehavior(for: .onTop))
 
-        controller.setBarCount(3)
-        XCTAssertEqual(controller.model.barCount, 32)
+        controller.setSpectrumBarCount(3)
+        XCTAssertEqual(controller.model.prefs.spectrum.barCount, 32)
         XCTAssertEqual(spike.phase, .idle)
     }
 }

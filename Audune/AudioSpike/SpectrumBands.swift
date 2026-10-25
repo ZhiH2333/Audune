@@ -1,10 +1,23 @@
 import Foundation
 
-/// Log-band levels from linear FFT bin magnitudes.
+/// How Studio bars cut up the FFT bins. The menu bar's 16 bands are separate and unchanged.
+nonisolated struct SpectrumBandLayout: Equatable {
+    var scale: SpectrumScale
+    var minHz: Double
+    var maxHz: Double
+    /// Level that maps to an empty bar. Louder than 0 dBFS always maps to a full bar.
+    var floorDecibels: Float
+
+    static let standard = SpectrumBandLayout(scale: .log, minHz: 40, maxHz: 16_000, floorDecibels: -60)
+}
+
+/// Band levels from linear FFT bin magnitudes.
 /// Callers choose the band count. This does not repeat or interpolate a 16-band spectrum.
+/// A band wider than one bin averages its bins. A band narrower than one bin reads the real
+/// bins on either side of its center, so neighboring low bands do not show a copied value.
 nonisolated enum SpectrumBands {
-    static let minimumHz = 40.0
-    static let maximumHzCap = 16_000.0
+    static let minimumHz = SpectrumBandLayout.standard.minHz
+    static let maximumHzCap = SpectrumBandLayout.standard.maxHz
     static let attack: Float = 0.65
     static let release: Float = 0.18
 
@@ -12,6 +25,7 @@ nonisolated enum SpectrumBands {
         binMagnitudes: [Float],
         sampleRate: Double,
         count: Int,
+        layout: SpectrumBandLayout = .standard,
         fftLength: Int = SpectrumAnalyzer.fftLength
     ) -> [Float] {
         guard count > 0 else { return [] }
@@ -20,35 +34,52 @@ nonisolated enum SpectrumBands {
         }
         let binHz = sampleRate / Double(fftLength)
         let nyquistBin = fftLength / 2
-        let maximumHz = min(maximumHzCap, sampleRate / 2)
-        guard maximumHz > minimumHz, binHz.isFinite, binHz > 0 else {
+        let range = effectiveRange(layout: layout, sampleRate: sampleRate, binHz: binHz)
+        guard range.upperBound > range.lowerBound, binHz.isFinite, binHz > 0 else {
             return Array(repeating: 0, count: count)
         }
 
         var levels = [Float]()
         levels.reserveCapacity(count)
         for band in 0..<count {
-            let range = binRange(band: band, count: count, binHz: binHz, nyquistBin: nyquistBin, maximumHz: maximumHz)
-            var sum: Float = 0
-            var used = 0
-            for bin in range {
-                let raw = bin < binMagnitudes.count ? binMagnitudes[bin] : 0
-                sum += raw.isFinite && raw > 0 ? raw : 0
-                used += 1
+            let startHz = edgeHz(band, count: count, layout: layout, range: range)
+            let endHz = edgeHz(band + 1, count: count, layout: layout, range: range)
+            let magnitude: Float
+            if (endHz - startHz) / binHz >= 1 {
+                magnitude = averagedMagnitude(
+                    binMagnitudes,
+                    range: binRange(startHz: startHz, endHz: endHz, binHz: binHz, nyquistBin: nyquistBin)
+                )
+            } else {
+                magnitude = interpolatedMagnitude(
+                    binMagnitudes,
+                    position: (startHz + endHz) / 2 / binHz,
+                    nyquistBin: nyquistBin
+                )
             }
-            let mean = used > 0 ? sum / Float(used) : 0
-            levels.append(normalized(mean))
+            levels.append(normalized(magnitude, floorDecibels: layout.floorDecibels))
         }
         return levels
     }
 
-    /// FFT bins averaged into one log band. Adjacent low bands can share a bin.
-    static func binRange(sampleRate: Double, band: Int, count: Int, fftLength: Int = SpectrumAnalyzer.fftLength) -> Range<Int> {
+    /// FFT bins averaged into one band. Used when the band is at least one bin wide.
+    static func binRange(
+        sampleRate: Double,
+        band: Int,
+        count: Int,
+        layout: SpectrumBandLayout = .standard,
+        fftLength: Int = SpectrumAnalyzer.fftLength
+    ) -> Range<Int> {
         guard count > 0, band >= 0, band < count, sampleRate.isFinite, sampleRate >= 80, fftLength > 1 else { return 0..<0 }
         let binHz = sampleRate / Double(fftLength)
-        let maximumHz = min(maximumHzCap, sampleRate / 2)
-        guard maximumHz > minimumHz, binHz.isFinite, binHz > 0 else { return 0..<0 }
-        return binRange(band: band, count: count, binHz: binHz, nyquistBin: fftLength / 2, maximumHz: maximumHz)
+        let range = effectiveRange(layout: layout, sampleRate: sampleRate, binHz: binHz)
+        guard range.upperBound > range.lowerBound, binHz.isFinite, binHz > 0 else { return 0..<0 }
+        return binRange(
+            startHz: edgeHz(band, count: count, layout: layout, range: range),
+            endHz: edgeHz(band + 1, count: count, layout: layout, range: range),
+            binHz: binHz,
+            nyquistBin: fftLength / 2
+        )
     }
 
     /// Studio display mix. `smoothing` 0 follows the new frame; 1 moves slowly.
@@ -96,24 +127,65 @@ nonisolated enum SpectrumBands {
         return result
     }
 
-    private static func binRange(band: Int, count: Int, binHz: Double, nyquistBin: Int, maximumHz: Double) -> Range<Int> {
-        let startHz = edgeHz(band, count: count, maximumHz: maximumHz)
-        let endHz = edgeHz(band + 1, count: count, maximumHz: maximumHz)
+    /// The lowest bar starts no lower than the first FFT bin; bin 0 is not a frequency band.
+    private static func effectiveRange(layout: SpectrumBandLayout, sampleRate: Double, binHz: Double) -> ClosedRange<Double> {
+        let requested = layout.minHz.isFinite ? layout.minHz : SpectrumBandLayout.standard.minHz
+        let low = max(requested, binHz, 1)
+        let highRequest = layout.maxHz.isFinite ? layout.maxHz : SpectrumBandLayout.standard.maxHz
+        let high = min(highRequest, sampleRate / 2)
+        return low...max(high, low)
+    }
+
+    private static func binRange(startHz: Double, endHz: Double, binHz: Double, nyquistBin: Int) -> Range<Int> {
         let startBin = max(Int(floor(startHz / binHz)), 1)
         let endBin = min(max(Int(ceil(endHz / binHz)), startBin + 1), nyquistBin)
         guard startBin < endBin else { return 0..<0 }
         return startBin..<endBin
     }
 
-    private static func edgeHz(_ band: Int, count: Int, maximumHz: Double) -> Double {
-        guard count > 0, maximumHz > minimumHz else { return minimumHz }
-        return minimumHz * pow(maximumHz / minimumHz, Double(band) / Double(count))
+    private static func averagedMagnitude(_ bins: [Float], range: Range<Int>) -> Float {
+        var sum: Float = 0
+        var used = 0
+        for bin in range {
+            let raw = bin < bins.count ? bins[bin] : 0
+            sum += raw.isFinite && raw > 0 ? raw : 0
+            used += 1
+        }
+        return used > 0 ? sum / Float(used) : 0
     }
 
-    private static func normalized(_ magnitude: Float) -> Float {
+    private static func interpolatedMagnitude(_ bins: [Float], position: Double, nyquistBin: Int) -> Float {
+        guard position.isFinite else { return 0 }
+        let clamped = min(max(position, 1), Double(nyquistBin - 1))
+        let lower = Int(floor(clamped))
+        let fraction = Float(clamped - Double(lower))
+        let a = magnitude(bins, at: lower)
+        let b = magnitude(bins, at: lower + 1)
+        return a + (b - a) * fraction
+    }
+
+    private static func magnitude(_ bins: [Float], at index: Int) -> Float {
+        guard index >= 0, index < bins.count else { return 0 }
+        let raw = bins[index]
+        return raw.isFinite && raw > 0 ? raw : 0
+    }
+
+    private static func edgeHz(_ band: Int, count: Int, layout: SpectrumBandLayout, range: ClosedRange<Double>) -> Double {
+        guard count > 0 else { return range.lowerBound }
+        let position = Double(band) / Double(count)
+        switch layout.scale {
+        case .log:
+            return range.lowerBound * pow(range.upperBound / range.lowerBound, position)
+        case .linear:
+            return range.lowerBound + (range.upperBound - range.lowerBound) * position
+        }
+    }
+
+    private static func normalized(_ magnitude: Float, floorDecibels: Float) -> Float {
         let safe = magnitude.isFinite && magnitude > 0 ? magnitude : 0
+        let floor = floorDecibels.isFinite && floorDecibels < -1 ? floorDecibels : -60
         let decibels = 20 * log10(safe + 1e-7)
-        let value = (decibels + 60) / 60
+        let value = (decibels - floor) / -floor
         guard value.isFinite else { return 0 }
         return min(max(value, 0), 1)
     }
