@@ -263,7 +263,7 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `NOT TESTED` — In On Top, On Desktop, and As Window, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
 - [ ] `NOT TESTED` — Hiding Studio, or switching away, leaves no invisible control or resize overlay. A saved "passthrough off" value does not bring the full-window hit target back.
 - [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves, the controls fade following the hide delay (default 0.8 seconds). Returning before the delay cancels the hide. Clicks, dragging, resizing, and an open menu keep the controls up.
-- [ ] `NOT TESTED` — Hidden controls do not receive clicks. With passthrough on, moving into the bottom-edge summon region (or the grip, if that option is selected) shows the controls again. Hovering where a hidden button used to be is not required. Clicking the grip while the controls are hidden shows them and does not drag.
+- [ ] `NOT TESTED` — The drag handle stays visible and can move the window while the other buttons are hidden. Moving the pointer near that handle shows the icon-and-text buttons. Moving away hides those buttons again. Hidden buttons do not receive clicks.
 - [ ] `NOT TESTED` — Auto-hide off keeps the controls visible. Reduce Motion removes the fade and does not remove the hide delay. A missing preference key does not reset the other window settings.
 
 ## E. Visualizers

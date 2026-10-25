@@ -19,7 +19,7 @@ final class StudioModel {
     var pointerInside = false
     var pointerDown = false
     var menuTracking = false
-    var chromeVisible = true
+    var chromeVisible = false
     var isShown = false
 }
 
@@ -33,7 +33,7 @@ struct StudioContentView: View {
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var gripHovering = false
-    @State private var hide = StudioChromeHide()
+    @State private var hide = StudioChromeHide.concealed
     @State private var now = Date().timeIntervalSinceReferenceDate
     @State private var hideTask: Task<Void, Never>?
 
@@ -60,7 +60,7 @@ struct StudioContentView: View {
             hitMap.gripFramesTopLeft = frames
         }
         .onChange(of: model.pointerInside) { _, inside in
-            if inside || model.isShown == false {
+            if inside {
                 cancelHide()
             } else if model.pointerDown == false && model.menuTracking == false {
                 beginHideCountdown()
@@ -89,9 +89,11 @@ struct StudioContentView: View {
         }
         .onChange(of: model.isShown) { _, shown in
             if shown == false {
+                concealControls()
+            } else if model.pointerInside {
                 cancelHide()
-            } else if model.pointerInside == false && model.pointerDown == false && model.menuTracking == false {
-                beginHideCountdown()
+            } else if model.pointerDown == false && model.menuTracking == false {
+                concealControls()
             }
         }
         .onChange(of: showsChrome) { _, visible in
@@ -99,10 +101,12 @@ struct StudioContentView: View {
             setChromeVisible(visible)
         }
         .onAppear {
-            hitMap.chromeVisible = showsChrome
-            if model.pointerInside == false {
-                beginHideCountdown()
+            if model.pointerInside {
+                cancelHide()
+            } else {
+                concealControls()
             }
+            hitMap.chromeVisible = showsChrome
             setChromeVisible(showsChrome)
         }
     }
@@ -125,25 +129,25 @@ struct StudioContentView: View {
     private var bar: some View {
         HStack(spacing: 4) {
             grip
-            StudioTextButton(
+            StudioControlButton(
                 title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
+                symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
                 disabled: playbackDisabled,
                 accessibilityLabel: "Play or pause",
-                accessibilityValue: model.playbackDetail
-            ) {
-                togglePlayback()
-            }
+                accessibilityValue: model.playbackDetail,
+                action: togglePlayback
+            )
             ForEach(StudioVisualMode.allCases) { mode in
-                StudioIconButton(
+                StudioControlButton(
+                    title: mode.title,
                     symbol: mode.symbol,
-                    label: mode.title,
                     selected: model.prefs.mode == mode
                 ) {
                     model.prefs.mode = mode
                     savePreferences()
                 }
             }
-            StudioIconButton(symbol: "gearshape", label: "Settings", selected: false, action: openSettings)
+            StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
         }
         .frame(height: StudioChrome.barHeight)
     }
@@ -240,10 +244,17 @@ struct StudioContentView: View {
         return .easeOut(duration: duration)
     }
 
+    private func concealControls() {
+        hideTask?.cancel()
+        hideTask = nil
+        hide = .concealed
+        now = StudioChromeMotion.hideDelaySeconds
+    }
+
     private func beginHideCountdown() {
         hideTask?.cancel()
         guard model.isShown else {
-            hide.cancel()
+            concealControls()
             return
         }
         let exit = Date().timeIntervalSinceReferenceDate
@@ -291,38 +302,11 @@ struct StudioContentView: View {
     }
 }
 
-private struct StudioIconButton: View {
-    var symbol: String
-    var label: String
-    var selected: Bool
-    var action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 26, height: 22)
-                .background {
-                    if hovering || selected {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(selected ? 0.22 : 0.16))
-                    }
-                }
-        }
-        .buttonStyle(StudioPlainButtonStyle(showsFill: selected))
-        .onHover { hovering = $0 }
-        .help(label)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .studioControlRegion()
-    }
-}
-
-private struct StudioTextButton: View {
+struct StudioControlButton: View {
     var title: String
+    var symbol: String
+    var selected: Bool = false
     var disabled: Bool = false
-    var highlighted: Bool = false
     var accessibilityLabel: String?
     var accessibilityValue: String?
     var action: () -> Void
@@ -330,22 +314,28 @@ private struct StudioTextButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background {
-                    if hovering || highlighted {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(0.16))
-                    }
+            HStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background {
+                if hovering || selected {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(selected ? 0.22 : 0.16))
                 }
+            }
         }
-        .buttonStyle(StudioPlainButtonStyle(showsFill: highlighted))
+        .buttonStyle(StudioPlainButtonStyle(showsFill: selected))
         .disabled(disabled)
         .onHover { hovering = $0 }
+        .help(title)
         .accessibilityLabel(accessibilityLabel ?? title)
         .accessibilityValue(accessibilityValue ?? "")
+        .accessibilityAddTraits(selected ? .isSelected : [])
         .studioControlRegion()
     }
 }

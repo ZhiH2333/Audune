@@ -75,6 +75,13 @@ nonisolated enum StudioChrome {
 
 /// One hide countdown. `cancel` or a newer `arm` makes the previous token stale.
 struct StudioChromeHide: Equatable {
+    /// Hidden until the pointer comes close. A nil exit still means visible.
+    static var concealed: StudioChromeHide {
+        var value = StudioChromeHide()
+        _ = value.arm(at: 0, autoHides: true, engaged: false)
+        return value
+    }
+
     private(set) var generation = 0
     private(set) var exitedAt: TimeInterval?
 

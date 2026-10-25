@@ -316,16 +316,11 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Controls") {
-            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The summon region stays visible so the buttons can come back. Resize edges stay active only while resizing is allowed.")
+            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear only while the pointer is near them.")
                 .foregroundStyle(.secondary)
             Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
             SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)
-            Picker("Summon region", selection: $model.prefs.window.summonRegion) {
-                ForEach(StudioSummonRegion.allCases) { region in
-                    Text(region.title).tag(region)
-                }
-            }
-            Text("Move the pointer into the summon region to show the controls. Hidden buttons do not receive clicks. Reduce Motion removes the fade.")
+            Text("Hidden buttons do not receive clicks. Reduce Motion removes the fade.")
                 .foregroundStyle(.secondary)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
             Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)

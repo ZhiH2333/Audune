@@ -869,10 +869,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func applyHiddenInteractionSizeIfNeeded() {
         guard model.chromeVisible == false else { return }
-        interactionContentSize = StudioChrome.hiddenContentSize(
-            region: model.prefs.window.summonRegion,
-            visualWidth: panel.frame.width
-        )
+        interactionContentSize = CGSize(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
     }
 
     private func clearInteractionState() {

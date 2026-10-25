@@ -232,7 +232,7 @@ final class StudioPassthroughGripView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        if chromeVisible && allowsDrag {
+        if allowsDrag {
             onDrag()
         } else {
             onSummon()
@@ -252,14 +252,19 @@ struct StudioInteractionRoot: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            StudioPassthroughGrip(
-                chromeVisible: model.chromeVisible,
-                allowsDrag: model.prefs.window.allowsDrag,
-                onDrag: drag,
-                onSummon: summon
-            )
+            ZStack {
+                StudioPassthroughGrip(
+                    chromeVisible: model.chromeVisible,
+                    allowsDrag: model.prefs.window.allowsDrag,
+                    onDrag: drag,
+                    onSummon: summon
+                )
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 12, weight: .semibold))
+                    .allowsHitTesting(false)
+            }
             .frame(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
-            .accessibilityLabel("Show Studio controls")
+            .accessibilityLabel("Drag Studio")
             if model.chromeVisible {
                 if spike.phase == .failed {
                     Text(spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText)
@@ -267,23 +272,32 @@ struct StudioInteractionRoot: View {
                         .lineLimit(2)
                         .frame(width: 160, alignment: .leading)
                 }
-                Button(PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState)) {
-                    togglePlayback()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Play or pause")
+                StudioControlButton(
+                    title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
+                    symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
+                    disabled: PlaybackButton.isEnabled(
+                        selection: model.playerID,
+                        availability: model.playbackAvailability,
+                        busy: model.playbackBusy
+                    ) == false,
+                    accessibilityLabel: "Play or pause",
+                    accessibilityValue: model.playbackDetail,
+                    action: togglePlayback
+                )
                 ForEach(StudioVisualMode.allCases) { mode in
-                    Button(mode.title) {
+                    StudioControlButton(
+                        title: mode.title,
+                        symbol: mode.symbol,
+                        selected: model.prefs.mode == mode
+                    ) {
                         model.prefs.mode = mode
                         savePreferences()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(mode.title)
                 }
-                Button("Settings", action: openSettings)
-                    .buttonStyle(.plain)
+                StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
             }
         }
+        .foregroundStyle(Color(red: 0.96, green: 0.94, blue: 0.90))
         .fixedSize()
         .background {
             GeometryReader { proxy in

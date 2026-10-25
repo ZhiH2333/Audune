@@ -140,6 +140,19 @@ enum PlaybackButton {
         return availability == .ready
     }
 
+    static func symbol(availability: PlayerAvailability, state: PlayerPlaybackState) -> String {
+        switch availability {
+        case .ready:
+            return state == .playing ? "pause.fill" : "play.fill"
+        case .checking:
+            return "arrow.triangle.2.circlepath"
+        case .failed, .automationDenied:
+            return "exclamationmark.triangle"
+        default:
+            return "play.fill"
+        }
+    }
+
     static func title(availability: PlayerAvailability, state: PlayerPlaybackState) -> String {
         switch availability {
         case .noSelection:

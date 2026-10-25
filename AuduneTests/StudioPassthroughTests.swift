@@ -105,14 +105,8 @@ final class StudioPassthroughTests: XCTestCase {
         controller.setChromeVisible(false)
         let hidden = controller.inspectPassthroughForTests()
         XCTAssertFalse(hidden.interactionFrame.contains(CGPoint(x: visual.midX, y: visual.midY)))
-        XCTAssertGreaterThan(hidden.interactionFrame.width, StudioChrome.gripWidth + 24)
-        XCTAssertLessThan(hidden.interactionFrame.height, visual.height / 2)
-
-        controller.model.prefs.window.summonRegion = .grip
-        controller.applyWindowPreferences()
-        let grip = controller.inspectPassthroughForTests()
-        XCTAssertLessThanOrEqual(grip.interactionFrame.width, StudioChrome.gripWidth + 24)
-        XCTAssertFalse(grip.interactionFrame.contains(CGPoint(x: visual.midX, y: visual.midY)))
+        XCTAssertLessThanOrEqual(hidden.interactionFrame.width, StudioChrome.gripWidth + 24)
+        XCTAssertLessThanOrEqual(hidden.interactionFrame.height, StudioChrome.gripHeight + 24)
 
         controller.hide()
         XCTAssertFalse(controller.inspectPassthroughForTests().interactionVisible)
