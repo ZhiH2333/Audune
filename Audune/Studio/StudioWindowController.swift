@@ -11,6 +11,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var timer: Timer?
     private var playbackTimer: Timer?
     private let players: [any PlayerControlling] = [MusicPlayerController(), SpotifyPlayerController()]
+    /// Set by the owner of the Settings window. Studio never owns that window.
+    var openSettings: (() -> Void)?
     private var screenObserver: NSObjectProtocol?
     private var pointerMonitor: Any?
     private var smoothedStudio: [Float] = []
@@ -32,11 +34,16 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel.isVisible }
 
+    var playerChoices: [PlayerChoice] {
+        players.map { PlayerChoice(id: $0.id, title: $0.displayName) }
+    }
+
     func show() {
         clampOntoVisibleScreen()
         applyWindowMode()
         refreshPointerInside()
         panel.orderFrontRegardless()
+        model.isShown = true
         startDisplayTimer()
         startPlaybackTimer()
     }
@@ -45,6 +52,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         stopDisplayTimer()
         stopPlaybackTimer()
         panel.orderOut(nil)
+        model.isShown = false
+    }
+
+    func refreshPlaybackNow() {
+        refreshPlayback()
     }
 
     func toggle() {
@@ -69,6 +81,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
         stopPlaybackTimer()
         panel.orderOut(nil)
+        model.isShown = false
     }
 
     func setPlayerID(_ id: String) {
@@ -166,27 +179,14 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         let root = StudioContentView(
             spike: spike,
             model: model,
-            setWindowMode: { [weak self] mode in
-                self?.setWindowMode(mode)
-            },
             savePreferences: { [weak self] in
                 self?.savePreferences()
             },
-            resetPreferences: { [weak self] in
-                self?.resetPreferences()
-            },
-            close: { [weak self] in
-                self?.hide()
-            },
-            setBarCount: { [weak self] count in
-                self?.setBarCount(count)
+            openSettings: { [weak self] in
+                self?.openSettings?()
             },
             setChromeVisible: { [weak self] visible in
                 self?.setChromeVisible(visible)
-            },
-            playerChoices: players.map { PlayerChoice(id: $0.id, title: $0.displayName) },
-            setPlayerID: { [weak self] id in
-                self?.setPlayerID(id)
             },
             togglePlayback: { [weak self] in
                 self?.togglePlayback()
@@ -266,7 +266,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         applyWindowMode()
     }
 
-    private func currentPreferences() -> StudioPreferences {
+    func currentPreferences() -> StudioPreferences {
         StudioPreferences(
             mode: model.mode,
             windowMode: model.windowMode,

@@ -182,6 +182,16 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Resizing from the four edges and four corners works, keeps the visual border transparent, and stops at the minimum size.
 - [ ] `NOT TESTED` — Position and size restore after relaunch and stay on a visible screen.
 
+### Studio v1.4 Settings window
+
+`SettingsWindowTests` checks the window style mask, level, collection behavior, and sizes only. They do not show the window on a desktop. These rows stay `NOT TESTED`.
+
+- [ ] `NOT TESTED` — The Studio bar shows only the grip, Play/Pause, Spectrum, Waveform, Orbit, and Settings. The window around the graphic stays fully transparent.
+- [ ] `NOT TESTED` — The Settings button and the menu-bar `Settings…` item open one Settings window of about 760x600 that can be resized and keeps its frame after relaunch.
+- [ ] `NOT TESTED` — Settings stays an ordinary window under On Desktop, On Top, and As Window. Record whether an On Top Studio covers it.
+- [ ] `NOT TESTED` — Hiding Studio from Settings or the menu bar leaves Settings open. Show Studio brings Studio back.
+- [ ] `NOT TESTED` — The sidebar lists Appearance, Spectrum, Waveform, Orbit, Window, and Playback; every control changes Studio immediately and survives relaunch.
+
 ## E. Visualizers
 
 - [ ] `PASS` — Spectrum responds to changes in audio frequency and energy. This was the menu bar only: left bars tracked 80 Hz and a separated bar tracked 4 kHz. Studio draws those same 16 bands, but that window was not part of this recorded session and stays `NOT TESTED`.

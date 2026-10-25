@@ -198,14 +198,15 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 屏幕断开、分辨率变化、保存坐标在屏幕之外时，窗口恢复到当前可见屏幕。
 - 首版不做鼠标穿透。空白区域的点击落到 Studio 的 hosting view 上，不开始拖动，也不挖给下层应用。窗口边缘仍把命中交回系统以便缩放。公开 API 没有按区域挖洞的鼠标遮罩。`ignoresMouseEvents` 是整窗开关，打开后会同时失去按钮、把手和缩放，因此不使用。以后若要穿透，需要单独的可视化窗口和控件窗口，并提供显式开关和恢复交互的办法。
 - Studio 窗口始终透明。不绘制整窗背景、暗色遮罩、大卡片、毛玻璃、整窗矩形描边或窗口阴影。透明来自 `isOpaque = false` 和清除的窗口背景，不是把填充色调成接近桌面。
-- 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏是可视化模式、设置、窗口模式和把手。隐藏放在设置里。底栏没有整条底板。按钮默认没有底色，只在悬停、按下或焦点时使用局部圆角底。设置展开后显示 Start/Stop、颜色、可视化透明度、线条粗细、振幅、平滑、Spectrum 的间距、圆角和柱体描边、Orbit 的内环、柱数、Reset 和 Hide。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
+- 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、播放/暂停、三个可视化模式按钮和 Settings 按钮。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
+- Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Spectrum、Waveform、Orbit、Window、Playback，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
 - 只有把手调用屏幕坐标的 `setFrameOrigin` 拖动。控件隐藏后仍保留把手矩形，隐藏只关闭命中。拖动在 `.eventTracking` 中读取鼠标屏幕位置；同一次按下还会用 local monitor 接住拖动事件。空白区域、按钮和设置滑块不拖动窗口。不使用 `performDrag(with:)` 或 `isMovableByWindowBackground`。`performDrag(with:)` 在这个无边框 nonactivating panel 上会立刻结束，并留下 `Window move completed without beginning`，窗口并不移动。
 - 鼠标进入窗口后只淡入这些控件，淡入约 200ms。离开窗口并离开 8pt 边缘后，等待约 400ms 再以约 250ms 淡出。光标仍在窗口内或正在移向控件时不开始隐藏。鼠标按下或设置展开时不隐藏。显示定时器会按鼠标屏幕位置纠正误报的离开。系统开启 Reduce Motion 时，淡入淡出改为即时，离开延迟仍保留。控件显隐不移动可视化，也不停止音频分析。
 - 已保存的 `studio.cleanCanvas` 不再改变外观。保存偏好时清除该键。没有整块背景可恢复。
 - Studio 的 Spectrum 和 Orbit 可选 8、12、16、24、32、48、64 根柱，默认 32。柱数来自同一次 FFT 的 512 个 bin 幅度做对数聚合，不把菜单栏的 16 个值复制或插值成更多柱。48 kHz 时低端多条可能共享同一个 bin。菜单栏保持 16 柱，仍读取分析器平滑后的 `spectrum`。调整柱数不重建 Process Tap，也不在实时回调里做 FFT。
 - Waveform 使用真实 PCM。默认再乘约 3 的显示增益和用户振幅，使常见音量离开中线；平滑只混合相邻样本和前后帧。Orbit 使用同一份真实频带，默认画在内半径约 0.55 的环上，静音时停在环上，不自转。
 - `studio.backgroundOpacity` 仍保存在 0.35–1，默认 0.92。它只乘到 Studio 三种可视化的颜色上，不填充窗口，菜单栏频谱也不读取它。
-- 底栏可以选择一个播放器。未选择、未安装、未运行或 Automation 被拒绝时，播放按钮禁用，不向任何应用发送命令。Apple Music 和 Spotify 各有一个适配器，都使用公开 Apple Event `playpause` 和 `player state`。一次只选中一个。这不是 `MPRemoteCommandCenter`，Audune 也不注册远程命令。不控制浏览器。Release 沙盒没有 Apple Events entitlement，本项只在 macOS Debug 下能弹出授权。
+- 播放器在 Settings 的 Playback 页选择，底栏只有播放/暂停按钮。未选择、未安装、未运行或 Automation 被拒绝时，播放按钮禁用，不向任何应用发送命令。Apple Music 和 Spotify 各有一个适配器，都使用公开 Apple Event `playpause` 和 `player state`。一次只选中一个。这不是 `MPRemoteCommandCenter`，Audune 也不注册远程命令。不控制浏览器。Release 沙盒没有 Apple Events entitlement，本项只在 macOS Debug 下能弹出授权。
 - 拖动、缩放、多桌面、全屏、窗口是否真正透明，以及播放控制是否真的生效，必须在真实 Mac 上看到后才算通过。单元测试里的坐标计算、窗口标志、状态解析和合成鼠标事件不能代替这些验收。
 
 #### 验收

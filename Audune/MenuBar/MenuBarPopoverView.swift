@@ -18,6 +18,7 @@ struct MenuBarPopoverView: View {
     var start: () -> Void
     var stop: () -> Void
     var toggleStudio: () -> Void
+    var openSettings: () -> Void
     var openDebug: () -> Void
     var quit: () -> Void
 
@@ -42,6 +43,7 @@ struct MenuBarPopoverView: View {
                     .disabled(model.stopDisabled)
             }
             Button(model.studioVisible ? "Hide Studio" : "Open Studio", action: toggleStudio)
+            Button("Settings\u{2026}", action: openSettings)
             Button("Open Debug Window", action: openDebug)
             Divider()
             Button("Quit Audune", action: quit)

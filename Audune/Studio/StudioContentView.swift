@@ -26,23 +26,18 @@ final class StudioModel {
     var playbackBusy = false
     var pointerInside = false
     var pointerDown = false
+    var isShown = false
 }
 
 struct StudioContentView: View {
     @Bindable var spike: ProcessTapSpike
     @Bindable var model: StudioModel
-    var setWindowMode: (StudioWindowMode) -> Void
     var savePreferences: () -> Void
-    var resetPreferences: () -> Void
-    var close: () -> Void
-    var setBarCount: (Int) -> Void
+    var openSettings: () -> Void
     var setChromeVisible: (Bool) -> Void
-    var playerChoices: [PlayerChoice]
-    var setPlayerID: (String) -> Void
     var togglePlayback: () -> Void
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showsAppearance = false
     @State private var gripHovering = false
     @State private var exitedAt: TimeInterval?
     @State private var now = Date().timeIntervalSinceReferenceDate
@@ -70,34 +65,17 @@ struct StudioContentView: View {
         .onPreferenceChange(StudioGripFramesKey.self) { frames in
             hitMap.gripFramesTopLeft = frames
         }
-        .onChange(of: model.mode) { _, _ in savePreferences() }
-        .onChange(of: model.accent) { _, _ in savePreferences() }
-        .onChange(of: model.backgroundOpacity) { _, _ in savePreferences() }
-        .onChange(of: model.lineWidth) { _, _ in savePreferences() }
-        .onChange(of: model.amplitude) { _, _ in savePreferences() }
-        .onChange(of: model.smoothing) { _, _ in savePreferences() }
-        .onChange(of: model.barGap) { _, _ in savePreferences() }
-        .onChange(of: model.cornerRadius) { _, _ in savePreferences() }
-        .onChange(of: model.spectrumStroke) { _, _ in savePreferences() }
-        .onChange(of: model.orbitInner) { _, _ in savePreferences() }
         .onChange(of: model.pointerInside) { _, inside in
             if inside {
                 cancelHide()
-            } else if model.pointerDown == false, showsAppearance == false {
+            } else if model.pointerDown == false {
                 beginHideCountdown()
             }
         }
         .onChange(of: model.pointerDown) { _, down in
             if down {
                 hideTask?.cancel()
-            } else if model.pointerInside == false, showsAppearance == false {
-                beginHideCountdown()
-            }
-        }
-        .onChange(of: showsAppearance) { _, open in
-            if open {
-                hideTask?.cancel()
-            } else if model.pointerInside == false, model.pointerDown == false {
+            } else if model.pointerInside == false {
                 beginHideCountdown()
             }
         }
@@ -107,7 +85,7 @@ struct StudioContentView: View {
         }
         .onAppear {
             hitMap.chromeVisible = showsChrome
-            if model.pointerInside == false, showsAppearance == false {
+            if model.pointerInside == false {
                 beginHideCountdown()
             }
             setChromeVisible(showsChrome)
@@ -125,37 +103,13 @@ struct StudioContentView: View {
                     .frame(width: 220, alignment: .leading)
                     .studioControlRegion()
             }
-            if showsAppearance {
-                appearance
-            }
             bar
         }
     }
 
     private var bar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             grip
-            Picker("Mode", selection: $model.mode) {
-                ForEach(StudioVisualMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityLabel("Mode")
-            .studioControlRegion()
-            Picker("Player", selection: Binding(get: { model.playerID }, set: setPlayerID)) {
-                Text("None").tag("")
-                ForEach(playerChoices) { choice in
-                    Text(choice.title).tag(choice.id)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityLabel("Player")
-            .studioControlRegion()
             StudioTextButton(
                 title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
                 disabled: playbackDisabled,
@@ -164,22 +118,17 @@ struct StudioContentView: View {
             ) {
                 togglePlayback()
             }
-            StudioTextButton(title: showsAppearance ? "Done" : "Settings") {
-                showsAppearance.toggle()
-            }
-            Picker("Window", selection: Binding(
-                get: { model.windowMode },
-                set: { setWindowMode($0) }
-            )) {
-                ForEach(StudioWindowMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
+            ForEach(StudioVisualMode.allCases) { mode in
+                StudioIconButton(
+                    symbol: mode.symbol,
+                    label: mode.title,
+                    selected: model.mode == mode
+                ) {
+                    model.mode = mode
+                    savePreferences()
                 }
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityLabel("Window mode")
-            .studioControlRegion()
+            StudioIconButton(symbol: "gearshape", label: "Settings", selected: false, action: openSettings)
         }
         .frame(height: StudioChrome.barHeight)
     }
@@ -202,78 +151,6 @@ struct StudioContentView: View {
         .onHover { gripHovering = $0 }
         .accessibilityLabel("Drag Studio")
         .studioGripRegion()
-    }
-
-    private var appearance: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                StudioTextButton(title: "Start", disabled: startDisabled) {
-                    Task { await spike.start() }
-                }
-                StudioTextButton(title: "Stop", disabled: stopDisabled) {
-                    spike.stop()
-                }
-            }
-            Picker("Color", selection: $model.accent) {
-                ForEach(StudioAccent.allCases) { accent in
-                    Text(accent.title).tag(accent)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Color")
-            .studioControlRegion()
-            HStack(spacing: 8) {
-                Text("Opacity")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(warmWhite.opacity(0.72))
-                Slider(value: $model.backgroundOpacity, in: StudioPreferences.opacityRange)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Opacity")
-            .studioControlRegion()
-            settingSlider("Line", value: $model.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
-            settingSlider("Amplitude", value: $model.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
-            settingSlider("Smooth", value: $model.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
-            if showsBarCount {
-                HStack(spacing: 8) {
-                    Text("Bars")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(warmWhite.opacity(0.72))
-                    Text("\(model.barCount)")
-                        .font(.system(size: 11, weight: .medium).monospacedDigit())
-                        .frame(width: 24, alignment: .trailing)
-                    Slider(
-                        value: Binding(
-                            get: { Double(barIndex) },
-                            set: { raw in
-                                let index = min(max(Int(raw.rounded()), 0), StudioPreferences.barCounts.count - 1)
-                                setBarCount(StudioPreferences.barCounts[index])
-                            }
-                        ),
-                        in: 0...Double(StudioPreferences.barCounts.count - 1),
-                        step: 1
-                    )
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Bar count")
-                .studioControlRegion()
-            }
-            if model.mode == .spectrum {
-                settingSlider("Gap", value: $model.barGap, range: StudioPreferences.barGapRange, step: 0.5)
-                settingSlider("Corner", value: $model.cornerRadius, range: StudioPreferences.cornerRadiusRange, step: 0.5)
-                Toggle("Bar stroke", isOn: $model.spectrumStroke)
-                    .font(.system(size: 11, weight: .medium))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .studioControlRegion()
-            }
-            if model.mode == .orbit {
-                settingSlider("Ring", value: $model.orbitInner, range: StudioPreferences.orbitInnerRange, step: 0.05)
-            }
-            StudioTextButton(title: "Reset", action: resetPreferences)
-            StudioTextButton(title: "Hide", action: close)
-        }
-        .frame(width: 220, alignment: .leading)
     }
 
     @ViewBuilder
@@ -317,7 +194,7 @@ struct StudioContentView: View {
         StudioChrome.isVisible(
             pointerInside: model.pointerInside,
             pointerDown: model.pointerDown,
-            holdsChrome: showsAppearance,
+            holdsChrome: false,
             now: now,
             exitedAt: exitedAt
         )
@@ -327,32 +204,6 @@ struct StudioContentView: View {
         let duration = StudioChromeMotion.fadeSeconds(hiding: showsChrome == false, reduceMotion: reduceMotion)
         guard duration > 0 else { return nil }
         return .easeOut(duration: duration)
-    }
-
-    private var showsBarCount: Bool {
-        model.mode == .spectrum || model.mode == .orbit
-    }
-
-    private var barIndex: Int {
-        StudioPreferences.barCounts.firstIndex(of: model.barCount) ?? 2
-    }
-
-    private func settingSlider(
-        _ title: String,
-        value: Binding<Double>,
-        range: ClosedRange<Double>,
-        step: Double
-    ) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(warmWhite.opacity(0.72))
-                .frame(width: 68, alignment: .leading)
-            Slider(value: value, in: range, step: step)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .studioControlRegion()
     }
 
     private func beginHideCountdown() {
@@ -389,14 +240,6 @@ struct StudioContentView: View {
         return "\(primary) \(spike.statusText)"
     }
 
-    private var startDisabled: Bool {
-        spike.phase == .starting || spike.phase == .running
-    }
-
-    private var stopDisabled: Bool {
-        spike.phase == .idle
-    }
-
     private var playbackDisabled: Bool {
         PlaybackButton.isEnabled(
             selection: model.playerID,
@@ -410,6 +253,34 @@ struct StudioContentView: View {
     }
 }
 
+private struct StudioIconButton: View {
+    var symbol: String
+    var label: String
+    var selected: Bool
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 26, height: 22)
+                .background {
+                    if hovering || selected {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.white.opacity(selected ? 0.22 : 0.16))
+                    }
+                }
+        }
+        .buttonStyle(StudioPlainButtonStyle(showsFill: selected))
+        .onHover { hovering = $0 }
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .studioControlRegion()
+    }
+}
+
 private struct StudioTextButton: View {
     var title: String
     var disabled: Bool = false
@@ -418,7 +289,6 @@ private struct StudioTextButton: View {
     var accessibilityValue: String?
     var action: () -> Void
     @State private var hovering = false
-    @FocusState private var focused: Bool
 
     var body: some View {
         Button(action: action) {
@@ -427,7 +297,7 @@ private struct StudioTextButton: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background {
-                    if hovering || focused || highlighted {
+                    if hovering || highlighted {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .fill(Color.white.opacity(0.16))
                     }
@@ -435,8 +305,6 @@ private struct StudioTextButton: View {
         }
         .buttonStyle(StudioPlainButtonStyle(showsFill: highlighted))
         .disabled(disabled)
-        .focusable()
-        .focused($focused)
         .onHover { hovering = $0 }
         .accessibilityLabel(accessibilityLabel ?? title)
         .accessibilityValue(accessibilityValue ?? "")

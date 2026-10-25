@@ -33,6 +33,14 @@ nonisolated enum StudioVisualMode: String, CaseIterable, Identifiable {
         case .orbit: return "Orbit"
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .spectrum: return "chart.bar.fill"
+        case .waveform: return "waveform"
+        case .orbit: return "circle.dotted"
+        }
+    }
 }
 
 nonisolated enum StudioWindowMode: String, CaseIterable, Identifiable {
