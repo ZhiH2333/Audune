@@ -28,14 +28,10 @@ struct StudioContentView: View {
     @Bindable var model: StudioModel
     var savePreferences: () -> Void
     var openSettings: () -> Void
-    var setChromeVisible: (Bool) -> Void
     var togglePlayback: () -> Void
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var gripHovering = false
-    @State private var hide = StudioChromeHide.concealed
-    @State private var now = Date().timeIntervalSinceReferenceDate
-    @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -52,62 +48,18 @@ struct StudioContentView: View {
         .foregroundStyle(warmWhite)
         .preferredColorScheme(.dark)
         .coordinateSpace(name: StudioCoordinateSpace.name)
-        .animation(chromeAnimation, value: showsChrome)
+        .animation(chromeAnimation, value: model.chromeVisible)
         .onPreferenceChange(StudioControlFramesKey.self) { frames in
             hitMap.controlFramesTopLeft = frames
         }
         .onPreferenceChange(StudioGripFramesKey.self) { frames in
             hitMap.gripFramesTopLeft = frames
         }
-        .onChange(of: model.pointerInside) { _, inside in
-            if inside {
-                cancelHide()
-            } else if model.pointerDown == false && model.menuTracking == false {
-                beginHideCountdown()
-            }
-        }
-        .onChange(of: model.pointerDown) { _, down in
-            if down || model.menuTracking {
-                cancelHide()
-            } else if model.pointerInside == false {
-                beginHideCountdown()
-            }
-        }
-        .onChange(of: model.menuTracking) { _, tracking in
-            if tracking || model.pointerDown {
-                cancelHide()
-            } else if model.pointerInside == false {
-                beginHideCountdown()
-            }
-        }
-        .onChange(of: model.prefs.window.autoHidesControls) { _, hides in
-            if hides == false || model.pointerInside || model.pointerDown || model.menuTracking {
-                cancelHide()
-            } else {
-                beginHideCountdown()
-            }
-        }
-        .onChange(of: model.isShown) { _, shown in
-            if shown == false {
-                concealControls()
-            } else if model.pointerInside {
-                cancelHide()
-            } else if model.pointerDown == false && model.menuTracking == false {
-                concealControls()
-            }
-        }
-        .onChange(of: showsChrome) { _, visible in
+        .onChange(of: model.chromeVisible) { _, visible in
             hitMap.chromeVisible = visible
-            setChromeVisible(visible)
         }
         .onAppear {
-            if model.pointerInside {
-                cancelHide()
-            } else {
-                concealControls()
-            }
-            hitMap.chromeVisible = showsChrome
-            setChromeVisible(showsChrome)
+            hitMap.chromeVisible = model.chromeVisible
         }
     }
 
@@ -221,62 +173,15 @@ struct StudioContentView: View {
         }
     }
 
-    private var showsChrome: Bool {
-        StudioChrome.isVisible(
-            pointerInside: model.pointerInside,
-            pointerDown: model.pointerDown,
-            holdsChrome: model.menuTracking,
-            now: now,
-            exitedAt: hide.exitedAt,
-            hideDelay: model.prefs.window.hideDelaySeconds,
-            autoHides: model.prefs.window.autoHidesControls
-        )
-    }
-
     private var chromeAnimation: Animation? {
         let duration = StudioChromeMotion.fadeSeconds(
-            hiding: showsChrome == false,
+            hiding: model.chromeVisible == false,
             reduceMotion: reduceMotion,
             animates: model.prefs.window.animatesChrome,
             followsReduceMotion: model.prefs.window.followsReduceMotion
         )
         guard duration > 0 else { return nil }
         return .easeOut(duration: duration)
-    }
-
-    private func concealControls() {
-        hideTask?.cancel()
-        hideTask = nil
-        hide = .concealed
-        now = StudioChromeMotion.hideDelaySeconds
-    }
-
-    private func beginHideCountdown() {
-        hideTask?.cancel()
-        guard model.isShown else {
-            concealControls()
-            return
-        }
-        let exit = Date().timeIntervalSinceReferenceDate
-        now = exit
-        guard let token = hide.arm(
-            at: exit,
-            autoHides: model.prefs.window.autoHidesControls,
-            engaged: model.pointerDown || model.menuTracking
-        ) else { return }
-        let delay = model.prefs.window.hideDelaySeconds
-        hideTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(delay))
-            guard Task.isCancelled == false, hide.isCurrent(token) else { return }
-            now = exit + delay
-        }
-    }
-
-    private func cancelHide() {
-        hideTask?.cancel()
-        hideTask = nil
-        hide.cancel()
-        now = Date().timeIntervalSinceReferenceDate
     }
 
     private var warmWhite: Color {
@@ -320,6 +225,7 @@ struct StudioControlButton: View {
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
             }
+            .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background {

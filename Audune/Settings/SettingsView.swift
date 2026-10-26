@@ -316,10 +316,9 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Controls") {
-            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear only while the pointer is near them.")
+            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear when the pointer is near and hide after 3 seconds without it.")
                 .foregroundStyle(.secondary)
             Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
-            SettingsSlider(title: "Hide delay (s)", value: $model.prefs.window.hideDelaySeconds, range: StudioPreferences.hideDelayRange, step: 0.1)
             Text("Hidden buttons do not receive clicks. Reduce Motion removes the fade.")
                 .foregroundStyle(.secondary)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)

@@ -3,7 +3,7 @@ import Foundation
 
 nonisolated enum StudioChromeMotion {
     static let revealSeconds = 0.20
-    static let hideDelaySeconds = 0.80
+    static let hideDelaySeconds = 3.0
     static let hideSeconds = 0.25
 
     /// `reduceMotion` is the system setting. It only matters while `followsReduceMotion` is on.
@@ -25,12 +25,22 @@ nonisolated enum StudioChrome {
     static let gripHeight: CGFloat = 22
     /// Keeps the controls up while the pointer is on the edge, moving toward them.
     static let pointerSlop: CGFloat = 8
+    /// How close the pointer must be before the buttons fade in.
+    static let controlProximity: CGFloat = 40
+    /// Once the buttons are visible, they stay until the pointer is at least this far outside them.
+    static let controlLeaveDistance: CGFloat = 120
 
-    static func pointerIsInside(windowFrame: CGRect, cursor: CGPoint) -> Bool {
+    static func pointerKeepsControls(controlFrame: CGRect, cursor: CGPoint, controlsVisible: Bool) -> Bool {
+        let margin = controlsVisible ? controlLeaveDistance : controlProximity
+        return pointerIsInside(windowFrame: controlFrame, cursor: cursor, slop: margin)
+    }
+
+    static func pointerIsInside(windowFrame: CGRect, cursor: CGPoint, slop: CGFloat = pointerSlop) -> Bool {
         guard windowFrame.width.isFinite, windowFrame.height.isFinite, windowFrame.width > 0, windowFrame.height > 0,
               cursor.x.isFinite, cursor.y.isFinite
         else { return false }
-        return windowFrame.insetBy(dx: -pointerSlop, dy: -pointerSlop).contains(cursor)
+        let margin = slop.isFinite && slop >= 0 ? slop : pointerSlop
+        return windowFrame.insetBy(dx: -margin, dy: -margin).contains(cursor)
     }
 
     static func isVisible(

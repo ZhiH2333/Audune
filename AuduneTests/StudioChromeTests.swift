@@ -40,7 +40,7 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: true), 0)
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true), 0)
         XCTAssertEqual(StudioChromeMotion.revealSeconds, 0.20, accuracy: 0.000_1)
-        XCTAssertEqual(StudioChromeMotion.hideDelaySeconds, 0.80, accuracy: 0.000_1)
+        XCTAssertEqual(StudioChromeMotion.hideDelaySeconds, 3, accuracy: 0.000_1)
         XCTAssertEqual(StudioChromeMotion.hideSeconds, 0.25, accuracy: 0.000_1)
     }
 
@@ -52,7 +52,7 @@ final class StudioChromeTests: XCTestCase {
             pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.2, exitedAt: 10, hideDelay: 0.1
         ))
         XCTAssertFalse(StudioChrome.isVisible(
-            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10.8, exitedAt: 10, hideDelay: .nan
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 10 + StudioChromeMotion.hideDelaySeconds, exitedAt: 10, hideDelay: .nan
         ))
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: false, reduceMotion: false, animates: false), 0)
         XCTAssertEqual(StudioChromeMotion.fadeSeconds(hiding: true, reduceMotion: true, animates: true, followsReduceMotion: true), 0)
@@ -73,6 +73,24 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: 80, y: 140)))
         XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: frame, cursor: CGPoint(x: CGFloat.nan, y: 140)))
         XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: .zero, cursor: CGPoint(x: 1, y: 1)))
+    }
+
+    func testProximityStaysAroundTheControls() {
+        let window = CGRect(x: 0, y: 0, width: 640, height: 400)
+        let grip = CGRect(x: 306, y: 8, width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
+        let center = CGPoint(x: window.midX, y: window.midY)
+        let beside = CGPoint(x: grip.midX, y: grip.maxY + 24)
+        XCTAssertTrue(window.contains(center))
+        XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: grip, cursor: center, slop: StudioChrome.controlProximity))
+        XCTAssertTrue(StudioChrome.pointerIsInside(windowFrame: grip, cursor: beside, slop: StudioChrome.controlProximity))
+        XCTAssertFalse(StudioChrome.pointerIsInside(windowFrame: grip, cursor: beside))
+        XCTAssertEqual(StudioChrome.controlProximity, 40)
+        let stillNear = CGPoint(x: grip.midX, y: grip.maxY + 80)
+        let gone = CGPoint(x: grip.midX, y: grip.maxY + 150)
+        XCTAssertTrue(StudioChrome.pointerKeepsControls(controlFrame: grip, cursor: stillNear, controlsVisible: true))
+        XCTAssertFalse(StudioChrome.pointerKeepsControls(controlFrame: grip, cursor: gone, controlsVisible: true))
+        XCTAssertFalse(StudioChrome.pointerKeepsControls(controlFrame: grip, cursor: stillNear, controlsVisible: false))
+        XCTAssertEqual(StudioChrome.controlLeaveDistance, 120)
     }
 
     func testCanvasFrameStaysPutWhenChromeHides() {
@@ -119,7 +137,7 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertFalse(hide.isCurrent(first ?? 0))
         XCTAssertTrue(hide.isCurrent(armed ?? 0))
         XCTAssertFalse(StudioChrome.isVisible(
-            pointerInside: false, pointerDown: false, holdsChrome: false, now: 12.8, exitedAt: hide.exitedAt
+            pointerInside: false, pointerDown: false, holdsChrome: false, now: 12 + StudioChromeMotion.hideDelaySeconds, exitedAt: hide.exitedAt
         ))
         XCTAssertTrue(StudioChrome.isVisible(
             pointerInside: false, pointerDown: true, holdsChrome: false, now: 12.8, exitedAt: hide.exitedAt

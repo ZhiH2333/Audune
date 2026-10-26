@@ -20,6 +20,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var screenObserver: NSObjectProtocol?
     private var menuObservers: [NSObjectProtocol] = []
     private var pointerMonitor: Any?
+    private var lastNearAt: TimeInterval = 0
     private var smoothedStudio: [Float] = []
     private var smoothedWave: [Float] = []
     private var didShutdown = false
@@ -330,9 +331,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             openSettings: { [weak self] in
                 self?.openSettings?()
             },
-            setChromeVisible: { [weak self] visible in
-                self?.setChromeVisible(visible)
-            },
             togglePlayback: { [weak self] in
                 self?.togglePlayback()
             },
@@ -340,9 +338,6 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         )
         let host = StudioHostingView(rootView: root)
         host.hitMap = hitMap
-        host.onPointerInside = { [weak self] inside in
-            self?.model.pointerInside = inside
-        }
         panel.contentView = host
         hitMap.onWindowFrameChanged = { [weak self] in
             self?.syncPassthroughWindows()
@@ -437,10 +432,28 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     private func refreshPointerInside() {
+        // Control tracking can swallow the mouse-up the local monitor waits for.
+        if model.pointerDown, NSEvent.pressedMouseButtons & 1 == 0 {
+            model.pointerDown = false
+        }
         let frame = interactionPanel?.frame ?? .zero
-        let inside = StudioChrome.pointerIsInside(windowFrame: frame, cursor: NSEvent.mouseLocation)
+        let inside = StudioChrome.pointerKeepsControls(
+            controlFrame: frame,
+            cursor: NSEvent.mouseLocation,
+            controlsVisible: model.chromeVisible
+        )
         if model.pointerInside != inside {
             model.pointerInside = inside
+        }
+        let now = Date().timeIntervalSinceReferenceDate
+        if inside || model.pointerDown {
+            lastNearAt = now
+        }
+        let wantsVisible = model.prefs.window.autoHidesControls == false
+            || inside || model.pointerDown
+            || now - lastNearAt < StudioChromeMotion.hideDelaySeconds
+        if model.chromeVisible != wantsVisible {
+            setChromeVisible(wantsVisible)
         }
     }
 

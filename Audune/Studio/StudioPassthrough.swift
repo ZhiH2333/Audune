@@ -190,7 +190,11 @@ final class StudioInteractionHostingView<Content: View>: NSHostingView<Content> 
             onPointerInside?(false)
             return
         }
-        onPointerInside?(StudioChrome.pointerIsInside(windowFrame: window.frame, cursor: NSEvent.mouseLocation))
+        onPointerInside?(StudioChrome.pointerIsInside(
+            windowFrame: window.frame,
+            cursor: NSEvent.mouseLocation,
+            slop: StudioChrome.controlLeaveDistance
+        ))
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -249,6 +253,7 @@ struct StudioInteractionRoot: View {
     var drag: () -> Void
     var summon: () -> Void
     var onContentSize: (CGSize) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 4) {
@@ -266,38 +271,12 @@ struct StudioInteractionRoot: View {
             .frame(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
             .accessibilityLabel("Drag Studio")
             if model.chromeVisible {
-                if spike.phase == .failed {
-                    Text(spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText)
-                        .font(.system(size: 11))
-                        .lineLimit(2)
-                        .frame(width: 160, alignment: .leading)
-                }
-                StudioControlButton(
-                    title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
-                    symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
-                    disabled: PlaybackButton.isEnabled(
-                        selection: model.playerID,
-                        availability: model.playbackAvailability,
-                        busy: model.playbackBusy
-                    ) == false,
-                    accessibilityLabel: "Play or pause",
-                    accessibilityValue: model.playbackDetail,
-                    action: togglePlayback
-                )
-                ForEach(StudioVisualMode.allCases) { mode in
-                    StudioControlButton(
-                        title: mode.title,
-                        symbol: mode.symbol,
-                        selected: model.prefs.mode == mode
-                    ) {
-                        model.prefs.mode = mode
-                        savePreferences()
-                    }
-                }
-                StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
+                revealedButtons
+                    .transition(.opacity)
             }
         }
         .foregroundStyle(Color(red: 0.96, green: 0.94, blue: 0.90))
+        .animation(buttonFade, value: model.chromeVisible)
         .fixedSize()
         .background {
             GeometryReader { proxy in
@@ -308,6 +287,51 @@ struct StudioInteractionRoot: View {
                     }
             }
         }
+    }
+
+    private var revealedButtons: some View {
+        HStack(spacing: 4) {
+            if spike.phase == .failed {
+                Text(spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText)
+                    .font(.system(size: 11))
+                    .lineLimit(2)
+                    .frame(width: 160, alignment: .leading)
+            }
+            StudioControlButton(
+                title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
+                symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
+                disabled: PlaybackButton.isEnabled(
+                    selection: model.playerID,
+                    availability: model.playbackAvailability,
+                    busy: model.playbackBusy
+                ) == false,
+                accessibilityLabel: "Play or pause",
+                accessibilityValue: model.playbackDetail,
+                action: togglePlayback
+            )
+            ForEach(StudioVisualMode.allCases) { mode in
+                StudioControlButton(
+                    title: mode.title,
+                    symbol: mode.symbol,
+                    selected: model.prefs.mode == mode
+                ) {
+                    model.prefs.mode = mode
+                    savePreferences()
+                }
+            }
+            StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
+        }
+    }
+
+    private var buttonFade: Animation? {
+        let duration = StudioChromeMotion.fadeSeconds(
+            hiding: model.chromeVisible == false,
+            reduceMotion: reduceMotion,
+            animates: model.prefs.window.animatesChrome,
+            followsReduceMotion: model.prefs.window.followsReduceMotion
+        )
+        guard duration > 0 else { return nil }
+        return .easeOut(duration: duration)
     }
 }
 

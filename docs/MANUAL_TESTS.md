@@ -233,7 +233,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Turning off "Allow dragging by the grip" stops the grip from moving the window; turning it on restores dragging.
 - [ ] `NOT TESTED` — Turning off "Allow resizing from the edges" stops edge resizing; turning it on restores it.
 - [ ] `NOT TESTED` — "Restore position and size at launch" off opens Studio centered at the default size; on restores the last frame. Reset Position and Size recenters at the default size on a visible screen.
-- [ ] `NOT TESTED` — Hide delay, fade on/off, and Follow system Reduce Motion change the control fade as described. Studio never gets a window background.
+- [ ] `NOT TESTED` — Fade on/off and Follow system Reduce Motion change the control fade as described. There is no hide-delay slider; buttons hide 3 seconds after the pointer leaves. Studio never gets a window background.
 - [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
 
 ### Studio v1.4 Playback and signed-build check
@@ -262,7 +262,7 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 
 - [ ] `NOT TESTED` — In On Top, On Desktop, and As Window, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
 - [ ] `NOT TESTED` — Hiding Studio, or switching away, leaves no invisible control or resize overlay. A saved "passthrough off" value does not bring the full-window hit target back.
-- [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves, the controls fade following the hide delay (default 0.8 seconds). Returning before the delay cancels the hide. Clicks, dragging, resizing, and an open menu keep the controls up.
+- [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves the controls, they fade out 3 seconds later. Returning before those 3 seconds cancels the hide. Holding the mouse button keeps the controls up.
 - [ ] `NOT TESTED` — The drag handle stays visible and can move the window while the other buttons are hidden. Moving the pointer near that handle shows the icon-and-text buttons. Moving away hides those buttons again. Hidden buttons do not receive clicks.
 - [ ] `NOT TESTED` — Auto-hide off keeps the controls visible. Reduce Motion removes the fade and does not remove the hide delay. A missing preference key does not reset the other window settings.
 
