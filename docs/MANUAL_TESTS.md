@@ -209,7 +209,8 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 - [ ] `NOT TESTED` — The default Waveform is a smooth centered curve with a faint baseline and ends that rest on the baseline; it is not the old polyline in a new color.
 - [ ] `NOT TESTED` — Real playback changes the shape, quiet passages still move off the baseline, and silence settles to a flat line.
-- [ ] `NOT TESTED` — Fine Line, Soft Fill, and Mirror styles, density 32/64/128, custom line color, stroke width, maximum display height, visual amplitude, fill strength, and motion smoothing apply immediately, survive relaunch, and Reset Waveform restores them. Default visual amplitude stays calmer than the old ×3 boost. Maximum display height caps peak-to-peak size; raising visual amplitude cannot push strokes past the Studio visualization frame, including at max stroke width and after resizing the window.
+- [ ] `NOT TESTED` — Fine Line, Soft Fill, and Mirror styles, density 32/64/128, custom line color, stroke width, maximum display height, visual amplitude, fill strength, and motion smoothing apply immediately, survive relaunch, and Reset Waveform restores them. Default visual amplitude stays calmer than the old ×3 boost. At maximum display height 100% and max stroke width, peaks reach the stroke-safe canvas edge without a mid-canvas hard clip; strokes stay inside the visualization frame after resizing.
+- [ ] `NOT TESTED` — With Layout → Fill window, Waveform uses the full Studio content area (minus stroke inset). With Fixed size, enlarging the window leaves empty margin around a fixed viz — that is Layout, not Waveform clipping.
 - [ ] `NOT TESTED` — Notch Island Expanded Waveform stays inside the island content area with the same range/amplitude prefs; Island window geometry is unchanged.
 
 ### Studio v1.4 Orbit
@@ -236,7 +237,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Turning off "Allow dragging by the grip" stops the grip from moving the window; turning it on restores dragging.
 - [ ] `NOT TESTED` — Turning off "Allow resizing from the edges" stops edge resizing; turning it on restores it.
 - [ ] `NOT TESTED` — "Restore position and size at launch" off opens Studio centered at the default size; on restores the last frame. Reset Position and Size recenters at the default size on a visible screen.
-- [ ] `NOT TESTED` — Size limits (min/max width and height in points) clamp edge resize and shrink an oversized Studio when lowered; Notch Island size is unchanged.
+- [ ] `NOT TESTED` — Window → Size Width/Height (pt) resize Studio immediately; dragging edges updates the sliders; relaunch restores size when Restore is on; Reset Position and Size returns to 640×400. Notch Island size is unchanged. Old min/max size limit controls are gone from the UI.
 - [ ] `NOT TESTED` — Fade on/off and Follow system Reduce Motion change the control fade as described. There is no hide-delay slider; buttons hide 3 seconds after the pointer leaves. Studio never gets a window background.
 - [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
 

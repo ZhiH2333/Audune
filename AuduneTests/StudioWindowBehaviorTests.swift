@@ -333,6 +333,33 @@ final class StudioWindowBehaviorTests: XCTestCase {
     }
 
     @MainActor
+    func testPreferredWindowSizeAppliesAndStaysWithinInternalLimits() {
+        let controller = StudioWindowController(spike: ProcessTapSpike())
+        defer { controller.shutdown() }
+
+        controller.model.prefs.window.width = 800
+        controller.model.prefs.window.height = 500
+        controller.applyWindowPreferences()
+        let sized = controller.inspectWindowForTests().frame
+        XCTAssertEqual(sized.width, 800, accuracy: 1)
+        XCTAssertEqual(sized.height, 500, accuracy: 1)
+        XCTAssertEqual(controller.model.prefs.window.width, 800, accuracy: 0.000_1)
+        XCTAssertEqual(controller.model.prefs.window.height, 500, accuracy: 0.000_1)
+
+        controller.model.prefs.window.width = 100
+        controller.model.prefs.window.height = 50
+        controller.applyWindowPreferences()
+        let floored = controller.inspectWindowForTests().frame
+        XCTAssertGreaterThanOrEqual(floored.width, StudioFrame.absoluteMinimum.width - 0.5)
+        XCTAssertGreaterThanOrEqual(floored.height, StudioFrame.absoluteMinimum.height - 0.5)
+
+        controller.resetWindowFrame()
+        let reset = controller.inspectWindowForTests().frame
+        XCTAssertEqual(reset.width, StudioFrame.defaultSize.width, accuracy: 1)
+        XCTAssertEqual(reset.height, StudioFrame.defaultSize.height, accuracy: 1)
+    }
+
+    @MainActor
     func testMenuTrackingAndHideClearTransientState() {
         let controller = StudioWindowController(spike: ProcessTapSpike())
         defer { controller.shutdown() }
