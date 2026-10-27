@@ -199,6 +199,8 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Appearance presets, the two color pickers, opacity, and stroke width change Studio immediately and survive relaunch. The window around the graphic stays transparent.
 - [ ] `NOT TESTED` — Spectrum bar counts 8 to 64 follow real playback; Logarithmic and Linear look different; low and high frequency limits move which bars react.
 - [ ] `NOT TESTED` — Sensitivity, amplitude, smoothing, attack, release, and peak hold change the motion. Silence settles to the baseline. The menu bar stays at 16 bars.
+- [ ] `NOT TESTED` — Peak hold Fall speed changes how quickly caps drop after Hold time. Turning peak hold off removes caps without changing bar heights.
+- [ ] `NOT TESTED` — Silence gate Noise floor (RMS) with hysteresis: weak noise settles; normal quiet music still moves. Entering silence releases through Attack/Release (no snap). Disabling the gate keeps weak signal motion. Studio and Notch Island match.
 - [ ] `NOT TESTED` — Reset Appearance and Reset Spectrum restore their defaults only. Changing these settings does not start a second Process Tap.
 
 ### Studio v1.4 Waveform

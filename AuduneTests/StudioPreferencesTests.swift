@@ -50,6 +50,31 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.dynamics.neighborSmoothing, 0.1, accuracy: 0.000_001)
     }
 
+    func testSilenceGatePersistsAndMissingKeysUseDefaults() {
+        XCTAssertTrue(StudioPreferences.standard.spectrum.silenceGateEnabled)
+        XCTAssertEqual(
+            StudioPreferences.standard.spectrum.silenceThreshold,
+            Double(SilenceGateSettings.standard.enterRMS),
+            accuracy: 0.000_000_1
+        )
+
+        var stored = StudioPreferences.standard
+        stored.spectrum.silenceGateEnabled = false
+        stored.spectrum.silenceThreshold = 0.0025
+        stored.save(to: defaults)
+        let loaded = StudioPreferences.load(from: defaults).spectrum
+        XCTAssertFalse(loaded.silenceGateEnabled)
+        XCTAssertEqual(loaded.silenceThreshold, 0.0025, accuracy: 0.000_000_1)
+        XCTAssertFalse(loaded.silenceGate.enabled)
+        XCTAssertEqual(loaded.silenceGate.enterRMS, 0.0025, accuracy: 0.000_000_1)
+        XCTAssertGreaterThan(loaded.silenceGate.exitRMS, loaded.silenceGate.enterRMS)
+
+        defaults.removePersistentDomain(forName: suite)
+        let missing = StudioPreferences.load(from: defaults).spectrum
+        XCTAssertTrue(missing.silenceGateEnabled)
+        XCTAssertEqual(missing.silenceThreshold, SpectrumPreferences.standard.silenceThreshold, accuracy: 0.000_000_1)
+    }
+
     func testInvalidValuesNormalize() {
         defaults.set("nope", forKey: StudioPreferenceKey.mode)
         defaults.set("purple", forKey: StudioPreferenceKey.accent)
@@ -109,7 +134,9 @@ final class StudioPreferencesTests: XCTestCase {
             releaseMs: 400,
             peakHold: true,
             peakHoldSeconds: 1.2,
-            peakFallPerSecond: 1.4
+            peakFallPerSecond: 1.4,
+            silenceGateEnabled: true,
+            silenceThreshold: 0.001
         )
         stored.waveform = WaveformPreferences(
             lineWidth: 2.5,

@@ -200,6 +200,19 @@ struct SettingsView: View {
             Text("Hold time keeps each cap at its peak. Fall speed is how far the cap drops per second after that, in normalized display units.")
                 .foregroundStyle(.secondary)
         }
+        Section("Silence") {
+            Toggle("Silence gate", isOn: $model.prefs.spectrum.silenceGateEnabled)
+            SettingsSlider(
+                title: "Noise floor (RMS)",
+                value: $model.prefs.spectrum.silenceThreshold,
+                range: StudioPreferences.silenceThresholdRange,
+                step: 0.0001,
+                fractionDigits: 4
+            )
+            .disabled(model.prefs.spectrum.silenceGateEnabled == false)
+            Text("Uses raw PCM RMS with hysteresis. When silent, bars release to the baseline through Release and peak fall — they do not snap off. This only affects visualization, not system audio.")
+                .foregroundStyle(.secondary)
+        }
         Section {
             Button("Reset Spectrum") {
                 model.prefs.spectrum = .standard

@@ -6,9 +6,9 @@ import Foundation
 nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
     static let fftLength = 1024
     static let bandCount = AudioSnapshot.bandCount
-    static let silenceEnterRMS: Float = 0.0008
-    static let silenceExitRMS: Float = 0.0015
-    static let silenceEnterFrames = 8
+    static let silenceEnterRMS: Float = SilenceGateSettings.standard.enterRMS
+    static let silenceExitRMS: Float = SilenceGateSettings.standard.exitRMS
+    static let silenceEnterFrames = SilenceGateSettings.standard.enterFrames
 
     private let sampleRate: Double
     private let isValid: Bool
@@ -24,6 +24,7 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
     private var sequence: UInt64 = 0
     private var silentFrames = 0
     private var isSilent = true
+    private var silenceSettings = SilenceGateSettings.standard
 
     init(sampleRate: Double) {
         self.sampleRate = sampleRate
@@ -60,6 +61,14 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
         let position = log(frequency / minimumHz) / log(maximumHz / minimumHz)
         let index = Int(position * Double(bands))
         return min(max(index, 0), bands - 1)
+    }
+
+    func applySilenceSettings(_ settings: SilenceGateSettings) {
+        silenceSettings = settings
+        if settings.enabled == false {
+            isSilent = false
+            silentFrames = 0
+        }
     }
 
     func process(_ samples: [Float]) -> AudioSnapshot {
@@ -122,17 +131,24 @@ nonisolated final class SpectrumAnalyzer: @unchecked Sendable {
     }
 
     private func updateSilence(rms: Float) {
+        let settings = silenceSettings
+        guard settings.enabled else {
+            isSilent = false
+            silentFrames = 0
+            return
+        }
         let level = rms.isFinite ? rms : 0
         if isSilent {
-            if level > Self.silenceExitRMS {
+            if level > settings.exitRMS {
                 isSilent = false
                 silentFrames = 0
             }
             return
         }
-        if level < Self.silenceEnterRMS {
+        if level < settings.enterRMS {
             silentFrames += 1
-            if silentFrames >= Self.silenceEnterFrames {
+            let needed = max(settings.enterFrames, 1)
+            if silentFrames >= needed {
                 isSilent = true
                 silentFrames = 0
             }

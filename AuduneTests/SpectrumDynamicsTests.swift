@@ -96,6 +96,20 @@ final class SpectrumDynamicsTests: XCTestCase {
         XCTAssertTrue(SpectrumDynamics.isSettled(levels: [], peaks: []))
     }
 
+    func testSilentZeroTargetStillLetsPeaksFall() {
+        var held = settings
+        held.peakHoldSeconds = 0.05
+        held.peakFallPerSecond = 1.2
+        var state = SpectrumDynamicsState(levels: [0.8], peaks: [1], peakAge: [0])
+        for _ in 0..<40 {
+            state = SpectrumDynamics.step(state: state, target: [0], dt: 0.05, settings: held)
+        }
+        XCTAssertLessThan(state.levels[0], 0.05)
+        XCTAssertLessThan(state.peaks[0], 0.4)
+        XCTAssertGreaterThanOrEqual(state.peaks[0], state.levels[0])
+        XCTAssertFalse(SpectrumDynamics.isSettled(levels: [0.5], peaks: [0.5]))
+    }
+
     func testNeighborSmoothingSpreadsOnlyBetweenBars() {
         var spread = settings
         spread.neighborSmoothing = 1

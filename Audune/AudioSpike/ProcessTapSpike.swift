@@ -44,6 +44,7 @@ final class ProcessTapSpike {
     private var active = false
     private var startInFlight = false
     let snapshots = AudioSnapshotBox()
+    let silenceGate = SilenceGateBox()
     private var analysisTask: Task<Void, Never>?
 
     var displayState: String {
@@ -64,6 +65,11 @@ final class ProcessTapSpike {
     func refreshReading() {
         guard let meter else { return }
         reading = meter.snapshot()
+    }
+
+    /// Updates visual silence detection. Does not change Process Tap mute behavior.
+    func applySilenceSettings(_ settings: SilenceGateSettings) {
+        silenceGate.store(settings)
     }
 
     func start() async {
@@ -221,9 +227,11 @@ final class ProcessTapSpike {
         let generation = snapshots.reset()
         let snapshots = self.snapshots
         let sampleRate = meter.format.sampleRate
+        let silenceGate = self.silenceGate
         analysisTask = Task.detached(priority: .userInitiated) {
             let analyzer = SpectrumAnalyzer(sampleRate: sampleRate)
             while Task.isCancelled == false {
+                analyzer.applySilenceSettings(silenceGate.load())
                 if let window = meter.copyLatestWindow() {
                     var snapshot = analyzer.process(window)
                     snapshot.waveform = WaveformSampler.downsample(window)

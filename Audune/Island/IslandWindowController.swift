@@ -662,12 +662,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     private func refreshVisuals(dt: Double = 0) {
         let snapshot = model.snapshot
+        let silent = snapshot.isSilent
         let compactCount = model.prefs.compactBarCountPerSide
-        let compactTarget = SpectrumBands.levels(
+        let compactLive = SpectrumBands.levels(
             binMagnitudes: snapshot.binMagnitudes,
             sampleRate: snapshot.sampleRate,
             count: compactCount
         )
+        let compactTarget = silent ? Array(repeating: Float(0), count: compactCount) : compactLive
         smoothedCompact = SpectrumBands.displayMix(
             current: smoothedCompact,
             toward: compactTarget,
@@ -679,15 +681,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         guard model.state.isExpandedOrPinned else { return }
         switch model.prefs.mode {
         case .spectrum:
-            let levels = SpectrumBands.levels(
+            let live = SpectrumBands.levels(
                 binMagnitudes: snapshot.binMagnitudes,
                 sampleRate: snapshot.sampleRate,
                 count: model.spectrum.barCount,
                 layout: model.spectrum.layout
             )
+            let target = silent ? Array(repeating: Float(0), count: live.count) : live
             spectrumState = SpectrumDynamics.step(
                 state: spectrumState,
-                target: levels,
+                target: target,
                 dt: dt,
                 settings: model.spectrum.dynamics
             )
@@ -696,11 +699,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
         case .orbit:
             let count = model.orbit.bandCount
-            let target = SpectrumBands.levels(
+            let live = SpectrumBands.levels(
                 binMagnitudes: snapshot.binMagnitudes,
                 sampleRate: snapshot.sampleRate,
                 count: count
             )
+            let target = silent ? Array(repeating: Float(0), count: count) : live
             smoothedExpanded = SpectrumBands.displayMix(
                 current: smoothedExpanded,
                 toward: target,
@@ -711,9 +715,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.expandedPeaks = []
 
         case .waveform:
+            let live = snapshot.waveform
+            let target = silent ? Array(repeating: Float(0), count: live.count) : live
             smoothedWaveform = WaveformPath.mix(
                 current: smoothedWaveform,
-                toward: snapshot.waveform,
+                toward: target,
                 smoothing: Float(model.waveform.smoothing)
             )
             model.expandedWaveform = smoothedWaveform

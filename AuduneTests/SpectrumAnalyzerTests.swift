@@ -98,6 +98,35 @@ final class SpectrumAnalyzerTests: XCTestCase {
         }
     }
 
+    func testCustomSilenceThresholdChangesEnterPoint() {
+        let analyzer = SpectrumAnalyzer(sampleRate: 48_000)
+        analyzer.applySilenceSettings(SilenceGateSettings.from(enabled: true, threshold: 0.01))
+        XCTAssertFalse(analyzer.process(constant(0.2)).isSilent)
+
+        for _ in 0..<7 {
+            XCTAssertFalse(analyzer.process(constant(0.005)).isSilent)
+        }
+        XCTAssertTrue(analyzer.process(constant(0.005)).isSilent)
+        XCTAssertTrue(analyzer.process(constant(0.015)).isSilent)
+        XCTAssertFalse(analyzer.process(constant(0.02)).isSilent)
+    }
+
+    func testDisabledSilenceGateKeepsWeakSignalActive() {
+        let analyzer = SpectrumAnalyzer(sampleRate: 48_000)
+        analyzer.applySilenceSettings(SilenceGateSettings.from(enabled: false, threshold: 0.0008))
+        XCTAssertFalse(analyzer.process(constant(0.2)).isSilent)
+        for _ in 0..<20 {
+            XCTAssertFalse(analyzer.process(constant(0.0002)).isSilent)
+        }
+    }
+
+    func testSilenceGateSettingsDeriveHysteresisFromThreshold() {
+        let gate = SilenceGateSettings.from(enabled: true, threshold: 0.002)
+        XCTAssertEqual(gate.enterRMS, 0.002, accuracy: 0.000_000_1)
+        XCTAssertEqual(gate.exitRMS, 0.002 * (0.0015 / 0.0008), accuracy: 0.000_000_1)
+        XCTAssertEqual(gate.enterFrames, SilenceGateSettings.standard.enterFrames)
+    }
+
     func testBandCountStaysStable() {
         let analyzer = SpectrumAnalyzer(sampleRate: 48_000)
         for _ in 0..<4 {

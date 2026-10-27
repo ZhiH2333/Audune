@@ -181,6 +181,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     /// Slider drags call this on every tick; the write happens once the value settles.
     func preferencesDidChange() {
         applyWindowPreferences()
+        applySilenceGate()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
@@ -429,6 +430,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
         applyWindowMode()
         applyWindowPreferences()
+        applySilenceGate()
+    }
+
+    private func applySilenceGate() {
+        spike.applySilenceSettings(model.prefs.spectrum.silenceGate)
     }
 
     func currentPreferences() -> StudioPreferences {
@@ -463,17 +469,19 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func refreshStudioSpectrum(dt: Double) {
         let prefs = model.prefs
+        let silent = model.snapshot.isSilent
         switch prefs.mode {
         case .spectrum:
-            let levels = SpectrumBands.levels(
+            let live = SpectrumBands.levels(
                 binMagnitudes: model.snapshot.binMagnitudes,
                 sampleRate: model.snapshot.sampleRate,
                 count: prefs.spectrum.barCount,
                 layout: prefs.spectrum.layout
             )
+            let target = silent ? Array(repeating: Float(0), count: live.count) : live
             spectrumState = SpectrumDynamics.step(
                 state: spectrumState,
-                target: levels,
+                target: target,
                 dt: dt,
                 settings: prefs.spectrum.dynamics
             )
@@ -481,14 +489,15 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.spectrumPeaks = prefs.spectrum.peakHold ? spectrumState.peaks : []
         case .orbit:
             let count = prefs.orbit.bandCount
-            let levels = SpectrumBands.levels(
+            let live = SpectrumBands.levels(
                 binMagnitudes: model.snapshot.binMagnitudes,
                 sampleRate: model.snapshot.sampleRate,
                 count: count
             )
+            let target = silent ? Array(repeating: Float(0), count: count) : live
             smoothedStudio = SpectrumBands.displayMix(
                 current: smoothedStudio,
-                toward: levels,
+                toward: target,
                 count: count,
                 smoothing: Float(prefs.orbit.smoothing)
             )
@@ -618,9 +627,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     private func refreshWaveform() {
         guard model.prefs.mode == .waveform else { return }
+        let live = model.snapshot.waveform
+        let target = model.snapshot.isSilent ? Array(repeating: Float(0), count: live.count) : live
         smoothedWave = WaveformPath.mix(
             current: smoothedWave,
-            toward: model.snapshot.waveform,
+            toward: target,
             smoothing: Float(model.prefs.waveform.smoothing)
         )
         model.displayWaveform = smoothedWave

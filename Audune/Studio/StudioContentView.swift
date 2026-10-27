@@ -203,7 +203,16 @@ struct StudioContentView: View {
     }
 
     private var drawsBars: Bool {
-        spike.phase == .running && model.snapshot.isSilent == false
+        guard spike.phase == .running else { return false }
+        if model.snapshot.isSilent == false { return true }
+        switch model.prefs.mode {
+        case .spectrum:
+            return SpectrumDynamics.isSettled(levels: model.studioSpectrum, peaks: model.spectrumPeaks) == false
+        case .orbit:
+            return SpectrumDynamics.isSettled(levels: model.studioSpectrum) == false
+        case .waveform:
+            return SpectrumDynamics.isSettled(levels: model.displayWaveform) == false
+        }
     }
 }
 

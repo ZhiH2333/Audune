@@ -251,6 +251,13 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertTrue(model.drawsActiveVisuals(phase: .running))
         XCTAssertFalse(model.drawsActiveVisuals(phase: .idle))
 
+        activeSnapshot.isSilent = true
+        model.snapshot = activeSnapshot
+        model.compactLevels = [0.4, 0.2, 0.1, 0.05]
+        XCTAssertTrue(model.drawsActiveVisuals(phase: .running), "silent but still settling")
+        model.compactLevels = [0, 0, 0, 0]
+        XCTAssertFalse(model.drawsActiveVisuals(phase: .running), "settled silent baseline")
+
         let shape = IslandShape(bottomRadius: 16)
         let rect = CGRect(x: 0, y: 0, width: 320, height: 132)
         let path = shape.path(in: rect)

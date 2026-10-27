@@ -35,6 +35,8 @@ nonisolated enum StudioPreferenceKey {
     static let spectrumPeakHold = "studio.spectrum.peakHold"
     static let spectrumPeakHoldSeconds = "studio.spectrum.peakHoldSeconds"
     static let spectrumPeakFallPerSecond = "studio.spectrum.peakFallPerSecond"
+    static let spectrumSilenceGateEnabled = "studio.spectrum.silenceGateEnabled"
+    static let spectrumSilenceThreshold = "studio.spectrum.silenceThreshold"
 
     static let waveformLineWidth = "studio.waveform.lineWidth"
     static let waveformAmplitude = "studio.waveform.amplitude"
@@ -234,6 +236,10 @@ nonisolated struct SpectrumPreferences: Equatable {
     var peakHoldSeconds: Double
     /// Peak cap fall speed after hold, in display units per second.
     var peakFallPerSecond: Double
+    /// When true, low PCM RMS marks the shared snapshot silent for visuals only.
+    var silenceGateEnabled: Bool
+    /// Raw PCM RMS enter threshold. Same scale as analyzer RMS before unit clamping.
+    var silenceThreshold: Double
 
     static let standard = SpectrumPreferences(
         barCount: 32,
@@ -250,8 +256,14 @@ nonisolated struct SpectrumPreferences: Equatable {
         releaseMs: 260,
         peakHold: false,
         peakHoldSeconds: 0.6,
-        peakFallPerSecond: Double(SpectrumDynamicsSettings.defaultPeakFallPerSecond)
+        peakFallPerSecond: Double(SpectrumDynamicsSettings.defaultPeakFallPerSecond),
+        silenceGateEnabled: true,
+        silenceThreshold: Double(SilenceGateSettings.standard.enterRMS)
     )
+
+    var silenceGate: SilenceGateSettings {
+        SilenceGateSettings.from(enabled: silenceGateEnabled, threshold: silenceThreshold)
+    }
 
     /// Sensitivity moves the quiet end of the dB window. 0.5 keeps the original -60 dB floor.
     var floorDecibels: Double {
@@ -411,6 +423,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let releaseMsRange: ClosedRange<Double> = 60...1_000
     static let peakHoldSecondsRange: ClosedRange<Double> = 0.1...2
     static let peakFallPerSecondRange: ClosedRange<Double> = 0.2...2
+    static let silenceThresholdRange: ClosedRange<Double> = 0.0001...0.01
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let densities = [32, 64, 128]
 
@@ -474,7 +487,9 @@ nonisolated struct StudioPreferences: Equatable {
                 releaseMs: reader.double(StudioPreferenceKey.spectrumReleaseMs, range: releaseMsRange, fallback: standard.spectrum.releaseMs),
                 peakHold: reader.bool(StudioPreferenceKey.spectrumPeakHold, fallback: standard.spectrum.peakHold),
                 peakHoldSeconds: reader.double(StudioPreferenceKey.spectrumPeakHoldSeconds, range: peakHoldSecondsRange, fallback: standard.spectrum.peakHoldSeconds),
-                peakFallPerSecond: reader.double(StudioPreferenceKey.spectrumPeakFallPerSecond, range: peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond)
+                peakFallPerSecond: reader.double(StudioPreferenceKey.spectrumPeakFallPerSecond, range: peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond),
+                silenceGateEnabled: reader.bool(StudioPreferenceKey.spectrumSilenceGateEnabled, fallback: standard.spectrum.silenceGateEnabled),
+                silenceThreshold: reader.double(StudioPreferenceKey.spectrumSilenceThreshold, range: silenceThresholdRange, fallback: standard.spectrum.silenceThreshold)
             ),
             waveform: WaveformPreferences(
                 lineWidth: reader.double(StudioPreferenceKey.waveformLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.waveform.lineWidth),
@@ -519,6 +534,7 @@ nonisolated struct StudioPreferences: Equatable {
         result.spectrum.releaseMs = Self.clamped(spectrum.releaseMs, to: Self.releaseMsRange, fallback: standard.spectrum.releaseMs)
         result.spectrum.peakHoldSeconds = Self.clamped(spectrum.peakHoldSeconds, to: Self.peakHoldSecondsRange, fallback: standard.spectrum.peakHoldSeconds)
         result.spectrum.peakFallPerSecond = Self.clamped(spectrum.peakFallPerSecond, to: Self.peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond)
+        result.spectrum.silenceThreshold = Self.clamped(spectrum.silenceThreshold, to: Self.silenceThresholdRange, fallback: standard.spectrum.silenceThreshold)
         result.waveform.lineWidth = Self.clamped(waveform.lineWidth, to: Self.lineWidthRange, fallback: standard.waveform.lineWidth)
         result.waveform.amplitude = Self.clamped(waveform.amplitude, to: Self.amplitudeRange, fallback: standard.waveform.amplitude)
         result.waveform.smoothing = Self.clamped(waveform.smoothing, to: Self.smoothingRange, fallback: standard.waveform.smoothing)
@@ -571,6 +587,8 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.spectrum.peakHold, forKey: StudioPreferenceKey.spectrumPeakHold)
         defaults.set(p.spectrum.peakHoldSeconds, forKey: StudioPreferenceKey.spectrumPeakHoldSeconds)
         defaults.set(p.spectrum.peakFallPerSecond, forKey: StudioPreferenceKey.spectrumPeakFallPerSecond)
+        defaults.set(p.spectrum.silenceGateEnabled, forKey: StudioPreferenceKey.spectrumSilenceGateEnabled)
+        defaults.set(p.spectrum.silenceThreshold, forKey: StudioPreferenceKey.spectrumSilenceThreshold)
 
         defaults.set(p.waveform.lineWidth, forKey: StudioPreferenceKey.waveformLineWidth)
         defaults.set(p.waveform.amplitude, forKey: StudioPreferenceKey.waveformAmplitude)
@@ -717,6 +735,7 @@ extension SpectrumPreferences: Codable {
     private enum CodingKeys: String, CodingKey {
         case barCount, scale, minHz, maxHz, barGap, cornerRadius, stroke
         case sensitivity, amplitude, smoothing, attackMs, releaseMs, peakHold, peakHoldSeconds, peakFallPerSecond
+        case silenceGateEnabled, silenceThreshold
     }
 
     init(from decoder: Decoder) throws {
@@ -737,7 +756,9 @@ extension SpectrumPreferences: Codable {
             releaseMs: try container.decodeIfPresent(Double.self, forKey: .releaseMs) ?? standard.releaseMs,
             peakHold: try container.decodeIfPresent(Bool.self, forKey: .peakHold) ?? standard.peakHold,
             peakHoldSeconds: try container.decodeIfPresent(Double.self, forKey: .peakHoldSeconds) ?? standard.peakHoldSeconds,
-            peakFallPerSecond: try container.decodeIfPresent(Double.self, forKey: .peakFallPerSecond) ?? standard.peakFallPerSecond
+            peakFallPerSecond: try container.decodeIfPresent(Double.self, forKey: .peakFallPerSecond) ?? standard.peakFallPerSecond,
+            silenceGateEnabled: try container.decodeIfPresent(Bool.self, forKey: .silenceGateEnabled) ?? standard.silenceGateEnabled,
+            silenceThreshold: try container.decodeIfPresent(Double.self, forKey: .silenceThreshold) ?? standard.silenceThreshold
         )
         self = clamped()
     }
@@ -759,6 +780,8 @@ extension SpectrumPreferences: Codable {
         try container.encode(peakHold, forKey: .peakHold)
         try container.encode(peakHoldSeconds, forKey: .peakHoldSeconds)
         try container.encode(peakFallPerSecond, forKey: .peakFallPerSecond)
+        try container.encode(silenceGateEnabled, forKey: .silenceGateEnabled)
+        try container.encode(silenceThreshold, forKey: .silenceThreshold)
     }
 
     func clamped() -> SpectrumPreferences {

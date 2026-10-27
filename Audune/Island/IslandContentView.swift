@@ -62,7 +62,19 @@ final class IslandModel {
     }
 
     func drawsActiveVisuals(phase: SpikePhase) -> Bool {
-        phase == .running && snapshot.isSilent == false
+        guard phase == .running else { return false }
+        if snapshot.isSilent == false { return true }
+        if state.isExpandedOrPinned {
+            switch prefs.mode {
+            case .spectrum:
+                return SpectrumDynamics.isSettled(levels: expandedSpectrum, peaks: expandedPeaks) == false
+            case .orbit:
+                return SpectrumDynamics.isSettled(levels: expandedSpectrum) == false
+            case .waveform:
+                return SpectrumDynamics.isSettled(levels: expandedWaveform) == false
+            }
+        }
+        return SpectrumDynamics.isSettled(levels: compactLevels) == false
     }
 }
 
