@@ -117,6 +117,8 @@ final class StudioPreferencesTests: XCTestCase {
             passesMouseThrough: true,
             autoHidesControls: false,
             summonRegion: .grip,
+            width: 720,
+            height: 480,
             minWidth: 400,
             minHeight: 280,
             maxWidth: 1200,
@@ -329,6 +331,8 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertTrue(standard.passesMouseThrough)
         XCTAssertTrue(standard.autoHidesControls)
         XCTAssertEqual(standard.summonRegion, .bottomEdge)
+        XCTAssertEqual(standard.width, 640, accuracy: 0.000_1)
+        XCTAssertEqual(standard.height, 400, accuracy: 0.000_1)
         XCTAssertEqual(standard.minWidth, 360, accuracy: 0.000_1)
         XCTAssertEqual(standard.minHeight, 240, accuracy: 0.000_1)
         XCTAssertEqual(standard.maxWidth, 1600, accuracy: 0.000_1)
@@ -347,6 +351,8 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertTrue(missing.autoHidesControls)
         XCTAssertEqual(missing.summonRegion, .bottomEdge)
         XCTAssertFalse(missing.allowsDrag)
+        XCTAssertEqual(missing.width, 640, accuracy: 0.000_1)
+        XCTAssertEqual(missing.height, 400, accuracy: 0.000_1)
         XCTAssertEqual(missing.minWidth, 360, accuracy: 0.000_1)
         XCTAssertEqual(missing.maxWidth, 1600, accuracy: 0.000_1)
         defaults.set("sideways", forKey: StudioPreferenceKey.windowSummonRegion)
@@ -366,6 +372,17 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(sized.minHeight, 240, accuracy: 0.000_1)
         XCTAssertEqual(sized.maxWidth, 800, accuracy: 0.000_1)
         XCTAssertEqual(sized.maxHeight, 2160, accuracy: 0.000_1)
+
+        defaults.set(800.0, forKey: StudioPreferenceKey.windowWidth)
+        defaults.set(500.0, forKey: StudioPreferenceKey.windowHeight)
+        let preferred = StudioPreferences.load(from: defaults).window
+        XCTAssertEqual(preferred.width, 800, accuracy: 0.000_1)
+        XCTAssertEqual(preferred.height, 500, accuracy: 0.000_1)
+        defaults.set(50.0, forKey: StudioPreferenceKey.windowWidth)
+        defaults.set(9_000.0, forKey: StudioPreferenceKey.windowHeight)
+        let clampedSize = StudioPreferences.load(from: defaults).window
+        XCTAssertEqual(clampedSize.width, StudioPreferences.windowWidthRange.lowerBound, accuracy: 0.000_1)
+        XCTAssertEqual(clampedSize.height, StudioPreferences.windowHeightRange.upperBound, accuracy: 0.000_1)
     }
 
     func testStudioColorRoundTripsThroughHex() {

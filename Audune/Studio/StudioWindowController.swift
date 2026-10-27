@@ -25,6 +25,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var smoothedWave: [Float] = []
     private var didShutdown = false
     private var saveTask: Task<Void, Never>?
+    private var preferredSizeTask: Task<Void, Never>?
+    /// True while copying the live frame into prefs so Settings onChange does not fight the drag.
+    private var isWritingSizeFromWindow = false
     private var settingsWindowVisible = false
     private var permissionCache: [String: AutomationPermission] = [:]
     private var permissionChecks: Set<String> = []
@@ -180,13 +183,32 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     /// Slider drags call this on every tick; the write happens once the value settles.
     func preferencesDidChange() {
-        applyWindowPreferences()
         applySilenceGate()
+        if isWritingSizeFromWindow {
+            // Live resize already owns the frame; only persist after debounce.
+            scheduleSavePreferences()
+            return
+        }
+        applyWindowChromePreferences()
+        schedulePreferredSizeApply()
+        scheduleSavePreferences()
+    }
+
+    private func scheduleSavePreferences() {
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
             guard Task.isCancelled == false else { return }
             self?.savePreferences()
+        }
+    }
+
+    private func schedulePreferredSizeApply() {
+        preferredSizeTask?.cancel()
+        preferredSizeTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(200))
+            guard Task.isCancelled == false else { return }
+            self?.applyPreferredSizeFromPrefs()
         }
     }
 
@@ -292,6 +314,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         return true
     }
 
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard notification.object as? NSWindow === panel else { return }
+        syncSizeFromPanelToPrefs()
+    }
+
     var allowsDragForTests: Bool { hitMap.allowsDrag }
 
     func inspectWindowForTests() -> StudioWindowInspection {
@@ -356,10 +383,16 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         if model.prefs.window.restorePosition == false {
             NSWindow.removeFrame(usingName: StudioWindowStorage.frameAutosaveName)
         }
-        if panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName) == false || model.prefs.window.restorePosition == false {
+        let restoredAutosave = panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName)
+        if restoredAutosave == false || model.prefs.window.restorePosition == false {
             panel.center()
+            applyWindowChromePreferences()
+            applyPreferredSizeFromPrefs()
+        } else {
+            // Autosave owns the launch frame; copy size into prefs so Settings matches.
+            applyWindowChromePreferences()
+            syncSizeFromPanelToPrefs()
         }
-        applyWindowPreferences()
         installMenuTracking()
         clampOntoVisibleScreen()
         applyWindowMode()
@@ -386,6 +419,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     /// Applies drag and resize permissions right away. The window mode has its own path.
     func applyWindowPreferences() {
+        applyWindowChromePreferences()
+        applyPreferredSizeFromPrefs()
+        syncPassthroughWindows()
+    }
+
+    /// Style mask and internal AppKit size floors. Does not force the preferred width/height.
+    private func applyWindowChromePreferences() {
         let window = model.prefs.window
         hitMap.allowsDrag = window.allowsDrag
         if window.allowsResize {
@@ -393,11 +433,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         } else {
             panel.styleMask.remove(.resizable)
         }
-        applySizeConstraints(clampFrame: true)
-        syncPassthroughWindows()
+        applySizeConstraints(clampFrame: false)
     }
 
-    /// Publishes AppKit min/max sizes from prefs ∩ screen. Optionally shrinks an oversized live frame once.
+    /// Publishes AppKit min/max from the absolute floor ∩ screen. Optionally shrinks an illegal live frame.
     private func applySizeConstraints(clampFrame: Bool) {
         let screenSize = (panel.screen ?? NSScreen.main)?.visibleFrame.size
         let limits = sizeLimits(screen: screenSize)
@@ -419,15 +458,52 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Internal hard floor and screen-capped maximum. User min/max sliders are gone.
     private func sizeLimits(screen: CGSize?) -> (minimum: CGSize, maximum: CGSize) {
-        let window = model.prefs.window
-        return StudioFrame.effectiveLimits(
-            minWidth: window.minWidth,
-            minHeight: window.minHeight,
-            maxWidth: window.maxWidth,
-            maxHeight: window.maxHeight,
+        StudioFrame.effectiveLimits(
+            minWidth: Double(StudioFrame.absoluteMinimum.width),
+            minHeight: Double(StudioFrame.absoluteMinimum.height),
+            maxWidth: Double(StudioFrame.defaultMaximumSize.width),
+            maxHeight: Double(StudioFrame.defaultMaximumSize.height),
             screen: screen
         )
+    }
+
+    /// Applies prefs width/height once when they differ from the live frame.
+    private func applyPreferredSizeFromPrefs() {
+        let preferred = CGSize(width: model.prefs.window.width, height: model.prefs.window.height)
+        guard preferred.width.isFinite, preferred.height.isFinite,
+              preferred.width > 0, preferred.height > 0 else { return }
+        let current = panel.frame.size
+        if abs(current.width - preferred.width) < 0.5, abs(current.height - preferred.height) < 0.5 {
+            return
+        }
+        let limits = sizeLimits(screen: (panel.screen ?? NSScreen.main)?.visibleFrame.size)
+        var next = panel.frame
+        next.size = preferred
+        next = StudioFrame.constrain(next, minimum: limits.minimum, maximum: limits.maximum)
+        if let visible = (panel.screen ?? NSScreen.main)?.visibleFrame {
+            next = StudioFrame.clamped(next, to: [visible], fallback: visible, minimum: limits.minimum, maximum: limits.maximum)
+        }
+        panel.setFrame(next, display: panel.isVisible)
+        syncPassthroughWindows()
+    }
+
+    /// Copies the live window size into prefs without re-applying setFrame.
+    private func syncSizeFromPanelToPrefs() {
+        let size = panel.frame.size
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
+        let width = Double(size.width)
+        let height = Double(size.height)
+        if abs(model.prefs.window.width - width) < 0.5, abs(model.prefs.window.height - height) < 0.5 {
+            return
+        }
+        isWritingSizeFromWindow = true
+        model.prefs.window.width = width
+        model.prefs.window.height = height
+        isWritingSizeFromWindow = false
+        savePreferences()
+        syncPassthroughWindows()
     }
 
     /// Back to the default size, centered on the screen the window is on.
@@ -435,7 +511,10 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         let visible = (panel.screen ?? NSScreen.main)?.visibleFrame
             ?? NSRect(origin: .zero, size: StudioFrame.defaultSize)
         panel.setFrame(StudioFrame.centeredDefault(in: visible), display: panel.isVisible)
+        model.prefs.window.width = Double(StudioFrame.defaultSize.width)
+        model.prefs.window.height = Double(StudioFrame.defaultSize.height)
         clampOntoVisibleScreen()
+        syncSizeFromPanelToPrefs()
         syncPassthroughWindows()
     }
 
@@ -675,15 +754,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func clampOntoVisibleScreen() {
         let screens = NSScreen.screens.map(\.visibleFrame)
         let fallback = NSScreen.main?.visibleFrame ?? NSRect(origin: .zero, size: StudioFrame.defaultSize)
-        let window = model.prefs.window
-        let userMax = CGSize(width: window.maxWidth, height: window.maxHeight)
-        let userMin = CGSize(width: window.minWidth, height: window.minHeight)
+        let limits = sizeLimits(screen: (panel.screen ?? NSScreen.main)?.visibleFrame.size)
         let clamped = StudioFrame.clamped(
             panel.frame,
             to: screens,
             fallback: fallback,
-            minimum: userMin,
-            maximum: userMax
+            minimum: limits.minimum,
+            maximum: limits.maximum
         )
         applySizeConstraints(clampFrame: false)
         if clamped != panel.frame {
@@ -892,6 +969,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             ) { [weak self] in
                 self?.syncPassthroughWindows()
             }
+            self.syncSizeFromPanelToPrefs()
             self.model.pointerDown = false
         }
         edgePanel.contentView = view

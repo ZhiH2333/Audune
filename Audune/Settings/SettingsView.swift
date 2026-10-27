@@ -165,7 +165,7 @@ struct SettingsView: View {
     private var layoutPane: some View {
         Section("Preview") {
             LayoutPreview(model: model)
-            Text("The outer frame is the Studio window; the inner frame is the visualization. Resizing the window does not resize the visualization in Fixed size mode.")
+            Text("The outer frame is the Studio window; the inner frame is the visualization. In Fixed size mode the visualization keeps its own size when the window grows, which can look like an empty border around the graphic. Use Fill window to draw edge to edge.")
                 .foregroundStyle(.secondary)
         }
         Section("Visualization size") {
@@ -322,7 +322,7 @@ struct SettingsView: View {
                 range: StudioPreferences.waveformVerticalRangeRange,
                 step: 0.05
             )
-            Text("Peak-to-peak share of the drawable height. The hard ceiling for how tall the waveform may grow.")
+            Text("How much of the stroke-safe canvas height the waveform may occupy. This is not a clip box and does not change the Studio window size (see Layout and Window).")
                 .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Visual amplitude",
@@ -330,7 +330,7 @@ struct SettingsView: View {
                 range: StudioPreferences.waveformAmplitudeRange,
                 step: 0.05
             )
-            Text("How strongly the signal fills that height. It does not change system volume, captured audio, or the maximum display height ceiling.")
+            Text("How strongly the signal fills that height. It does not change system volume, captured audio, or the window size.")
                 .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Motion smoothing",
@@ -434,34 +434,20 @@ struct SettingsView: View {
             Toggle("Restore position and size at launch", isOn: $model.prefs.window.restorePosition)
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
-        Section("Size limits") {
-            Text("Limits apply to the Studio window frame only, in points; they do not resize the visualization (see Layout). The current screen may impose a smaller maximum. Notch Island is unchanged.")
+        Section("Size") {
+            Text("Width and height set the Studio window frame in points (not Retina pixels). Dragging the window edges updates these values. Layout controls the visualization inside the window. Notch Island is unchanged.")
                 .foregroundStyle(.secondary)
             SettingsSlider(
-                title: "Minimum width (pt)",
-                value: $model.prefs.window.minWidth,
-                range: StudioPreferences.windowMinWidthRange,
+                title: "Width (pt)",
+                value: $model.prefs.window.width,
+                range: StudioPreferences.windowWidthRange,
                 step: 10,
                 fractionDigits: 0
             )
             SettingsSlider(
-                title: "Minimum height (pt)",
-                value: $model.prefs.window.minHeight,
-                range: StudioPreferences.windowMinHeightRange,
-                step: 10,
-                fractionDigits: 0
-            )
-            SettingsSlider(
-                title: "Maximum width (pt)",
-                value: $model.prefs.window.maxWidth,
-                range: StudioPreferences.windowMaxWidthRange,
-                step: 10,
-                fractionDigits: 0
-            )
-            SettingsSlider(
-                title: "Maximum height (pt)",
-                value: $model.prefs.window.maxHeight,
-                range: StudioPreferences.windowMaxHeightRange,
+                title: "Height (pt)",
+                value: $model.prefs.window.height,
+                range: StudioPreferences.windowHeightRange,
                 step: 10,
                 fractionDigits: 0
             )

@@ -73,6 +73,8 @@ nonisolated enum StudioPreferenceKey {
     static let windowMinHeight = "studio.window.minHeight"
     static let windowMaxWidth = "studio.window.maxWidth"
     static let windowMaxHeight = "studio.window.maxHeight"
+    static let windowWidth = "studio.window.width"
+    static let windowHeight = "studio.window.height"
     static let layoutMode = "studio.layout.mode"
     static let layoutScale = "studio.layout.scale"
     static let layoutAspect = "studio.layout.aspect"
@@ -544,7 +546,10 @@ nonisolated struct WindowPreferences: Equatable {
     /// When false, the controls stay visible.
     var autoHidesControls: Bool
     var summonRegion: StudioSummonRegion
-    /// User-facing Studio size limits in points. Not the live window frame.
+    /// Preferred Studio window size in points. Synced with the live frame after resize.
+    var width: Double
+    var height: Double
+    /// Legacy min/max limits. Kept for decode/save compatibility; AppKit uses internal floors instead.
     var minWidth: Double
     var minHeight: Double
     var maxWidth: Double
@@ -560,6 +565,8 @@ nonisolated struct WindowPreferences: Equatable {
         passesMouseThrough: true,
         autoHidesControls: true,
         summonRegion: .bottomEdge,
+        width: Double(StudioFrame.defaultSize.width),
+        height: Double(StudioFrame.defaultSize.height),
         minWidth: Double(StudioFrame.absoluteMinimum.width),
         minHeight: Double(StudioFrame.absoluteMinimum.height),
         maxWidth: Double(StudioFrame.defaultMaximumSize.width),
@@ -661,6 +668,9 @@ nonisolated struct StudioPreferences: Equatable {
     static let windowMinHeightRange: ClosedRange<Double> = 240...600
     static let windowMaxWidthRange: ClosedRange<Double> = 640...3840
     static let windowMaxHeightRange: ClosedRange<Double> = 400...2160
+    /// Preferred Studio window size in points (not physical pixels).
+    static let windowWidthRange: ClosedRange<Double> = 360...3840
+    static let windowHeightRange: ClosedRange<Double> = 240...2160
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let densities = [32, 64, 128]
 
@@ -703,6 +713,8 @@ nonisolated struct StudioPreferences: Equatable {
                 passesMouseThrough: true,
                 autoHidesControls: reader.bool(StudioPreferenceKey.windowAutoHidesControls, fallback: standard.window.autoHidesControls),
                 summonRegion: defaults.string(forKey: StudioPreferenceKey.windowSummonRegion).flatMap(StudioSummonRegion.init(rawValue:)) ?? standard.window.summonRegion,
+                width: reader.double(StudioPreferenceKey.windowWidth, range: windowWidthRange, fallback: standard.window.width),
+                height: reader.double(StudioPreferenceKey.windowHeight, range: windowHeightRange, fallback: standard.window.height),
                 minWidth: reader.double(StudioPreferenceKey.windowMinWidth, range: windowMinWidthRange, fallback: standard.window.minWidth),
                 minHeight: reader.double(StudioPreferenceKey.windowMinHeight, range: windowMinHeightRange, fallback: standard.window.minHeight),
                 maxWidth: reader.double(StudioPreferenceKey.windowMaxWidth, range: windowMaxWidthRange, fallback: standard.window.maxWidth),
@@ -772,6 +784,9 @@ nonisolated struct StudioPreferences: Equatable {
         let standard = Self.standard
         result.window.hideDelaySeconds = Self.clamped(window.hideDelaySeconds, to: Self.hideDelayRange, fallback: standard.window.hideDelaySeconds)
         result.window.passesMouseThrough = true
+        result.window.width = Self.clamped(window.width, to: Self.windowWidthRange, fallback: standard.window.width)
+        result.window.height = Self.clamped(window.height, to: Self.windowHeightRange, fallback: standard.window.height)
+        // Legacy limits stay in range for old keys; live windows use absolute floor + screen max.
         result.window.minWidth = Self.clamped(window.minWidth, to: Self.windowMinWidthRange, fallback: standard.window.minWidth)
         result.window.minHeight = Self.clamped(window.minHeight, to: Self.windowMinHeightRange, fallback: standard.window.minHeight)
         result.window.maxWidth = Self.clamped(window.maxWidth, to: Self.windowMaxWidthRange, fallback: standard.window.maxWidth)
@@ -832,6 +847,8 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.window.passesMouseThrough, forKey: StudioPreferenceKey.windowPassesMouseThrough)
         defaults.set(p.window.autoHidesControls, forKey: StudioPreferenceKey.windowAutoHidesControls)
         defaults.set(p.window.summonRegion.rawValue, forKey: StudioPreferenceKey.windowSummonRegion)
+        defaults.set(p.window.width, forKey: StudioPreferenceKey.windowWidth)
+        defaults.set(p.window.height, forKey: StudioPreferenceKey.windowHeight)
         defaults.set(p.window.minWidth, forKey: StudioPreferenceKey.windowMinWidth)
         defaults.set(p.window.minHeight, forKey: StudioPreferenceKey.windowMinHeight)
         defaults.set(p.window.maxWidth, forKey: StudioPreferenceKey.windowMaxWidth)
