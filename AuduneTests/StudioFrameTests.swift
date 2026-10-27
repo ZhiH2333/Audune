@@ -58,4 +58,65 @@ final class StudioFrameTests: XCTestCase {
 
         XCTAssertEqual(result, fallback)
     }
+
+    func testEffectiveLimitsRespectAbsoluteFloorAndRaiseMaxToMin() {
+        let raised = StudioFrame.effectiveLimits(
+            minWidth: 700,
+            minHeight: 500,
+            maxWidth: 640,
+            maxHeight: 400
+        )
+        XCTAssertEqual(raised.minimum.width, 700, accuracy: 0.001)
+        XCTAssertEqual(raised.minimum.height, 500, accuracy: 0.001)
+        XCTAssertEqual(raised.maximum.width, 700, accuracy: 0.001)
+        XCTAssertEqual(raised.maximum.height, 500, accuracy: 0.001)
+
+        let floored = StudioFrame.effectiveLimits(
+            minWidth: 100,
+            minHeight: 50,
+            maxWidth: 2000,
+            maxHeight: 1500
+        )
+        XCTAssertEqual(floored.minimum, StudioFrame.absoluteMinimum)
+        XCTAssertEqual(floored.maximum.width, 2000, accuracy: 0.001)
+        XCTAssertEqual(floored.maximum.height, 1500, accuracy: 0.001)
+    }
+
+    func testEffectiveLimitsCapToScreen() {
+        let limits = StudioFrame.effectiveLimits(
+            minWidth: 360,
+            minHeight: 240,
+            maxWidth: 3000,
+            maxHeight: 2000,
+            screen: CGSize(width: 1280, height: 800)
+        )
+        XCTAssertEqual(limits.maximum.width, 1280, accuracy: 0.001)
+        XCTAssertEqual(limits.maximum.height, 800, accuracy: 0.001)
+    }
+
+    func testClampedHonorsUserMaximum() {
+        let screen = CGRect(x: 0, y: 0, width: 2000, height: 1200)
+        let frame = CGRect(x: 10, y: 10, width: 1800, height: 1100)
+        let result = StudioFrame.clamped(
+            frame,
+            to: [screen],
+            fallback: screen,
+            minimum: CGSize(width: 360, height: 240),
+            maximum: CGSize(width: 900, height: 600)
+        )
+        XCTAssertEqual(result.width, 900, accuracy: 0.001)
+        XCTAssertEqual(result.height, 600, accuracy: 0.001)
+        XCTAssertTrue(screen.contains(result))
+    }
+
+    func testConstrainShrinksOversizedFrame() {
+        let frame = CGRect(x: 40, y: 50, width: 2000, height: 1400)
+        let next = StudioFrame.constrain(
+            frame,
+            minimum: CGSize(width: 360, height: 240),
+            maximum: CGSize(width: 800, height: 500)
+        )
+        XCTAssertEqual(next.size, CGSize(width: 800, height: 500))
+        XCTAssertEqual(next.origin, frame.origin)
+    }
 }

@@ -325,8 +325,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.ignoresMouseEvents = true
-        panel.minSize = StudioFrame.minimumSize
-        panel.contentMinSize = StudioFrame.minimumSize
+        applySizeConstraints(clampFrame: false)
         let root = StudioContentView(
             spike: spike,
             model: model,
@@ -394,7 +393,41 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         } else {
             panel.styleMask.remove(.resizable)
         }
+        applySizeConstraints(clampFrame: true)
         syncPassthroughWindows()
+    }
+
+    /// Publishes AppKit min/max sizes from prefs ∩ screen. Optionally shrinks an oversized live frame once.
+    private func applySizeConstraints(clampFrame: Bool) {
+        let screenSize = (panel.screen ?? NSScreen.main)?.visibleFrame.size
+        let limits = sizeLimits(screen: screenSize)
+        panel.minSize = limits.minimum
+        panel.contentMinSize = limits.minimum
+        panel.maxSize = limits.maximum
+        panel.contentMaxSize = limits.maximum
+        guard clampFrame else { return }
+        let constrained = StudioFrame.constrain(panel.frame, minimum: limits.minimum, maximum: limits.maximum)
+        if constrained.size != panel.frame.size {
+            var next = constrained
+            if let visible = (panel.screen ?? NSScreen.main)?.visibleFrame {
+                if next.maxX > visible.maxX { next.origin.x = visible.maxX - next.width }
+                if next.maxY > visible.maxY { next.origin.y = visible.maxY - next.height }
+                if next.minX < visible.minX { next.origin.x = visible.minX }
+                if next.minY < visible.minY { next.origin.y = visible.minY }
+            }
+            panel.setFrame(next, display: panel.isVisible)
+        }
+    }
+
+    private func sizeLimits(screen: CGSize?) -> (minimum: CGSize, maximum: CGSize) {
+        let window = model.prefs.window
+        return StudioFrame.effectiveLimits(
+            minWidth: window.minWidth,
+            minHeight: window.minHeight,
+            maxWidth: window.maxWidth,
+            maxHeight: window.maxHeight,
+            screen: screen
+        )
     }
 
     /// Back to the default size, centered on the screen the window is on.
@@ -640,7 +673,17 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func clampOntoVisibleScreen() {
         let screens = NSScreen.screens.map(\.visibleFrame)
         let fallback = NSScreen.main?.visibleFrame ?? NSRect(origin: .zero, size: StudioFrame.defaultSize)
-        let clamped = StudioFrame.clamped(panel.frame, to: screens, fallback: fallback)
+        let window = model.prefs.window
+        let userMax = CGSize(width: window.maxWidth, height: window.maxHeight)
+        let userMin = CGSize(width: window.minWidth, height: window.minHeight)
+        let clamped = StudioFrame.clamped(
+            panel.frame,
+            to: screens,
+            fallback: fallback,
+            minimum: userMin,
+            maximum: userMax
+        )
+        applySizeConstraints(clampFrame: false)
         if clamped != panel.frame {
             panel.setFrame(clamped, display: panel.isVisible)
         }
@@ -837,11 +880,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         view.onMouseDown = { [weak self, weak edgePanel] in
             guard let self, let edgePanel else { return }
             self.model.pointerDown = true
+            let limits = self.sizeLimits(screen: (self.panel.screen ?? NSScreen.main)?.visibleFrame.size)
             StudioWindowResize.track(
                 window: self.panel,
                 eventWindow: edgePanel,
                 edge: edgePanel.edge,
-                minimum: StudioFrame.minimumSize
+                minimum: limits.minimum,
+                maximum: limits.maximum
             ) { [weak self] in
                 self?.syncPassthroughWindows()
             }

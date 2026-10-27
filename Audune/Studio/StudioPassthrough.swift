@@ -60,14 +60,17 @@ enum StudioWindowResize {
         startMouse: CGPoint,
         mouse: CGPoint,
         edge: StudioResizeEdge,
-        minimum: CGSize
+        minimum: CGSize,
+        maximum: CGSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
     ) -> CGRect {
         let values = [
             start.origin.x, start.origin.y, start.width, start.height,
             startMouse.x, startMouse.y, mouse.x, mouse.y,
-            minimum.width, minimum.height
+            minimum.width, minimum.height, maximum.width, maximum.height
         ]
         guard values.allSatisfy(\.isFinite), start.isValidRect, minimum.isValidSize else { return start }
+        let maxW = max(maximum.width, minimum.width)
+        let maxH = max(maximum.height, minimum.height)
         let dx = mouse.x - startMouse.x
         let dy = mouse.y - startMouse.y
         var frame = start
@@ -88,12 +91,22 @@ enum StudioWindowResize {
                 frame.origin.x = start.maxX - minimum.width
             }
             frame.size.width = minimum.width
+        } else if frame.width > maxW {
+            if edge == .minX {
+                frame.origin.x = start.maxX - maxW
+            }
+            frame.size.width = maxW
         }
         if frame.height < minimum.height {
             if edge == .minY {
                 frame.origin.y = start.maxY - minimum.height
             }
             frame.size.height = minimum.height
+        } else if frame.height > maxH {
+            if edge == .minY {
+                frame.origin.y = start.maxY - maxH
+            }
+            frame.size.height = maxH
         }
         return frame
     }
@@ -104,6 +117,7 @@ enum StudioWindowResize {
         eventWindow: NSWindow,
         edge: StudioResizeEdge,
         minimum: CGSize,
+        maximum: CGSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
         onMove: (() -> Void)? = nil
     ) {
         let startMouse = NSEvent.mouseLocation
@@ -121,7 +135,8 @@ enum StudioWindowResize {
                 startMouse: startMouse,
                 mouse: NSEvent.mouseLocation,
                 edge: edge,
-                minimum: minimum
+                minimum: minimum,
+                maximum: maximum
             )
             window.setFrame(resized, display: window.isVisible)
             onMove?()

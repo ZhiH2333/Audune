@@ -57,6 +57,32 @@ final class StudioPassthroughTests: XCTestCase {
         )
     }
 
+    func testResizeHonorsMaximumAndAnchoredEdge() {
+        let start = CGRect(x: 10, y: 20, width: 400, height: 300)
+        let maximum = CGSize(width: 500, height: 360)
+        let grown = StudioWindowResize.frame(
+            start: start,
+            startMouse: CGPoint(x: 410, y: 20),
+            mouse: CGPoint(x: 900, y: 20),
+            edge: .maxX,
+            minimum: StudioFrame.minimumSize,
+            maximum: maximum
+        )
+        XCTAssertEqual(grown.width, 500, accuracy: 0.001)
+        XCTAssertEqual(grown.origin.x, start.origin.x, accuracy: 0.001)
+
+        let fromMinX = StudioWindowResize.frame(
+            start: start,
+            startMouse: CGPoint(x: 10, y: 20),
+            mouse: CGPoint(x: -400, y: 20),
+            edge: .minX,
+            minimum: StudioFrame.minimumSize,
+            maximum: maximum
+        )
+        XCTAssertEqual(fromMinX.width, 500, accuracy: 0.001)
+        XCTAssertEqual(fromMinX.maxX, start.maxX, accuracy: 0.001)
+    }
+
     func testMissingPassthroughPreferenceStaysOff() {
         let defaults = UserDefaults(suiteName: "AudunePassthroughDefaults")!
         defaults.removePersistentDomain(forName: "AudunePassthroughDefaults")

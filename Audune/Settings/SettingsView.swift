@@ -334,6 +334,38 @@ struct SettingsView: View {
             Toggle("Restore position and size at launch", isOn: $model.prefs.window.restorePosition)
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
+        Section("Size limits") {
+            Text("Limits apply to the Studio window only, in points. The current screen may impose a smaller maximum. Notch Island is unchanged.")
+                .foregroundStyle(.secondary)
+            SettingsSlider(
+                title: "Minimum width (pt)",
+                value: $model.prefs.window.minWidth,
+                range: StudioPreferences.windowMinWidthRange,
+                step: 10,
+                fractionDigits: 0
+            )
+            SettingsSlider(
+                title: "Minimum height (pt)",
+                value: $model.prefs.window.minHeight,
+                range: StudioPreferences.windowMinHeightRange,
+                step: 10,
+                fractionDigits: 0
+            )
+            SettingsSlider(
+                title: "Maximum width (pt)",
+                value: $model.prefs.window.maxWidth,
+                range: StudioPreferences.windowMaxWidthRange,
+                step: 10,
+                fractionDigits: 0
+            )
+            SettingsSlider(
+                title: "Maximum height (pt)",
+                value: $model.prefs.window.maxHeight,
+                range: StudioPreferences.windowMaxHeightRange,
+                step: 10,
+                fractionDigits: 0
+            )
+        }
         Section("Controls") {
             Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear when the pointer is near and hide after 3 seconds without it.")
                 .foregroundStyle(.secondary)

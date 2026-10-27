@@ -64,6 +64,10 @@ nonisolated enum StudioPreferenceKey {
     static let windowPassesMouseThrough = "studio.window.passesMouseThrough"
     static let windowAutoHidesControls = "studio.window.autoHidesControls"
     static let windowSummonRegion = "studio.window.summonRegion"
+    static let windowMinWidth = "studio.window.minWidth"
+    static let windowMinHeight = "studio.window.minHeight"
+    static let windowMaxWidth = "studio.window.maxWidth"
+    static let windowMaxHeight = "studio.window.maxHeight"
     /// Versioned JSON for custom visual presets. Built-in presets are not stored here.
     static let visualPresets = "studio.visualPresets"
 }
@@ -383,6 +387,11 @@ nonisolated struct WindowPreferences: Equatable {
     /// When false, the controls stay visible.
     var autoHidesControls: Bool
     var summonRegion: StudioSummonRegion
+    /// User-facing Studio size limits in points. Not the live window frame.
+    var minWidth: Double
+    var minHeight: Double
+    var maxWidth: Double
+    var maxHeight: Double
 
     static let standard = WindowPreferences(
         allowsDrag: true,
@@ -393,7 +402,11 @@ nonisolated struct WindowPreferences: Equatable {
         followsReduceMotion: true,
         passesMouseThrough: true,
         autoHidesControls: true,
-        summonRegion: .bottomEdge
+        summonRegion: .bottomEdge,
+        minWidth: Double(StudioFrame.absoluteMinimum.width),
+        minHeight: Double(StudioFrame.absoluteMinimum.height),
+        maxWidth: Double(StudioFrame.defaultMaximumSize.width),
+        maxHeight: Double(StudioFrame.defaultMaximumSize.height)
     )
 }
 
@@ -424,6 +437,10 @@ nonisolated struct StudioPreferences: Equatable {
     static let peakHoldSecondsRange: ClosedRange<Double> = 0.1...2
     static let peakFallPerSecondRange: ClosedRange<Double> = 0.2...2
     static let silenceThresholdRange: ClosedRange<Double> = 0.0001...0.01
+    static let windowMinWidthRange: ClosedRange<Double> = 360...800
+    static let windowMinHeightRange: ClosedRange<Double> = 240...600
+    static let windowMaxWidthRange: ClosedRange<Double> = 640...3840
+    static let windowMaxHeightRange: ClosedRange<Double> = 400...2160
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let densities = [32, 64, 128]
 
@@ -464,7 +481,11 @@ nonisolated struct StudioPreferences: Equatable {
                 followsReduceMotion: reader.bool(StudioPreferenceKey.windowFollowsReduceMotion, fallback: standard.window.followsReduceMotion),
                 passesMouseThrough: true,
                 autoHidesControls: reader.bool(StudioPreferenceKey.windowAutoHidesControls, fallback: standard.window.autoHidesControls),
-                summonRegion: defaults.string(forKey: StudioPreferenceKey.windowSummonRegion).flatMap(StudioSummonRegion.init(rawValue:)) ?? standard.window.summonRegion
+                summonRegion: defaults.string(forKey: StudioPreferenceKey.windowSummonRegion).flatMap(StudioSummonRegion.init(rawValue:)) ?? standard.window.summonRegion,
+                minWidth: reader.double(StudioPreferenceKey.windowMinWidth, range: windowMinWidthRange, fallback: standard.window.minWidth),
+                minHeight: reader.double(StudioPreferenceKey.windowMinHeight, range: windowMinHeightRange, fallback: standard.window.minHeight),
+                maxWidth: reader.double(StudioPreferenceKey.windowMaxWidth, range: windowMaxWidthRange, fallback: standard.window.maxWidth),
+                maxHeight: reader.double(StudioPreferenceKey.windowMaxHeight, range: windowMaxHeightRange, fallback: standard.window.maxHeight)
             ),
             appearance: AppearancePreferences(
                 color: color,
@@ -520,6 +541,16 @@ nonisolated struct StudioPreferences: Equatable {
         let standard = Self.standard
         result.window.hideDelaySeconds = Self.clamped(window.hideDelaySeconds, to: Self.hideDelayRange, fallback: standard.window.hideDelaySeconds)
         result.window.passesMouseThrough = true
+        result.window.minWidth = Self.clamped(window.minWidth, to: Self.windowMinWidthRange, fallback: standard.window.minWidth)
+        result.window.minHeight = Self.clamped(window.minHeight, to: Self.windowMinHeightRange, fallback: standard.window.minHeight)
+        result.window.maxWidth = Self.clamped(window.maxWidth, to: Self.windowMaxWidthRange, fallback: standard.window.maxWidth)
+        result.window.maxHeight = Self.clamped(window.maxHeight, to: Self.windowMaxHeightRange, fallback: standard.window.maxHeight)
+        if result.window.maxWidth < result.window.minWidth {
+            result.window.maxWidth = result.window.minWidth
+        }
+        if result.window.maxHeight < result.window.minHeight {
+            result.window.maxHeight = result.window.minHeight
+        }
         result.appearance.opacity = Self.clamped(appearance.opacity, to: Self.opacityRange, fallback: standard.appearance.opacity)
         result.appearance.lineWidth = Self.clamped(appearance.lineWidth, to: Self.lineWidthRange, fallback: standard.appearance.lineWidth)
         result.spectrum.barCount = Self.normalizedBarCount(spectrum.barCount)
@@ -566,6 +597,10 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.window.passesMouseThrough, forKey: StudioPreferenceKey.windowPassesMouseThrough)
         defaults.set(p.window.autoHidesControls, forKey: StudioPreferenceKey.windowAutoHidesControls)
         defaults.set(p.window.summonRegion.rawValue, forKey: StudioPreferenceKey.windowSummonRegion)
+        defaults.set(p.window.minWidth, forKey: StudioPreferenceKey.windowMinWidth)
+        defaults.set(p.window.minHeight, forKey: StudioPreferenceKey.windowMinHeight)
+        defaults.set(p.window.maxWidth, forKey: StudioPreferenceKey.windowMaxWidth)
+        defaults.set(p.window.maxHeight, forKey: StudioPreferenceKey.windowMaxHeight)
 
         defaults.set(p.appearance.color.hex, forKey: StudioPreferenceKey.color)
         defaults.set(p.appearance.strokeColor.hex, forKey: StudioPreferenceKey.strokeColor)

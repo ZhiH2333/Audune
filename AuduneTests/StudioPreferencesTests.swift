@@ -111,7 +111,11 @@ final class StudioPreferencesTests: XCTestCase {
             followsReduceMotion: false,
             passesMouseThrough: true,
             autoHidesControls: false,
-            summonRegion: .grip
+            summonRegion: .grip,
+            minWidth: 400,
+            minHeight: 280,
+            maxWidth: 1200,
+            maxHeight: 800
         )
         stored.appearance = AppearancePreferences(
             color: StudioColor(red: 0.2, green: 0.4, blue: 0.6),
@@ -282,6 +286,10 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertTrue(standard.passesMouseThrough)
         XCTAssertTrue(standard.autoHidesControls)
         XCTAssertEqual(standard.summonRegion, .bottomEdge)
+        XCTAssertEqual(standard.minWidth, 360, accuracy: 0.000_1)
+        XCTAssertEqual(standard.minHeight, 240, accuracy: 0.000_1)
+        XCTAssertEqual(standard.maxWidth, 1600, accuracy: 0.000_1)
+        XCTAssertEqual(standard.maxHeight, 1000, accuracy: 0.000_1)
 
         defaults.set(99.0, forKey: StudioPreferenceKey.windowHideDelay)
         XCTAssertEqual(StudioPreferences.load(from: defaults).window.hideDelaySeconds, 3)
@@ -296,6 +304,8 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertTrue(missing.autoHidesControls)
         XCTAssertEqual(missing.summonRegion, .bottomEdge)
         XCTAssertFalse(missing.allowsDrag)
+        XCTAssertEqual(missing.minWidth, 360, accuracy: 0.000_1)
+        XCTAssertEqual(missing.maxWidth, 1600, accuracy: 0.000_1)
         defaults.set("sideways", forKey: StudioPreferenceKey.windowSummonRegion)
         defaults.set(false, forKey: StudioPreferenceKey.windowAutoHidesControls)
         defaults.set(false, forKey: StudioPreferenceKey.windowPassesMouseThrough)
@@ -303,6 +313,16 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(stored.summonRegion, .bottomEdge)
         XCTAssertFalse(stored.autoHidesControls)
         XCTAssertTrue(stored.passesMouseThrough)
+
+        defaults.set(900.0, forKey: StudioPreferenceKey.windowMinWidth)
+        defaults.set(100.0, forKey: StudioPreferenceKey.windowMinHeight)
+        defaults.set(500.0, forKey: StudioPreferenceKey.windowMaxWidth)
+        defaults.set(10_000.0, forKey: StudioPreferenceKey.windowMaxHeight)
+        let sized = StudioPreferences.load(from: defaults).window
+        XCTAssertEqual(sized.minWidth, 800, accuracy: 0.000_1)
+        XCTAssertEqual(sized.minHeight, 240, accuracy: 0.000_1)
+        XCTAssertEqual(sized.maxWidth, 800, accuracy: 0.000_1)
+        XCTAssertEqual(sized.maxHeight, 2160, accuracy: 0.000_1)
     }
 
     func testStudioColorRoundTripsThroughHex() {
