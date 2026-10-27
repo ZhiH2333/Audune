@@ -214,7 +214,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.prefs = updated
             savePreferences()
             refreshStudioSpectrum(dt: 0)
-            refreshWaveform()
+            refreshWaveform(dt: 0)
             return true
         case .failure:
             return false
@@ -658,14 +658,15 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func refreshWaveform() {
+    private func refreshWaveform(dt: Double) {
         guard model.prefs.mode == .waveform else { return }
         let live = model.snapshot.waveform
         let target = model.snapshot.isSilent ? Array(repeating: Float(0), count: live.count) : live
         smoothedWave = WaveformPath.mix(
             current: smoothedWave,
             toward: target,
-            smoothing: Float(model.prefs.waveform.smoothing)
+            smoothing: Float(model.prefs.waveform.smoothing),
+            dt: dt
         )
         model.displayWaveform = smoothedWave
     }
@@ -719,7 +720,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.snapshot = spike.snapshots.load()
         refreshPointerInside()
         refreshStudioSpectrum(dt: dt)
-        refreshWaveform()
+        refreshWaveform(dt: dt)
     }
 
     func placeForTests(_ frame: CGRect) {

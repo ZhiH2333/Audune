@@ -152,7 +152,8 @@ struct StudioContentView: View {
                 lineWidth: prefs.waveform.lineWidth,
                 smoothing: prefs.waveform.smoothing,
                 density: prefs.waveform.density,
-                style: prefs.waveform.style
+                style: prefs.waveform.style,
+                fillStrength: prefs.waveform.fillStrength
             )
         case .orbit:
             OrbitCanvas(

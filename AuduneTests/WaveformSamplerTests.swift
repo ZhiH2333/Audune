@@ -71,9 +71,13 @@ final class WaveformSamplerTests: XCTestCase {
         XCTAssertTrue(WaveformPath.points(samples: [0.2], in: CGRect(x: 0, y: 0, width: 100, height: 40)).isEmpty)
         let bounds = CGRect(x: 0, y: 0, width: 80, height: 100)
         let quiet = WaveformPath.points(samples: [0.2, 0.2], in: bounds, amplitude: 1)
-        let lifted = WaveformPath.points(samples: [0.2, 0.2], in: bounds, amplitude: WaveformPath.displayGain)
-        XCTAssertGreaterThan(abs(lifted[0].y - bounds.midY), abs(quiet[0].y - bounds.midY) * 2)
-        XCTAssertGreaterThan(abs(lifted[0].y - bounds.midY), 20)
+        let lifted = WaveformPath.points(
+            samples: [0.2, 0.2],
+            in: bounds,
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 1)
+        )
+        XCTAssertGreaterThan(abs(lifted[0].y - bounds.midY), abs(quiet[0].y - bounds.midY))
+        XCTAssertLessThan(abs(lifted[0].y - bounds.midY), 40)
         XCTAssertEqual(WaveformPath.centerline(in: .zero), [])
     }
 
@@ -106,12 +110,62 @@ final class WaveformSamplerTests: XCTestCase {
         for density in WaveformPath.densities {
             let prepared = WaveformPath.prepared(Array(repeating: 0, count: 128), density: density, smoothing: 0.5)
             let bounds = CGRect(x: 0, y: 0, width: 300, height: 100)
-            let points = WaveformPath.points(samples: prepared, in: bounds, amplitude: WaveformPath.displayGain)
+            let points = WaveformPath.points(
+                samples: prepared,
+                in: bounds,
+                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 1)
+            )
 
             XCTAssertEqual(prepared.count, density)
             XCTAssertTrue(points.allSatisfy { abs($0.y - bounds.midY) < 0.001 })
         }
         XCTAssertEqual(WaveformPath.prepared(Array(repeating: 0, count: 128), density: 7, smoothing: 0).count, 128)
+    }
+
+    func testDefaultVisualAmplitudeIsCalmerThanLegacyBoost() {
+        let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
+        let sample: [Float] = [0.5, 0.5]
+        let legacy = WaveformPath.points(samples: sample, in: bounds, amplitude: 3)
+        let redesigned = WaveformPath.points(
+            samples: sample,
+            in: bounds,
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: WaveformPreferences.standard.amplitude)
+        )
+        let legacySwing = abs(legacy[0].y - bounds.midY)
+        let redesignSwing = abs(redesigned[0].y - bounds.midY)
+        XCTAssertGreaterThan(legacySwing, redesignSwing * 1.5)
+        XCTAssertLessThan(redesignSwing, bounds.height * 0.45)
+        XCTAssertGreaterThan(redesignSwing, 5)
+    }
+
+    func testMixDependsOnElapsedTimeNotFrameCount() {
+        let start = Array(repeating: Float(0), count: 8)
+        let target = Array(repeating: Float(1), count: 8)
+        var manySmall = start
+        for _ in 0..<10 {
+            manySmall = WaveformPath.mix(current: manySmall, toward: target, smoothing: 0.4, dt: 0.01)
+        }
+        var fewLarge = start
+        for _ in 0..<2 {
+            fewLarge = WaveformPath.mix(current: fewLarge, toward: target, smoothing: 0.4, dt: 0.05)
+        }
+        for index in 0..<8 {
+            XCTAssertEqual(manySmall[index], fewLarge[index], accuracy: 0.08)
+        }
+        let silent = WaveformPath.mix(current: target, toward: start, smoothing: 0.4, dt: 0.2)
+        XCTAssertTrue(silent.allSatisfy { $0 >= 0 && $0 <= 1 && $0.isFinite })
+        XCTAssertLessThan(silent[0], 0.5)
+    }
+
+    func testVisualAmplitudeDoesNotMutateSourceSamples() {
+        var source: [Float] = [0.2, -0.3, 0.4]
+        let before = source
+        _ = WaveformPath.points(
+            samples: source,
+            in: CGRect(x: 0, y: 0, width: 100, height: 40),
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 2)
+        )
+        XCTAssertEqual(source, before)
     }
 
     func testCurveControlPointsStayInsideBounds() {

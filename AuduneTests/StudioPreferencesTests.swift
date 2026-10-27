@@ -31,7 +31,11 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(standard.spectrum.attackMs, 35)
         XCTAssertEqual(standard.spectrum.releaseMs, 260)
         XCTAssertEqual(standard.spectrum.floorDecibels, -60, accuracy: 0.000_1)
-        XCTAssertEqual(standard.waveform.smoothing, 0.35)
+        XCTAssertEqual(standard.waveform.smoothing, 0.4, accuracy: 0.000_1)
+        XCTAssertEqual(standard.waveform.amplitude, 0.55, accuracy: 0.000_1)
+        XCTAssertEqual(standard.waveform.lineWidth, 1.25, accuracy: 0.000_1)
+        XCTAssertEqual(standard.waveform.fillStrength, 0.32, accuracy: 0.000_1)
+        XCTAssertEqual(standard.waveform.style, .line)
     }
 
     func testAttackAndReleasePersistIndependentlyOfSmoothing() {
@@ -144,10 +148,11 @@ final class StudioPreferencesTests: XCTestCase {
         )
         stored.waveform = WaveformPreferences(
             lineWidth: 2.5,
-            amplitude: 2,
+            amplitude: 1.2,
             smoothing: 0.6,
             density: 128,
-            style: .filled,
+            style: .softFill,
+            fillStrength: 0.5,
             customColor: StudioColor(red: 0.5, green: 0.25, blue: 0.75)
         )
         stored.orbit = OrbitPreferences(
@@ -251,7 +256,10 @@ final class StudioPreferencesTests: XCTestCase {
 
         XCTAssertEqual(loaded.waveform.density, 64)
         XCTAssertEqual(loaded.waveform.style, .line)
+        XCTAssertEqual(loaded.waveform.fillStrength, 0.32, accuracy: 0.000_1)
         XCTAssertEqual(loaded.waveform.customColor, StudioColor(red: 0, green: 0, blue: 1))
+        defaults.set("filled", forKey: StudioPreferenceKey.waveformStyle)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).waveform.style, .softFill)
         loaded.waveform.customColor = nil
         loaded.save(to: defaults)
         XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.waveformColor))

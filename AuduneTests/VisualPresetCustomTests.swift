@@ -27,7 +27,7 @@ final class VisualPresetCustomTests: XCTestCase {
         var waveform = WaveformPreferences.standard
         waveform.customColor = StudioColor(red: 0.2, green: 0.4, blue: 0.8)
         waveform.density = 128
-        waveform.style = .filled
+        waveform.style = .softFill
         waveform.lineWidth = 2.5
         studio.model.prefs.waveform = waveform
         studio.model.prefs.spectrum.barCount = 48

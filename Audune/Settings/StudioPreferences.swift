@@ -43,6 +43,7 @@ nonisolated enum StudioPreferenceKey {
     static let waveformSmoothing = "studio.waveform.smoothing"
     static let waveformDensity = "studio.waveform.density"
     static let waveformStyle = "studio.waveform.style"
+    static let waveformFillStrength = "studio.waveform.fillStrength"
     static let waveformColor = "studio.waveform.color"
 
     static let orbitBarCount = "studio.orbit.barCount"
@@ -291,34 +292,61 @@ nonisolated struct SpectrumPreferences: Equatable {
 
 nonisolated enum WaveformStyle: String, Codable, CaseIterable, Identifiable {
     case line
-    case filled
+    case softFill
+    case mirror
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .line: return "Line"
-        case .filled: return "Filled"
+        case .line: return "Fine Line"
+        case .softFill: return "Soft Fill"
+        case .mirror: return "Mirror"
         }
+    }
+
+    /// Accepts the legacy `"filled"` raw value from older prefs and presets.
+    init?(rawValue: String) {
+        switch rawValue {
+        case "line": self = .line
+        case "softFill", "filled": self = .softFill
+        case "mirror": self = .mirror
+        default: return nil
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = WaveformStyle(rawValue: raw) ?? .line
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 
 nonisolated struct WaveformPreferences: Equatable {
     var lineWidth: Double
+    /// Visual amplitude only. Does not change captured PCM or system volume.
     var amplitude: Double
+    /// Motion smoothing 0…1 mapped to a time constant. Spatial soften uses a fraction of this.
     var smoothing: Double
     /// How many of the real PCM points are drawn. Never more than the snapshot provides.
     var density: Int
     var style: WaveformStyle
+    /// Fill opacity share for Soft Fill / Mirror. Ignored by Fine Line.
+    var fillStrength: Double
     /// `nil` follows the Appearance color.
     var customColor: StudioColor?
 
     static let standard = WaveformPreferences(
-        lineWidth: 1.5,
-        amplitude: 1,
-        smoothing: 0.35,
+        lineWidth: 1.25,
+        amplitude: 0.55,
+        smoothing: 0.4,
         density: 64,
         style: .line,
+        fillStrength: 0.32,
         customColor: nil
     )
 }
@@ -422,6 +450,9 @@ nonisolated struct StudioPreferences: Equatable {
     static let opacityRange: ClosedRange<Double> = 0.35...1
     static let lineWidthRange: ClosedRange<Double> = 0.5...4
     static let amplitudeRange: ClosedRange<Double> = 0.25...3
+    /// Waveform visual amplitude. Narrower and calmer than Spectrum/Orbit amplitude.
+    static let waveformAmplitudeRange: ClosedRange<Double> = 0.1...2
+    static let fillStrengthRange: ClosedRange<Double> = 0...1
     static let smoothingRange: ClosedRange<Double> = 0...1
     static let barGapRange: ClosedRange<Double> = 0...8
     static let cornerRadiusRange: ClosedRange<Double> = 0...8
@@ -514,10 +545,11 @@ nonisolated struct StudioPreferences: Equatable {
             ),
             waveform: WaveformPreferences(
                 lineWidth: reader.double(StudioPreferenceKey.waveformLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.waveform.lineWidth),
-                amplitude: reader.double(StudioPreferenceKey.waveformAmplitude, legacy: legacyAmplitude, range: amplitudeRange, fallback: standard.waveform.amplitude),
+                amplitude: reader.double(StudioPreferenceKey.waveformAmplitude, legacy: legacyAmplitude, range: waveformAmplitudeRange, fallback: standard.waveform.amplitude),
                 smoothing: reader.double(StudioPreferenceKey.waveformSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.waveform.smoothing),
                 density: reader.density(StudioPreferenceKey.waveformDensity, fallback: standard.waveform.density),
                 style: defaults.string(forKey: StudioPreferenceKey.waveformStyle).flatMap(WaveformStyle.init(rawValue:)) ?? standard.waveform.style,
+                fillStrength: reader.double(StudioPreferenceKey.waveformFillStrength, range: fillStrengthRange, fallback: standard.waveform.fillStrength),
                 customColor: defaults.string(forKey: StudioPreferenceKey.waveformColor).flatMap(StudioColor.init(hex:))
             ),
             orbit: OrbitPreferences(
@@ -567,9 +599,10 @@ nonisolated struct StudioPreferences: Equatable {
         result.spectrum.peakFallPerSecond = Self.clamped(spectrum.peakFallPerSecond, to: Self.peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond)
         result.spectrum.silenceThreshold = Self.clamped(spectrum.silenceThreshold, to: Self.silenceThresholdRange, fallback: standard.spectrum.silenceThreshold)
         result.waveform.lineWidth = Self.clamped(waveform.lineWidth, to: Self.lineWidthRange, fallback: standard.waveform.lineWidth)
-        result.waveform.amplitude = Self.clamped(waveform.amplitude, to: Self.amplitudeRange, fallback: standard.waveform.amplitude)
+        result.waveform.amplitude = Self.clamped(waveform.amplitude, to: Self.waveformAmplitudeRange, fallback: standard.waveform.amplitude)
         result.waveform.smoothing = Self.clamped(waveform.smoothing, to: Self.smoothingRange, fallback: standard.waveform.smoothing)
         result.waveform.density = Self.densities.contains(waveform.density) ? waveform.density : standard.waveform.density
+        result.waveform.fillStrength = Self.clamped(waveform.fillStrength, to: Self.fillStrengthRange, fallback: standard.waveform.fillStrength)
         result.orbit.barCount = Self.normalizedBarCount(orbit.barCount)
         result.orbit.inner = Self.clamped(orbit.inner, to: Self.orbitInnerRange, fallback: standard.orbit.inner)
         result.orbit.outerScale = Self.clamped(orbit.outerScale, to: Self.orbitOuterRange, fallback: standard.orbit.outerScale)
@@ -630,6 +663,7 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.waveform.smoothing, forKey: StudioPreferenceKey.waveformSmoothing)
         defaults.set(p.waveform.density, forKey: StudioPreferenceKey.waveformDensity)
         defaults.set(p.waveform.style.rawValue, forKey: StudioPreferenceKey.waveformStyle)
+        defaults.set(p.waveform.fillStrength, forKey: StudioPreferenceKey.waveformFillStrength)
         if let custom = p.waveform.customColor {
             defaults.set(custom.hex, forKey: StudioPreferenceKey.waveformColor)
         } else {
@@ -828,7 +862,7 @@ extension SpectrumPreferences: Codable {
 
 extension WaveformPreferences: Codable {
     private enum CodingKeys: String, CodingKey {
-        case lineWidth, amplitude, smoothing, density, style, customColor
+        case lineWidth, amplitude, smoothing, density, style, fillStrength, customColor
     }
 
     init(from decoder: Decoder) throws {
@@ -840,6 +874,7 @@ extension WaveformPreferences: Codable {
             smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
             density: try container.decodeIfPresent(Int.self, forKey: .density) ?? standard.density,
             style: try container.decodeIfPresent(WaveformStyle.self, forKey: .style) ?? standard.style,
+            fillStrength: try container.decodeIfPresent(Double.self, forKey: .fillStrength) ?? standard.fillStrength,
             customColor: try container.decodeIfPresent(StudioColor.self, forKey: .customColor)
         )
         self = clamped()
@@ -852,6 +887,7 @@ extension WaveformPreferences: Codable {
         try container.encode(smoothing, forKey: .smoothing)
         try container.encode(density, forKey: .density)
         try container.encode(style, forKey: .style)
+        try container.encode(fillStrength, forKey: .fillStrength)
         try container.encodeIfPresent(customColor, forKey: .customColor)
     }
 

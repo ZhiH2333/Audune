@@ -720,7 +720,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             smoothedWaveform = WaveformPath.mix(
                 current: smoothedWaveform,
                 toward: target,
-                smoothing: Float(model.waveform.smoothing)
+                smoothing: Float(model.waveform.smoothing),
+                dt: dt
             )
             model.expandedWaveform = smoothedWaveform
             model.expandedPeaks = []

@@ -254,8 +254,28 @@ struct SettingsView: View {
                 ), supportsOpacity: false)
             }
             SettingsSlider(title: "Line width", value: $model.prefs.waveform.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
-            SettingsSlider(title: "Amplitude", value: $model.prefs.waveform.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
-            SettingsSlider(title: "Smoothing", value: $model.prefs.waveform.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
+            SettingsSlider(
+                title: "Visual amplitude",
+                value: $model.prefs.waveform.amplitude,
+                range: StudioPreferences.waveformAmplitudeRange,
+                step: 0.05
+            )
+            Text("Scales the drawn waveform only. It does not change system volume or captured audio.")
+                .foregroundStyle(.secondary)
+            SettingsSlider(
+                title: "Fill strength",
+                value: $model.prefs.waveform.fillStrength,
+                range: StudioPreferences.fillStrengthRange,
+                step: 0.05
+            )
+            SettingsSlider(
+                title: "Motion smoothing",
+                value: $model.prefs.waveform.smoothing,
+                range: StudioPreferences.smoothingRange,
+                step: 0.05
+            )
+            Text("Stabilizes motion over real time. Separate from Spectrum Attack / Release.")
+                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Waveform") {

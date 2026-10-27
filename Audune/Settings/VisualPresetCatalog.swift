@@ -42,28 +42,31 @@ nonisolated enum VisualPresetCatalog {
 
     static let fineLine = waveform(id: "builtin.waveform.fineLine", name: "Fine Line") { prefs in
         prefs.style = .line
-        prefs.lineWidth = 0.5
+        prefs.lineWidth = 0.75
         prefs.density = 128
-        prefs.smoothing = 0.15
-        prefs.amplitude = 0.8
+        prefs.smoothing = 0.25
+        prefs.amplitude = 0.45
+        prefs.fillStrength = 0
         prefs.customColor = nil
     }
 
     static let softFill = waveform(id: "builtin.waveform.softFill", name: "Soft Fill") { prefs in
-        prefs.style = .filled
-        prefs.lineWidth = 2.5
+        prefs.style = .softFill
+        prefs.lineWidth = 1.5
         prefs.density = 64
-        prefs.smoothing = 0.7
-        prefs.amplitude = 1.2
+        prefs.smoothing = 0.55
+        prefs.amplitude = 0.6
+        prefs.fillStrength = 0.4
         prefs.customColor = nil
     }
 
     static let mirror = waveform(id: "builtin.waveform.mirror", name: "Mirror") { prefs in
-        prefs.style = .filled
-        prefs.lineWidth = 1.5
-        prefs.density = 32
-        prefs.smoothing = 0.25
-        prefs.amplitude = 1.6
+        prefs.style = .mirror
+        prefs.lineWidth = 1.25
+        prefs.density = 64
+        prefs.smoothing = 0.35
+        prefs.amplitude = 0.5
+        prefs.fillStrength = 0.22
         prefs.customColor = nil
     }
 

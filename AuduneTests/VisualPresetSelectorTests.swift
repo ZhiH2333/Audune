@@ -29,7 +29,7 @@ final class VisualPresetSelectorTests: XCTestCase {
 
         var waveform = WaveformPreferences.standard
         waveform.density = 32
-        waveform.style = .filled
+        waveform.style = .softFill
         let custom = try library.addCustom(name: "Night", mode: .waveform, waveform: waveform, to: defaults).get()
         let restored = try library.apply(custom, to: prefs, in: defaults).get()
         XCTAssertEqual(library.match(in: restored, mode: .waveform).statusText, "Night · Custom")

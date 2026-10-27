@@ -321,7 +321,8 @@ struct IslandContentView: View {
                 lineWidth: model.waveform.lineWidth,
                 smoothing: model.waveform.smoothing,
                 density: model.waveform.density,
-                style: model.waveform.style
+                style: model.waveform.style,
+                fillStrength: model.waveform.fillStrength
             )
         case .orbit:
             OrbitCanvas(
