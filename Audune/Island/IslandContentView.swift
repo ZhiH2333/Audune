@@ -312,7 +312,8 @@ struct IslandContentView: View {
                 cornerRadius: model.spectrum.cornerRadius,
                 barGap: model.spectrum.barGap,
                 drawsStroke: model.spectrum.stroke,
-                colorMode: model.spectrum.colorMode
+                colorMode: model.spectrum.colorMode,
+                peakHold: model.spectrum.peakHold
             )
         case .waveform:
             WaveformCanvas(

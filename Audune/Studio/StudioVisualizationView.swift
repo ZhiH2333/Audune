@@ -26,7 +26,8 @@ struct StudioVisualizationView: View {
                 cornerRadius: prefs.spectrum.cornerRadius,
                 barGap: prefs.spectrum.barGap,
                 drawsStroke: prefs.spectrum.stroke,
-                colorMode: prefs.spectrum.colorMode
+                colorMode: prefs.spectrum.colorMode,
+                peakHold: prefs.spectrum.peakHold
             )
         case .waveform:
             WaveformCanvas(
