@@ -233,7 +233,13 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         var library = VisualPresetCatalog.restoring(from: defaults)
         switch library.apply(preset, to: model.prefs, in: defaults) {
         case .success(let updated):
+            let spectrumReplaced = updated.spectrum != model.prefs.spectrum
             model.prefs = updated
+            if spectrumReplaced {
+                // Drop held peaks so the previous preset's layout cannot pin the new one.
+                spectrumState = SpectrumDynamicsState()
+                model.spectrumPeaks = []
+            }
             savePreferences()
             refreshStudioSpectrum(dt: 0)
             refreshWaveform(dt: 0)
@@ -804,6 +810,18 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     func placeForTests(_ frame: CGRect) {
         panel.setFrame(frame, display: false)
         syncPassthroughWindows()
+    }
+
+    /// Seeds live spectrum dynamics so preset-apply peak reset can be asserted in tests.
+    func seedSpectrumDynamicsForTests(levels: [Float], peaks: [Float]) {
+        let count = max(levels.count, peaks.count)
+        spectrumState = SpectrumDynamicsState(
+            levels: levels,
+            peaks: peaks,
+            peakAge: Array(repeating: 0.5, count: count)
+        )
+        model.studioSpectrum = levels
+        model.spectrumPeaks = model.prefs.spectrum.peakHold ? peaks : []
     }
 
     func inspectWindowNumberForTests() -> Int {

@@ -174,8 +174,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     func updateSharedVisuals(_ preferences: StudioPreferences) {
-        if preferences.spectrum.barCount != model.spectrum.barCount || preferences.orbit.bandCount != model.orbit.bandCount {
+        if preferences.spectrum != model.spectrum {
+            // Spectrum preset replace must clear held peaks that used the old layout.
             spectrumState = SpectrumDynamicsState()
+            model.expandedPeaks = []
+        }
+        if preferences.orbit.bandCount != model.orbit.bandCount {
             smoothedExpanded = []
         }
         model.appearance = preferences.appearance
@@ -331,6 +335,18 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             isTimerRunning: timer != nil,
             unsupportedReason: model.unsupportedReason
         )
+    }
+
+    /// Seeds expanded spectrum dynamics so shared-visual peak reset can be asserted in tests.
+    func seedExpandedSpectrumDynamicsForTests(levels: [Float], peaks: [Float]) {
+        let count = max(levels.count, peaks.count)
+        spectrumState = SpectrumDynamicsState(
+            levels: levels,
+            peaks: peaks,
+            peakAge: Array(repeating: 0.5, count: count)
+        )
+        model.expandedSpectrum = levels
+        model.expandedPeaks = model.spectrum.peakHold ? peaks : []
     }
 
     // MARK: Private Setup & Event Handling
