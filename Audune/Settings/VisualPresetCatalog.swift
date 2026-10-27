@@ -48,6 +48,7 @@ nonisolated enum VisualPresetCatalog {
         prefs.density = 128
         prefs.smoothing = 0.25
         prefs.amplitude = 0.45
+        prefs.verticalRange = 0.65
         prefs.fillStrength = 0
         prefs.customColor = nil
     }
@@ -58,6 +59,7 @@ nonisolated enum VisualPresetCatalog {
         prefs.density = 64
         prefs.smoothing = 0.55
         prefs.amplitude = 0.6
+        prefs.verticalRange = 0.75
         prefs.fillStrength = 0.4
         prefs.customColor = nil
     }
@@ -68,6 +70,7 @@ nonisolated enum VisualPresetCatalog {
         prefs.density = 64
         prefs.smoothing = 0.35
         prefs.amplitude = 0.5
+        prefs.verticalRange = 0.7
         prefs.fillStrength = 0.22
         prefs.customColor = nil
     }

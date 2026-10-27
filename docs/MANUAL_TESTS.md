@@ -209,7 +209,8 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 - [ ] `NOT TESTED` — The default Waveform is a smooth centered curve with a faint baseline and ends that rest on the baseline; it is not the old polyline in a new color.
 - [ ] `NOT TESTED` — Real playback changes the shape, quiet passages still move off the baseline, and silence settles to a flat line.
-- [ ] `NOT TESTED` — Fine Line, Soft Fill, and Mirror styles, density 32/64/128, custom line color, stroke width, visual amplitude, fill strength, and motion smoothing apply immediately, survive relaunch, and Reset Waveform restores them. Default visual amplitude stays calmer than the old ×3 boost.
+- [ ] `NOT TESTED` — Fine Line, Soft Fill, and Mirror styles, density 32/64/128, custom line color, stroke width, maximum display height, visual amplitude, fill strength, and motion smoothing apply immediately, survive relaunch, and Reset Waveform restores them. Default visual amplitude stays calmer than the old ×3 boost. Maximum display height caps peak-to-peak size; raising visual amplitude cannot push strokes past the Studio visualization frame, including at max stroke width and after resizing the window.
+- [ ] `NOT TESTED` — Notch Island Expanded Waveform stays inside the island content area with the same range/amplitude prefs; Island window geometry is unchanged.
 
 ### Studio v1.4 Orbit
 
