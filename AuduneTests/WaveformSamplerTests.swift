@@ -201,6 +201,62 @@ final class WaveformSamplerTests: XCTestCase {
         XCTAssertLessThan(mid.plotBounds.height, high.plotBounds.height)
     }
 
+    func testEveryWaveformStyleSharesTheSameSafeAnchors() throws {
+        let canvas = CGRect(x: 0, y: 0, width: 240, height: 120)
+        let metrics = try XCTUnwrap(
+            WaveformPath.drawMetrics(in: canvas, verticalRange: 0.7, lineWidth: 3)
+        )
+        let samples = sine(frequency: 4, amplitude: 1, count: 128)
+        let points = WaveformPath.plottedPoints(
+            samples: samples,
+            metrics: metrics,
+            visualAmplitude: 2,
+            density: 64,
+            smoothing: 0.5
+        )
+        XCTAssertEqual(points.count, 64)
+        for style in WaveformStyle.allCases {
+            let anchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: style)
+            XCTAssertFalse(anchors.isEmpty, "\(style)")
+            for point in anchors {
+                XCTAssertTrue(inside(point, metrics.plotBounds), "\(style) \(point)")
+            }
+            let segments = WaveformPath.segments(through: Array(anchors.prefix(points.count)), in: metrics.plotBounds)
+            for segment in segments {
+                for point in [segment.control1, segment.control2, segment.end] {
+                    XCTAssertTrue(inside(point, metrics.plotBounds), "\(style) segment")
+                }
+            }
+        }
+        let lineAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .line)
+        let softAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .softFill)
+        let mirrorAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .mirror)
+        XCTAssertEqual(lineAnchors, points)
+        XCTAssertEqual(softAnchors, mirrorAnchors)
+        XCTAssertEqual(softAnchors.count, points.count * 2)
+    }
+
+    func testDrawMetricsFollowLatestCanvasSize() throws {
+        let tall = try XCTUnwrap(
+            WaveformPath.drawMetrics(
+                in: CGRect(x: 0, y: 0, width: 100, height: 200),
+                verticalRange: 0.7,
+                lineWidth: 1
+            )
+        )
+        let wide = try XCTUnwrap(
+            WaveformPath.drawMetrics(
+                in: CGRect(x: 0, y: 0, width: 400, height: 80),
+                verticalRange: 0.7,
+                lineWidth: 1
+            )
+        )
+        XCTAssertEqual(tall.canvas.height, 200, accuracy: 0.001)
+        XCTAssertEqual(wide.canvas.width, 400, accuracy: 0.001)
+        XCTAssertGreaterThan(tall.plotBounds.height, wide.plotBounds.height)
+        XCTAssertGreaterThan(wide.plotBounds.width, tall.plotBounds.width)
+    }
+
     func testSafePlotGeometryContainsPointsSegmentsAndMirror() throws {
         let samples = sine(frequency: 7, amplitude: 1, count: 128)
         for size in [

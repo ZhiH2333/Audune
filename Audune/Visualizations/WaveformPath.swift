@@ -159,6 +159,34 @@ nonisolated enum WaveformPath {
         return CGFloat(user) * displayGain
     }
 
+    /// Shared sample → plot points for every Waveform style. Range lives in `metrics.plotBounds`.
+    static func plottedPoints(
+        samples: [Float],
+        metrics: DrawMetrics,
+        visualAmplitude: Double,
+        density: Int,
+        smoothing: Float
+    ) -> [CGPoint] {
+        let prepared = prepared(samples, density: density, smoothing: smoothing)
+        let plotted = points(
+            samples: prepared,
+            in: metrics.plotBounds,
+            amplitude: canvasAmplitude(visualAmplitude: visualAmplitude)
+        )
+        return plotted.count >= 2 ? plotted : centerline(in: metrics.plotBounds)
+    }
+
+    /// Points every style may stroke or fill, including the mirrored copy for Soft Fill / Mirror.
+    static func styleAnchors(points: [CGPoint], in plotBounds: CGRect, style: WaveformStyle) -> [CGPoint] {
+        guard isDrawable(plotBounds) else { return [] }
+        switch style {
+        case .line:
+            return points
+        case .softFill, .mirror:
+            return points + mirrored(points, in: plotBounds)
+        }
+    }
+
     /// One smooth cubic piece ending at `end`.
     struct Segment: Equatable {
         var control1: CGPoint
@@ -234,14 +262,14 @@ struct WaveformCanvas: View {
             ) else { return }
 
             let plot = metrics.plotBounds
-            let prepared = WaveformPath.prepared(samples, density: density, smoothing: Float(smoothing))
             // Range is already baked into `plot`; amplitude only fills that band.
-            let plotted = WaveformPath.points(
-                samples: prepared,
-                in: plot,
-                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: amplitude)
+            let points = WaveformPath.plottedPoints(
+                samples: samples,
+                metrics: metrics,
+                visualAmplitude: amplitude,
+                density: density,
+                smoothing: Float(smoothing)
             )
-            let points = plotted.count >= 2 ? plotted : WaveformPath.centerline(in: plot)
             guard let first = points.first else { return }
 
             var base = Path()
