@@ -72,6 +72,9 @@ nonisolated enum StudioPreferenceKey {
     static let windowMinHeight = "studio.window.minHeight"
     static let windowMaxWidth = "studio.window.maxWidth"
     static let windowMaxHeight = "studio.window.maxHeight"
+    static let layoutMode = "studio.layout.mode"
+    static let layoutScale = "studio.layout.scale"
+    static let layoutAspect = "studio.layout.aspect"
     /// Versioned JSON for custom visual presets. Built-in presets are not stored here.
     static let visualPresets = "studio.visualPresets"
 }
@@ -560,10 +563,67 @@ nonisolated struct WindowPreferences: Equatable {
     )
 }
 
+/// How the visualization is sized inside the Studio window. Independent of the window's own size limits.
+nonisolated enum VisualLayoutMode: String, CaseIterable, Identifiable {
+    /// Visualization fills the whole window (older behavior).
+    case fill
+    /// Visualization keeps its own size; the window is only the area it sits in.
+    case fixed
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fill: return "Fill window"
+        case .fixed: return "Fixed size"
+        }
+    }
+}
+
+nonisolated enum VisualAspect: String, CaseIterable, Identifiable {
+    case wide
+    case standard
+    case square
+    case ultrawide
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .wide: return "16:10"
+        case .standard: return "4:3"
+        case .square: return "1:1"
+        case .ultrawide: return "2:1"
+        }
+    }
+
+    /// Width divided by height.
+    var ratio: Double {
+        switch self {
+        case .wide: return 16.0 / 10.0
+        case .standard: return 4.0 / 3.0
+        case .square: return 1
+        case .ultrawide: return 2
+        }
+    }
+}
+
+nonisolated struct VisualLayoutPreferences: Equatable {
+    var mode: VisualLayoutMode
+    /// Multiplies the 640 pt reference width in Fixed mode.
+    var scale: Double
+    var aspect: VisualAspect
+
+    static let standard = VisualLayoutPreferences(mode: .fixed, scale: 1, aspect: .wide)
+    static let scaleRange: ClosedRange<Double> = 0.25...2
+    static let referenceWidth: Double = 640
+}
+
 nonisolated struct StudioPreferences: Equatable {
     var mode: StudioVisualMode
     var windowMode: StudioWindowMode
     var window: WindowPreferences
+    var layout: VisualLayoutPreferences = .standard
     var appearance: AppearancePreferences
     var spectrum: SpectrumPreferences
     var waveform: WaveformPreferences
@@ -602,6 +662,7 @@ nonisolated struct StudioPreferences: Equatable {
         mode: .spectrum,
         windowMode: .onTop,
         window: .standard,
+        layout: .standard,
         appearance: .standard,
         spectrum: .standard,
         waveform: .standard,
@@ -640,6 +701,11 @@ nonisolated struct StudioPreferences: Equatable {
                 minHeight: reader.double(StudioPreferenceKey.windowMinHeight, range: windowMinHeightRange, fallback: standard.window.minHeight),
                 maxWidth: reader.double(StudioPreferenceKey.windowMaxWidth, range: windowMaxWidthRange, fallback: standard.window.maxWidth),
                 maxHeight: reader.double(StudioPreferenceKey.windowMaxHeight, range: windowMaxHeightRange, fallback: standard.window.maxHeight)
+            ),
+            layout: VisualLayoutPreferences(
+                mode: defaults.string(forKey: StudioPreferenceKey.layoutMode).flatMap(VisualLayoutMode.init(rawValue:)) ?? standard.layout.mode,
+                scale: reader.double(StudioPreferenceKey.layoutScale, range: VisualLayoutPreferences.scaleRange, fallback: standard.layout.scale),
+                aspect: defaults.string(forKey: StudioPreferenceKey.layoutAspect).flatMap(VisualAspect.init(rawValue:)) ?? standard.layout.aspect
             ),
             appearance: AppearancePreferences(
                 color: color,
@@ -709,6 +775,7 @@ nonisolated struct StudioPreferences: Equatable {
         if result.window.maxHeight < result.window.minHeight {
             result.window.maxHeight = result.window.minHeight
         }
+        result.layout.scale = Self.clamped(layout.scale, to: VisualLayoutPreferences.scaleRange, fallback: standard.layout.scale)
         result.appearance.opacity = Self.clamped(appearance.opacity, to: Self.opacityRange, fallback: standard.appearance.opacity)
         result.appearance.lineWidth = Self.clamped(appearance.lineWidth, to: Self.lineWidthRange, fallback: standard.appearance.lineWidth)
         result.spectrum.barCount = Self.normalizedBarCount(spectrum.barCount)
@@ -761,6 +828,9 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.window.minHeight, forKey: StudioPreferenceKey.windowMinHeight)
         defaults.set(p.window.maxWidth, forKey: StudioPreferenceKey.windowMaxWidth)
         defaults.set(p.window.maxHeight, forKey: StudioPreferenceKey.windowMaxHeight)
+        defaults.set(p.layout.mode.rawValue, forKey: StudioPreferenceKey.layoutMode)
+        defaults.set(p.layout.scale, forKey: StudioPreferenceKey.layoutScale)
+        defaults.set(p.layout.aspect.rawValue, forKey: StudioPreferenceKey.layoutAspect)
 
         defaults.set(p.appearance.color.hex, forKey: StudioPreferenceKey.color)
         defaults.set(p.appearance.strokeColor.hex, forKey: StudioPreferenceKey.strokeColor)

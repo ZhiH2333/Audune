@@ -195,7 +195,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 旧的 `studio.alwaysOnTop` 在没有 `studio.windowMode` 时迁移：`true` 为 On Top，`false` 为 As Window。保存时仍把 On Top 写成 `true`，其余写成 `false`。
 - 关闭/隐藏 Studio 不停止音频捕获，也不关闭菜单栏应用。
 - 记忆窗口位置、大小、所选可视化模式和窗口层级选项。
-- Settings → Window → Size limits 可配置 Studio 最小/最大宽高（points）。默认最小 360×240、最大 1600×1000；绝对硬底为 360×240。有效上限取用户最大值与当前屏 `visibleFrame` 的较小者。通过 `contentMinSize` / `contentMaxSize` 与边缘缩放路径统一钳制；修改限制后一次性收缩过大窗口。宽高比不锁定。这些限制只作用于 Studio，不影响 Notch Island。
+- Settings → Layout 单独控制可视化自身大小：Fixed size（默认，640 pt 宽 × Scale 25–200%，比例 16:10 / 4:3 / 1:1 / 2:1，居中，窗口小于它时等比缩小）或 Fill window（旧行为）。顶部有实时预览：外框是窗口、内框是可视化。改窗口大小不会改变 Fixed 模式下的可视化大小。键为 `studio.layout.mode/scale/aspect`；Island 不读取。
+- Settings → Window → Size limits 只管窗口外框，可配置 Studio 最小/最大宽高（points）。默认最小 360×240、最大 1600×1000；绝对硬底为 360×240。有效上限取用户最大值与当前屏 `visibleFrame` 的较小者。通过 `contentMinSize` / `contentMaxSize` 与边缘缩放路径统一钳制；修改限制后一次性收缩过大窗口。宽高比不锁定。这些限制只作用于 Studio，不影响 Notch Island。
 - 屏幕断开、分辨率变化、保存坐标在屏幕之外时，窗口恢复到当前可见屏幕。
 - 画布鼠标穿透在 On Top、On Desktop、As Window 三种模式里始终开启，旧的关闭值不再恢复整窗命中。公开 API 没有按区域挖洞的鼠标遮罩，`NSView.hitTest` 返回 `nil` 只表示这个窗口不接收该事件，并不会把点击交给下层应用。`ignoresMouseEvents` 是整窗开关，所以可视化 `NSPanel` 忽略鼠标；控件放在同级（不是 child window）的交互 `NSPanel` 上，缩放则是四条 6 pt 的边缘 `NSPanel`，且只在允许缩放时存在。不用 `addChildWindow`，以免子窗口被抬到父窗口之上并破坏 On Desktop。不申请 Accessibility 或 Input Monitoring，也不另起高频轮询。交互面板只盖住真实控件或唤出区域，不盖住整块画布，因此按钮仍可点击，画布空白点由窗口服务器交给更下层的窗口。隐藏 Studio 时，交互面板和边缘面板 `orderOut`，不留下点击层。另一进程里更高的窗口仍可能先接到点击，这是窗口服务器的正常叠放，不是穿透失败。
 - Studio 窗口始终透明。不绘制整窗背景、暗色遮罩、大卡片、毛玻璃、整窗矩形描边或窗口阴影。透明来自 `isOpaque = false` 和清除的窗口背景，不是把填充色调成接近桌面。

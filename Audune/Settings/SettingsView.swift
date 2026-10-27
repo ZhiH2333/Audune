@@ -4,6 +4,7 @@ import SwiftUI
 
 enum SettingsCategory: String, CaseIterable, Identifiable {
     case appearance
+    case layout
     case spectrum
     case waveform
     case orbit
@@ -16,6 +17,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .appearance: return "Appearance"
+        case .layout: return "Layout"
         case .spectrum: return "Spectrum"
         case .waveform: return "Waveform"
         case .orbit: return "Orbit"
@@ -28,6 +30,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .appearance: return "paintpalette"
+        case .layout: return "rectangle.dashed"
         case .spectrum: return "chart.bar.fill"
         case .waveform: return "waveform"
         case .orbit: return "circle.dotted"
@@ -79,6 +82,7 @@ struct SettingsView: View {
                 }
                 switch model.settingsCategory {
                 case .appearance: appearancePane
+                case .layout: layoutPane
                 case .spectrum: spectrumPane
                 case .waveform: waveformPane
                 case .orbit: orbitPane
@@ -154,6 +158,46 @@ struct SettingsView: View {
             Text("The Studio window background is always fully transparent. Opacity only changes the graphic.")
                 .foregroundStyle(.secondary)
             Button("Reset Appearance") { model.prefs.appearance = .standard }
+        }
+    }
+
+    @ViewBuilder
+    private var layoutPane: some View {
+        Section("Preview") {
+            LayoutPreview(model: model)
+            Text("The outer frame is the Studio window; the inner frame is the visualization. Resizing the window does not resize the visualization in Fixed size mode.")
+                .foregroundStyle(.secondary)
+        }
+        Section("Visualization size") {
+            Picker("Mode", selection: $model.prefs.layout.mode) {
+                ForEach(VisualLayoutMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Picker("Aspect ratio", selection: $model.prefs.layout.aspect) {
+                ForEach(VisualAspect.allCases) { aspect in
+                    Text(aspect.title).tag(aspect)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(model.prefs.layout.mode == .fill)
+            LabeledContent("Scale") {
+                HStack {
+                    Slider(value: $model.prefs.layout.scale, in: VisualLayoutPreferences.scaleRange, step: 0.05)
+                        .frame(minWidth: 160)
+                    Text(model.prefs.layout.scale, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 52, alignment: .trailing)
+                }
+            }
+            .disabled(model.prefs.layout.mode == .fill)
+            Text("Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size limits.")
+                .foregroundStyle(.secondary)
+        }
+        Section {
+            Button("Reset Layout") { model.prefs.layout = .standard }
         }
     }
 
@@ -383,7 +427,7 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Size limits") {
-            Text("Limits apply to the Studio window only, in points. The current screen may impose a smaller maximum. Notch Island is unchanged.")
+            Text("Limits apply to the Studio window frame only, in points; they do not resize the visualization (see Layout). The current screen may impose a smaller maximum. Notch Island is unchanged.")
                 .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Minimum width (pt)",
@@ -707,6 +751,42 @@ struct SettingsView: View {
         case .stopped: return "Stopped"
         case .unknown: return "Unknown"
         }
+    }
+}
+
+/// Mini Studio: outer frame is the window, inner frame is the visualization, drawn with live data.
+private struct LayoutPreview: View {
+    @Bindable var model: StudioModel
+
+    var body: some View {
+        let window = model.windowSize.width > 0 && model.windowSize.height > 0 ? model.windowSize : StudioFrame.defaultSize
+        let boxHeight: CGFloat = 170
+        let boxWidth: CGFloat = 320
+        let fit = min(boxWidth / window.width, boxHeight / window.height)
+        let shown = CGSize(width: window.width * fit, height: window.height * fit)
+        let inner = VisualLayout.frame(in: shown, layout: model.prefs.layout)
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.black.opacity(0.55))
+                .frame(width: shown.width, height: shown.height)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(Color.secondary.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .frame(width: shown.width, height: shown.height)
+            StudioVisualizationView(
+                prefs: model.prefs,
+                spectrum: model.studioSpectrum,
+                peaks: model.spectrumPeaks,
+                waveform: model.displayWaveform,
+                drawsBars: model.snapshot.isSilent == false
+            )
+            .frame(width: inner.width, height: inner.height)
+            .overlay(Rectangle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 1))
+            .offset(x: inner.minX, y: inner.minY)
+        }
+        .frame(width: shown.width, height: shown.height)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("Layout preview")
+        .accessibilityValue("Window \(Int(window.width)) by \(Int(window.height)) points")
     }
 }
 

@@ -21,6 +21,8 @@ final class StudioModel {
     var menuTracking = false
     var chromeVisible = false
     var isShown = false
+    /// Live Studio window content size in points. Used only by the Layout preview.
+    var windowSize = StudioFrame.defaultSize
 }
 
 struct StudioContentView: View {
@@ -48,6 +50,7 @@ struct StudioContentView: View {
         .foregroundStyle(warmWhite)
         .preferredColorScheme(.dark)
         .coordinateSpace(name: StudioCoordinateSpace.name)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { model.windowSize = $0 }
         .animation(chromeAnimation, value: model.chromeVisible)
         .onPreferenceChange(StudioControlFramesKey.self) { frames in
             hitMap.controlFramesTopLeft = frames
@@ -124,57 +127,19 @@ struct StudioContentView: View {
         .studioGripRegion()
     }
 
-    @ViewBuilder
+    /// The visualization sits in its own frame inside the window; the window size only sets the area around it.
     private var visualization: some View {
-        let prefs = model.prefs
-        let fill = prefs.appearance.color.swiftUI
-        switch prefs.mode {
-        case .spectrum:
-            SpectrumCanvas(
+        GeometryReader { proxy in
+            let frame = VisualLayout.frame(in: proxy.size, layout: model.prefs.layout)
+            StudioVisualizationView(
+                prefs: model.prefs,
                 spectrum: model.studioSpectrum,
                 peaks: model.spectrumPeaks,
-                drawsBars: drawsBars,
-                color: fill,
-                baseColor: prefs.appearance.color,
-                strokeColor: prefs.appearance.strokeColor.swiftUI,
-                opacity: prefs.appearance.opacity,
-                amplitude: prefs.spectrum.amplitude,
-                lineWidth: prefs.appearance.lineWidth,
-                cornerRadius: prefs.spectrum.cornerRadius,
-                barGap: prefs.spectrum.barGap,
-                drawsStroke: prefs.spectrum.stroke,
-                colorMode: prefs.spectrum.colorMode
+                waveform: model.displayWaveform,
+                drawsBars: drawsBars
             )
-        case .waveform:
-            WaveformCanvas(
-                samples: model.displayWaveform,
-                color: (prefs.waveform.customColor ?? prefs.appearance.color).swiftUI,
-                opacity: prefs.appearance.opacity,
-                amplitude: prefs.waveform.amplitude,
-                lineWidth: prefs.waveform.lineWidth,
-                smoothing: prefs.waveform.smoothing,
-                density: prefs.waveform.density,
-                style: prefs.waveform.style,
-                fillStrength: prefs.waveform.fillStrength
-            )
-        case .orbit:
-            OrbitCanvas(
-                spectrum: model.studioSpectrum,
-                drawsLevels: drawsBars,
-                barCount: prefs.orbit.barCount,
-                mirrored: prefs.orbit.mirrored,
-                color: (prefs.orbit.customColor ?? prefs.appearance.color).swiftUI,
-                strokeColor: prefs.appearance.strokeColor.swiftUI,
-                drawsStroke: prefs.orbit.stroke,
-                opacity: prefs.appearance.opacity,
-                amplitude: prefs.orbit.amplitude,
-                lineWidth: prefs.orbit.lineWidth,
-                innerRatio: prefs.orbit.inner,
-                outerScale: prefs.orbit.outerScale,
-                gapDegrees: prefs.orbit.gapDegrees,
-                layerMode: prefs.orbit.layerMode,
-                pulseStrength: prefs.orbit.pulseStrength
-            )
+            .frame(width: frame.width, height: frame.height)
+            .position(x: frame.midX, y: frame.midY)
         }
     }
 
