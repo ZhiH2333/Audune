@@ -13,12 +13,13 @@ nonisolated enum WaveformPath {
     /// Default peak-to-peak share of drawable height when preferences are missing.
     static let defaultVerticalRange: CGFloat = 0.7
 
-    /// Canvas geometry used by every Waveform style: stroke-safe inset, then vertical range band.
+    /// Canvas geometry for every Waveform style: stroke-safe inset only (no inner hard band).
+    /// `verticalRange` scales excursion inside `safeBounds`; it does not create a second clip rect.
     struct DrawMetrics: Equatable {
         var canvas: CGRect
         var safeBounds: CGRect
-        var plotBounds: CGRect
         var strokeInset: CGFloat
+        var verticalRange: CGFloat
     }
 
     /// Clamps the user vertical-range preference into the documented band.
@@ -37,7 +38,7 @@ nonisolated enum WaveformPath {
         return min(max(pad, 0), max(limit - 0.25, 0))
     }
 
-    /// Safe rectangle and centered plot band for the current canvas, range, and stroke width.
+    /// Stroke-safe drawable area. Vertical range is stored as a scale, not a shrunk clip rectangle.
     static func drawMetrics(
         in canvas: CGRect,
         verticalRange: CGFloat,
@@ -47,17 +48,12 @@ nonisolated enum WaveformPath {
         let inset = strokeInset(lineWidth: lineWidth, in: canvas)
         let safe = canvas.insetBy(dx: inset, dy: inset)
         guard isDrawable(safe) else { return nil }
-        let range = clampedVerticalRange(verticalRange)
-        let band = safe.height * range
-        guard band.isFinite, band > 0 else { return nil }
-        let plot = CGRect(
-            x: safe.minX,
-            y: safe.midY - band / 2,
-            width: safe.width,
-            height: band
+        return DrawMetrics(
+            canvas: canvas,
+            safeBounds: safe,
+            strokeInset: inset,
+            verticalRange: clampedVerticalRange(verticalRange)
         )
-        guard isDrawable(plot) else { return nil }
-        return DrawMetrics(canvas: canvas, safeBounds: safe, plotBounds: plot, strokeInset: inset)
     }
 
     static func points(
@@ -159,7 +155,7 @@ nonisolated enum WaveformPath {
         return CGFloat(user) * displayGain
     }
 
-    /// Shared sample → plot points for every Waveform style. Range lives in `metrics.plotBounds`.
+    /// Shared sample → points for every Waveform style. Maps into `safeBounds` with range as gain.
     static func plottedPoints(
         samples: [Float],
         metrics: DrawMetrics,
@@ -170,20 +166,21 @@ nonisolated enum WaveformPath {
         let prepared = prepared(samples, density: density, smoothing: smoothing)
         let plotted = points(
             samples: prepared,
-            in: metrics.plotBounds,
-            amplitude: canvasAmplitude(visualAmplitude: visualAmplitude)
+            in: metrics.safeBounds,
+            amplitude: canvasAmplitude(visualAmplitude: visualAmplitude),
+            verticalRange: metrics.verticalRange
         )
-        return plotted.count >= 2 ? plotted : centerline(in: metrics.plotBounds)
+        return plotted.count >= 2 ? plotted : centerline(in: metrics.safeBounds)
     }
 
     /// Points every style may stroke or fill, including the mirrored copy for Soft Fill / Mirror.
-    static func styleAnchors(points: [CGPoint], in plotBounds: CGRect, style: WaveformStyle) -> [CGPoint] {
-        guard isDrawable(plotBounds) else { return [] }
+    static func styleAnchors(points: [CGPoint], in safeBounds: CGRect, style: WaveformStyle) -> [CGPoint] {
+        guard isDrawable(safeBounds) else { return [] }
         switch style {
         case .line:
             return points
         case .softFill, .mirror:
-            return points + mirrored(points, in: plotBounds)
+            return points + mirrored(points, in: safeBounds)
         }
     }
 
@@ -261,8 +258,7 @@ struct WaveformCanvas: View {
                 lineWidth: CGFloat(lineWidth)
             ) else { return }
 
-            let plot = metrics.plotBounds
-            // Range is already baked into `plot`; amplitude only fills that band.
+            let safe = metrics.safeBounds
             let points = WaveformPath.plottedPoints(
                 samples: samples,
                 metrics: metrics,
@@ -273,11 +269,12 @@ struct WaveformCanvas: View {
             guard let first = points.first else { return }
 
             var base = Path()
-            base.move(to: CGPoint(x: plot.minX, y: plot.midY))
-            base.addLine(to: CGPoint(x: plot.maxX, y: plot.midY))
+            base.move(to: CGPoint(x: safe.minX, y: safe.midY))
+            base.addLine(to: CGPoint(x: safe.maxX, y: safe.midY))
             context.stroke(base, with: .color(color.opacity(opacity * 0.18)), style: StrokeStyle(lineWidth: 0.5))
 
-            let line = Self.curve(points, in: plot, from: first)
+            // Clamp paths to safeBounds (stroke inset), not a shrunk inner band.
+            let line = Self.curve(points, in: safe, from: first)
             let fill = fillStrength.isFinite ? min(max(fillStrength, 0), 1) : 0.32
 
             switch style {
@@ -289,7 +286,7 @@ struct WaveformCanvas: View {
                 )
             case .softFill:
                 if fill > 0 {
-                    Self.fillRibbon(context: context, line: line, points: points, in: plot, color: color, opacity: opacity * fill)
+                    Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill)
                 }
                 context.stroke(
                     line,
@@ -297,9 +294,9 @@ struct WaveformCanvas: View {
                     style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                 )
             case .mirror:
-                let reflected = WaveformPath.mirrored(points, in: plot)
+                let reflected = WaveformPath.mirrored(points, in: safe)
                 if fill > 0 {
-                    Self.fillRibbon(context: context, line: line, points: points, in: plot, color: color, opacity: opacity * fill * 0.55)
+                    Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill * 0.55)
                 }
                 context.stroke(
                     line,
@@ -307,7 +304,7 @@ struct WaveformCanvas: View {
                     style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                 )
                 if let mirrorFirst = reflected.first {
-                    let mirrorLine = Self.curve(reflected, in: plot, from: mirrorFirst)
+                    let mirrorLine = Self.curve(reflected, in: safe, from: mirrorFirst)
                     context.stroke(
                         mirrorLine,
                         with: .color(color.opacity(opacity * 0.85)),

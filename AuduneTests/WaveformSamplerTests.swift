@@ -178,8 +178,10 @@ final class WaveformSamplerTests: XCTestCase {
             XCTAssertTrue(metrics.safeBounds.maxX <= canvas.maxX - metrics.strokeInset + 0.001)
             XCTAssertTrue(metrics.safeBounds.minY >= canvas.minY + metrics.strokeInset - 0.001)
             XCTAssertTrue(metrics.safeBounds.maxY <= canvas.maxY - metrics.strokeInset + 0.001)
-            XCTAssertEqual(metrics.plotBounds.height, metrics.safeBounds.height, accuracy: 0.001)
-            XCTAssertEqual(metrics.plotBounds.midY, metrics.safeBounds.midY, accuracy: 0.001)
+            // No inner hard band: safeBounds is the full drawable area after stroke inset.
+            XCTAssertEqual(metrics.safeBounds.width, canvas.width - 2 * metrics.strokeInset, accuracy: 0.001)
+            XCTAssertEqual(metrics.safeBounds.height, canvas.height - 2 * metrics.strokeInset, accuracy: 0.001)
+            XCTAssertEqual(metrics.verticalRange, 1, accuracy: 0.000_1)
         }
         XCTAssertNil(WaveformPath.drawMetrics(in: .zero, verticalRange: 0.7, lineWidth: 2))
         XCTAssertNil(WaveformPath.drawMetrics(
@@ -189,16 +191,31 @@ final class WaveformSamplerTests: XCTestCase {
         ))
     }
 
-    func testDrawMetricsPlotBandScalesWithVerticalRange() throws {
+    func testVerticalRangeScalesExcursionWithoutShrinkingSafeBounds() throws {
         let canvas = CGRect(x: 0, y: 0, width: 320, height: 180)
         let low = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 0.3, lineWidth: 2))
         let mid = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 0.7, lineWidth: 2))
         let high = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 1, lineWidth: 2))
-        XCTAssertEqual(low.plotBounds.height, low.safeBounds.height * 0.3, accuracy: 0.001)
-        XCTAssertEqual(mid.plotBounds.height, mid.safeBounds.height * 0.7, accuracy: 0.001)
-        XCTAssertEqual(high.plotBounds.height, high.safeBounds.height, accuracy: 0.001)
-        XCTAssertLessThan(low.plotBounds.height, mid.plotBounds.height)
-        XCTAssertLessThan(mid.plotBounds.height, high.plotBounds.height)
+        XCTAssertEqual(low.safeBounds, mid.safeBounds)
+        XCTAssertEqual(mid.safeBounds, high.safeBounds)
+        XCTAssertEqual(low.verticalRange, 0.3, accuracy: 0.000_1)
+        XCTAssertEqual(mid.verticalRange, 0.7, accuracy: 0.000_1)
+        XCTAssertEqual(high.verticalRange, 1, accuracy: 0.000_1)
+
+        let samples: [Float] = [1, -1, 1, -1]
+        let lowPts = WaveformPath.plottedPoints(
+            samples: samples, metrics: low, visualAmplitude: 2, density: 4, smoothing: 0
+        )
+        let highPts = WaveformPath.plottedPoints(
+            samples: samples, metrics: high, visualAmplitude: 2, density: 4, smoothing: 0
+        )
+        let lowSwing = lowPts.map { abs($0.y - low.safeBounds.midY) }.max() ?? 0
+        let highSwing = highPts.map { abs($0.y - high.safeBounds.midY) }.max() ?? 0
+        XCTAssertEqual(lowSwing, low.safeBounds.height / 2 * 0.3, accuracy: 0.001)
+        XCTAssertEqual(highSwing, high.safeBounds.height / 2, accuracy: 0.001)
+        XCTAssertLessThan(lowSwing, highSwing)
+        // Full range reaches the safe edge — no mid-canvas hard ceiling.
+        XCTAssertEqual(highSwing + high.strokeInset, canvas.height / 2, accuracy: 0.001)
     }
 
     func testEveryWaveformStyleSharesTheSameSafeAnchors() throws {
@@ -216,21 +233,21 @@ final class WaveformSamplerTests: XCTestCase {
         )
         XCTAssertEqual(points.count, 64)
         for style in WaveformStyle.allCases {
-            let anchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: style)
+            let anchors = WaveformPath.styleAnchors(points: points, in: metrics.safeBounds, style: style)
             XCTAssertFalse(anchors.isEmpty, "\(style)")
             for point in anchors {
-                XCTAssertTrue(inside(point, metrics.plotBounds), "\(style) \(point)")
+                XCTAssertTrue(inside(point, metrics.safeBounds), "\(style) \(point)")
             }
-            let segments = WaveformPath.segments(through: Array(anchors.prefix(points.count)), in: metrics.plotBounds)
+            let segments = WaveformPath.segments(through: Array(anchors.prefix(points.count)), in: metrics.safeBounds)
             for segment in segments {
                 for point in [segment.control1, segment.control2, segment.end] {
-                    XCTAssertTrue(inside(point, metrics.plotBounds), "\(style) segment")
+                    XCTAssertTrue(inside(point, metrics.safeBounds), "\(style) segment")
                 }
             }
         }
-        let lineAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .line)
-        let softAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .softFill)
-        let mirrorAnchors = WaveformPath.styleAnchors(points: points, in: metrics.plotBounds, style: .mirror)
+        let lineAnchors = WaveformPath.styleAnchors(points: points, in: metrics.safeBounds, style: .line)
+        let softAnchors = WaveformPath.styleAnchors(points: points, in: metrics.safeBounds, style: .softFill)
+        let mirrorAnchors = WaveformPath.styleAnchors(points: points, in: metrics.safeBounds, style: .mirror)
         XCTAssertEqual(lineAnchors, points)
         XCTAssertEqual(softAnchors, mirrorAnchors)
         XCTAssertEqual(softAnchors.count, points.count * 2)
@@ -253,8 +270,8 @@ final class WaveformSamplerTests: XCTestCase {
         )
         XCTAssertEqual(tall.canvas.height, 200, accuracy: 0.001)
         XCTAssertEqual(wide.canvas.width, 400, accuracy: 0.001)
-        XCTAssertGreaterThan(tall.plotBounds.height, wide.plotBounds.height)
-        XCTAssertGreaterThan(wide.plotBounds.width, tall.plotBounds.width)
+        XCTAssertGreaterThan(tall.safeBounds.height, wide.safeBounds.height)
+        XCTAssertGreaterThan(wide.safeBounds.width, tall.safeBounds.width)
     }
 
     func testSafePlotGeometryContainsPointsSegmentsAndMirror() throws {
@@ -268,23 +285,24 @@ final class WaveformSamplerTests: XCTestCase {
             let metrics = try XCTUnwrap(
                 WaveformPath.drawMetrics(in: canvas, verticalRange: 1, lineWidth: 4)
             )
-            let points = WaveformPath.points(
+            let points = WaveformPath.plottedPoints(
                 samples: samples,
-                in: metrics.plotBounds,
-                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 2)
+                metrics: metrics,
+                visualAmplitude: 2,
+                density: 64,
+                smoothing: 0
             )
             XCTAssertFalse(points.isEmpty)
             for point in points {
-                XCTAssertTrue(inside(point, metrics.plotBounds), "\(point) outside plot \(metrics.plotBounds)")
-                XCTAssertTrue(inside(point, metrics.safeBounds))
+                XCTAssertTrue(inside(point, metrics.safeBounds), "\(point) outside safe \(metrics.safeBounds)")
             }
-            for segment in WaveformPath.segments(through: points, in: metrics.plotBounds) {
+            for segment in WaveformPath.segments(through: points, in: metrics.safeBounds) {
                 for point in [segment.control1, segment.control2, segment.end] {
-                    XCTAssertTrue(inside(point, metrics.plotBounds))
+                    XCTAssertTrue(inside(point, metrics.safeBounds))
                 }
             }
-            for point in WaveformPath.mirrored(points, in: metrics.plotBounds) {
-                XCTAssertTrue(inside(point, metrics.plotBounds))
+            for point in WaveformPath.mirrored(points, in: metrics.safeBounds) {
+                XCTAssertTrue(inside(point, metrics.safeBounds))
             }
             let strokeReach = metrics.strokeInset
             for point in points {
