@@ -81,4 +81,33 @@ final class SpectrumDynamicsTests: XCTestCase {
         XCTAssertTrue((state.levels + state.peaks).allSatisfy { $0.isFinite && $0 >= 0 && $0 <= 1 })
         XCTAssertEqual(SpectrumDynamics.step(state: state, target: [], dt: 0.03, settings: settings), SpectrumDynamicsState())
     }
+
+    func testPreferencesMapIndependentAttackAndRelease() {
+        var prefs = SpectrumPreferences.standard
+        prefs.attackMs = 10
+        prefs.releaseMs = 500
+        prefs.smoothing = 0.8
+        prefs.peakHold = false
+
+        let mapped = prefs.dynamics
+        XCTAssertEqual(mapped.attackSeconds, 0.01, accuracy: 0.000_001)
+        XCTAssertEqual(mapped.releaseSeconds, 0.5, accuracy: 0.000_001)
+        XCTAssertEqual(mapped.neighborSmoothing, 0.8, accuracy: 0.000_001)
+        XCTAssertNil(mapped.peakHoldSeconds)
+
+        let rising = SpectrumDynamics.step(
+            state: SpectrumDynamicsState(),
+            target: [1],
+            dt: 0.05,
+            settings: mapped
+        )
+        let falling = SpectrumDynamics.step(
+            state: SpectrumDynamicsState(levels: [1], peaks: [1], peakAge: [0]),
+            target: [0],
+            dt: 0.05,
+            settings: mapped
+        )
+        XCTAssertGreaterThan(rising.levels[0], 0.9)
+        XCTAssertGreaterThan(falling.levels[0], 0.85)
+    }
 }

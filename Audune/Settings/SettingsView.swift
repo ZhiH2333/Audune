@@ -188,6 +188,8 @@ struct SettingsView: View {
             SettingsSlider(title: "Smoothing", value: $model.prefs.spectrum.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
             SettingsSlider(title: "Attack (ms)", value: $model.prefs.spectrum.attackMs, range: StudioPreferences.attackMsRange, step: 5, fractionDigits: 0)
             SettingsSlider(title: "Release (ms)", value: $model.prefs.spectrum.releaseMs, range: StudioPreferences.releaseMsRange, step: 10, fractionDigits: 0)
+            Text("Sensitivity moves the quiet dB floor. Amplitude scales drawn height. Smoothing blends neighboring bars. Attack and Release are independent rise and fall times in milliseconds.")
+                .foregroundStyle(.secondary)
         }
         Section("Peaks") {
             Toggle("Peak hold", isOn: $model.prefs.spectrum.peakHold)

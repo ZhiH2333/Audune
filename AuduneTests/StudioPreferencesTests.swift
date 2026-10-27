@@ -28,8 +28,26 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(standard.spectrum.amplitude, 1)
         XCTAssertFalse(standard.spectrum.stroke)
         XCTAssertFalse(standard.spectrum.peakHold)
+        XCTAssertEqual(standard.spectrum.attackMs, 35)
+        XCTAssertEqual(standard.spectrum.releaseMs, 260)
         XCTAssertEqual(standard.spectrum.floorDecibels, -60, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.smoothing, 0.35)
+    }
+
+    func testAttackAndReleasePersistIndependentlyOfSmoothing() {
+        var stored = StudioPreferences.standard
+        stored.spectrum.attackMs = 15
+        stored.spectrum.releaseMs = 800
+        stored.spectrum.smoothing = 0.1
+        stored.save(to: defaults)
+
+        let loaded = StudioPreferences.load(from: defaults).spectrum
+        XCTAssertEqual(loaded.attackMs, 15)
+        XCTAssertEqual(loaded.releaseMs, 800)
+        XCTAssertEqual(loaded.smoothing, 0.1, accuracy: 0.000_1)
+        XCTAssertEqual(loaded.dynamics.attackSeconds, 0.015, accuracy: 0.000_001)
+        XCTAssertEqual(loaded.dynamics.releaseSeconds, 0.8, accuracy: 0.000_001)
+        XCTAssertEqual(loaded.dynamics.neighborSmoothing, 0.1, accuracy: 0.000_001)
     }
 
     func testInvalidValuesNormalize() {
