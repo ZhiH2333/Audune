@@ -171,7 +171,9 @@ struct StudioContentView: View {
                 lineWidth: prefs.orbit.lineWidth,
                 innerRatio: prefs.orbit.inner,
                 outerScale: prefs.orbit.outerScale,
-                gapDegrees: prefs.orbit.gapDegrees
+                gapDegrees: prefs.orbit.gapDegrees,
+                layerMode: prefs.orbit.layerMode,
+                pulseStrength: prefs.orbit.pulseStrength
             )
         }
     }

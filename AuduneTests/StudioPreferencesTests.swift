@@ -166,6 +166,8 @@ final class StudioPreferencesTests: XCTestCase {
             lineWidth: 2,
             amplitude: 1.2,
             smoothing: 0.1,
+            layerMode: .dualBand,
+            pulseStrength: 0.2,
             customColor: StudioColor(red: 0.1, green: 0.8, blue: 0.3)
         )
         stored.save(to: defaults)

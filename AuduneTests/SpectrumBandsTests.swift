@@ -153,6 +153,16 @@ final class SpectrumBandsTests: XCTestCase {
         XCTAssertEqual(SpectrumBands.displayMix(current: [0], toward: [1], count: 1, smoothing: 0), [1])
         let slow = SpectrumBands.displayMix(current: [0], toward: [1], count: 1, smoothing: 1)
         XCTAssertEqual(slow[0], 0.15, accuracy: 0.000_1)
+
+        var manySmall = [Float(0)]
+        for _ in 0..<10 {
+            manySmall = SpectrumBands.displayMix(current: manySmall, toward: [1], count: 1, smoothing: 0.4, dt: 0.01)
+        }
+        var fewLarge = [Float(0)]
+        for _ in 0..<2 {
+            fewLarge = SpectrumBands.displayMix(current: fewLarge, toward: [1], count: 1, smoothing: 0.4, dt: 0.05)
+        }
+        XCTAssertEqual(manySmall[0], fewLarge[0], accuracy: 0.08)
     }
 
     private func sine(frequency: Double, amplitude: Float) -> [Float] {

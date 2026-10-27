@@ -340,7 +340,9 @@ struct IslandContentView: View {
                 lineWidth: model.orbit.lineWidth,
                 innerRatio: model.orbit.inner,
                 outerScale: model.orbit.outerScale,
-                gapDegrees: model.orbit.gapDegrees
+                gapDegrees: model.orbit.gapDegrees,
+                layerMode: model.orbit.layerMode,
+                pulseStrength: model.orbit.pulseStrength
             )
         }
     }

@@ -121,6 +121,31 @@ final class OrbitLayoutTests: XCTestCase {
         }
     }
 
+    func testDualBandSplitsLowAndHighIntoNestedRings() {
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 400)
+        var spectrum = Array(repeating: Float(0), count: 24)
+        spectrum[0] = 1
+        spectrum[23] = 1
+        let dual = OrbitLayout.dualBars(spectrum: spectrum, in: bounds, count: 48, mirrored: true)
+        XCTAssertEqual(dual.inner.count, 48)
+        XCTAssertEqual(dual.outer.count, 48)
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let innerReach = dual.inner.map { distance($0.end, center) }.max() ?? 0
+        let outerReach = dual.outer.map { distance($0.end, center) }.max() ?? 0
+        XCTAssertGreaterThan(outerReach, innerReach)
+    }
+
+    func testPulseStrengthScalesAmplitudeAndZeroDisables() {
+        let spectrum = Array(repeating: Float(0.8), count: 16)
+        let base: CGFloat = 1
+        XCTAssertEqual(OrbitLayout.pulsedAmplitude(base: base, spectrum: spectrum, strength: 0), base, accuracy: 0.000_1)
+        let pulsed = OrbitLayout.pulsedAmplitude(base: base, spectrum: spectrum, strength: 0.35)
+        XCTAssertGreaterThan(pulsed, base)
+        XCTAssertLessThanOrEqual(pulsed, base * 1.35 + 0.001)
+        // Strength above 0.35 clamps; mean energy 0.8 → 1 + 0.35 * 0.8 = 1.28
+        XCTAssertEqual(OrbitLayout.pulsedAmplitude(base: base, spectrum: spectrum, strength: 9), base * 1.28, accuracy: 0.001)
+    }
+
     private func assertInside(_ point: CGPoint, _ bounds: CGRect, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertGreaterThanOrEqual(point.x, bounds.minX, file: file, line: line)
         XCTAssertLessThanOrEqual(point.x, bounds.maxX, file: file, line: line)

@@ -315,6 +315,14 @@ struct SettingsView: View {
             SettingsSlider(title: "Inner radius", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
             SettingsSlider(title: "Outer radius", value: $model.prefs.orbit.outerScale, range: StudioPreferences.orbitOuterRange, step: 0.02)
             SettingsSlider(title: "Angular gap (deg)", value: $model.prefs.orbit.gapDegrees, range: StudioPreferences.orbitGapRange, step: 0.5, fractionDigits: 1)
+            Picker("Layers", selection: $model.prefs.orbit.layerMode) {
+                ForEach(OrbitLayerMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text("Dual Band maps the lower half of the bands to an inner ring and the upper half to an outer ring.")
+                .foregroundStyle(.secondary)
         }
         Section("Style") {
             Toggle("Custom color", isOn: Binding(
@@ -332,7 +340,15 @@ struct SettingsView: View {
         }
         Section("Response") {
             SettingsSlider(title: "Amplitude", value: $model.prefs.orbit.amplitude, range: StudioPreferences.amplitudeRange, step: 0.05)
-            SettingsSlider(title: "Smoothing", value: $model.prefs.orbit.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
+            SettingsSlider(title: "Motion smoothing", value: $model.prefs.orbit.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
+            SettingsSlider(
+                title: "Pulse strength",
+                value: $model.prefs.orbit.pulseStrength,
+                range: StudioPreferences.orbitPulseRange,
+                step: 0.05
+            )
+            Text("Pulse gently lengthens bars from mean band energy. Set to 0 to disable.")
+                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Orbit") {

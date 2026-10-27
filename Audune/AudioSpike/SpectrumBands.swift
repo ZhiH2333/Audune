@@ -82,11 +82,23 @@ nonisolated enum SpectrumBands {
         )
     }
 
-    /// Studio display mix. `smoothing` 0 follows the new frame; 1 moves slowly.
-    /// The menu bar keeps `smooth`, which uses the fixed attack and release.
-    static func displayMix(current: [Float], toward target: [Float], count: Int, smoothing: Float) -> [Float] {
+    /// Studio / Island display mix. `smoothing` 0…1 maps to a time constant (~20–450 ms).
+    /// When `dt` is 0 (first frame), falls back to a mild per-call follow.
+    static func displayMix(
+        current: [Float],
+        toward target: [Float],
+        count: Int,
+        smoothing: Float,
+        dt: Double = 0
+    ) -> [Float] {
         let amount = smoothing.isFinite ? min(max(smoothing, 0), 1) : 0
-        let follow = 1 - amount * 0.85
+        let tau = 0.02 + Double(amount) * 0.43
+        let follow: Float
+        if dt > 0, tau > 0 {
+            follow = Float(1 - exp(-dt / tau))
+        } else {
+            follow = max(1 - amount * 0.85, 0.05)
+        }
         return blend(current: current, toward: target, count: count, follow: follow)
     }
 

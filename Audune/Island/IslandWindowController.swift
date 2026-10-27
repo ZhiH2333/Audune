@@ -674,7 +674,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             current: smoothedCompact,
             toward: compactTarget,
             count: compactCount,
-            smoothing: 0.25
+            smoothing: 0.25,
+            dt: dt
         )
         model.compactLevels = smoothedCompact
 
@@ -709,7 +710,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 current: smoothedExpanded,
                 toward: target,
                 count: count,
-                smoothing: Float(model.orbit.smoothing)
+                smoothing: Float(model.orbit.smoothing),
+                dt: dt
             )
             model.expandedSpectrum = smoothedExpanded
             model.expandedPeaks = []

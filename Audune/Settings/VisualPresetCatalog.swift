@@ -90,6 +90,8 @@ nonisolated enum VisualPresetCatalog {
         prefs.stroke = true
         prefs.lineWidth = 1
         prefs.smoothing = 0.4
+        prefs.layerMode = .dualBand
+        prefs.pulseStrength = 0.12
     }
 
     static let denseRing = orbit(id: "builtin.orbit.denseRing", name: "Dense Ring") { prefs in
@@ -100,6 +102,8 @@ nonisolated enum VisualPresetCatalog {
         prefs.mirrored = false
         prefs.amplitude = 1.3
         prefs.smoothing = 0.15
+        prefs.layerMode = .single
+        prefs.pulseStrength = 0.2
     }
 
     static let all = [clean, dense, dynamic, fineLine, softFill, mirror, compact, halo, denseRing]

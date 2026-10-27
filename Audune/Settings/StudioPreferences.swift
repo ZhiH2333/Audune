@@ -56,6 +56,8 @@ nonisolated enum StudioPreferenceKey {
     static let orbitMirrored = "studio.orbit.mirrored"
     static let orbitStroke = "studio.orbit.stroke"
     static let orbitColor = "studio.orbit.color"
+    static let orbitLayerMode = "studio.orbit.layerMode"
+    static let orbitPulseStrength = "studio.orbit.pulseStrength"
 
     static let windowAllowsDrag = "studio.window.allowsDrag"
     static let windowAllowsResize = "studio.window.allowsResize"
@@ -451,6 +453,20 @@ nonisolated struct WaveformPreferences: Equatable {
     )
 }
 
+nonisolated enum OrbitLayerMode: String, Codable, CaseIterable, Identifiable {
+    case single
+    case dualBand
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .single: return "Single"
+        case .dualBand: return "Dual Band"
+        }
+    }
+}
+
 nonisolated struct OrbitPreferences: Equatable {
     /// Total bars around the ring. Mirrored rings read half as many bands and show each twice.
     var barCount: Int
@@ -464,6 +480,10 @@ nonisolated struct OrbitPreferences: Equatable {
     var lineWidth: Double
     var amplitude: Double
     var smoothing: Double
+    /// Single ring or dual rings mapped from low / high halves of the band list.
+    var layerMode: OrbitLayerMode
+    /// Extra bar length from mean band energy. 0 disables. Capped for a restrained look.
+    var pulseStrength: Double
     /// `nil` follows the Appearance color.
     var customColor: StudioColor?
 
@@ -477,6 +497,8 @@ nonisolated struct OrbitPreferences: Equatable {
         lineWidth: 1.5,
         amplitude: 1,
         smoothing: 0.35,
+        layerMode: .single,
+        pulseStrength: 0,
         customColor: nil
     )
 
@@ -559,6 +581,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let orbitInnerRange: ClosedRange<Double> = 0.35...0.8
     static let orbitOuterRange: ClosedRange<Double> = 0.6...1
     static let orbitGapRange: ClosedRange<Double> = 0...10
+    static let orbitPulseRange: ClosedRange<Double> = 0...0.35
     static let hideDelayRange: ClosedRange<Double> = 0.2...3
     static let minHzRange: ClosedRange<Double> = 20...500
     static let maxHzRange: ClosedRange<Double> = 2_000...20_000
@@ -663,6 +686,8 @@ nonisolated struct StudioPreferences: Equatable {
                 lineWidth: reader.double(StudioPreferenceKey.orbitLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.orbit.lineWidth),
                 amplitude: reader.double(StudioPreferenceKey.orbitAmplitude, legacy: legacyAmplitude, range: amplitudeRange, fallback: standard.orbit.amplitude),
                 smoothing: reader.double(StudioPreferenceKey.orbitSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.orbit.smoothing),
+                layerMode: defaults.string(forKey: StudioPreferenceKey.orbitLayerMode).flatMap(OrbitLayerMode.init(rawValue:)) ?? standard.orbit.layerMode,
+                pulseStrength: reader.double(StudioPreferenceKey.orbitPulseStrength, range: orbitPulseRange, fallback: standard.orbit.pulseStrength),
                 customColor: defaults.string(forKey: StudioPreferenceKey.orbitColor).flatMap(StudioColor.init(hex:))
             )
         ).normalized()
@@ -711,6 +736,7 @@ nonisolated struct StudioPreferences: Equatable {
         result.orbit.lineWidth = Self.clamped(orbit.lineWidth, to: Self.lineWidthRange, fallback: standard.orbit.lineWidth)
         result.orbit.amplitude = Self.clamped(orbit.amplitude, to: Self.amplitudeRange, fallback: standard.orbit.amplitude)
         result.orbit.smoothing = Self.clamped(orbit.smoothing, to: Self.smoothingRange, fallback: standard.orbit.smoothing)
+        result.orbit.pulseStrength = Self.clamped(orbit.pulseStrength, to: Self.orbitPulseRange, fallback: standard.orbit.pulseStrength)
         return result
     }
 
@@ -781,6 +807,8 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.orbit.gapDegrees, forKey: StudioPreferenceKey.orbitGapDegrees)
         defaults.set(p.orbit.mirrored, forKey: StudioPreferenceKey.orbitMirrored)
         defaults.set(p.orbit.stroke, forKey: StudioPreferenceKey.orbitStroke)
+        defaults.set(p.orbit.layerMode.rawValue, forKey: StudioPreferenceKey.orbitLayerMode)
+        defaults.set(p.orbit.pulseStrength, forKey: StudioPreferenceKey.orbitPulseStrength)
         if let custom = p.orbit.customColor {
             defaults.set(custom.hex, forKey: StudioPreferenceKey.orbitColor)
         } else {
@@ -1004,7 +1032,8 @@ extension WaveformPreferences: Codable {
 
 extension OrbitPreferences: Codable {
     private enum CodingKeys: String, CodingKey {
-        case barCount, inner, outerScale, gapDegrees, mirrored, stroke, lineWidth, amplitude, smoothing, customColor
+        case barCount, inner, outerScale, gapDegrees, mirrored, stroke, lineWidth, amplitude, smoothing
+        case layerMode, pulseStrength, customColor
     }
 
     init(from decoder: Decoder) throws {
@@ -1020,6 +1049,8 @@ extension OrbitPreferences: Codable {
             lineWidth: try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? standard.lineWidth,
             amplitude: try container.decodeIfPresent(Double.self, forKey: .amplitude) ?? standard.amplitude,
             smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
+            layerMode: try container.decodeIfPresent(OrbitLayerMode.self, forKey: .layerMode) ?? standard.layerMode,
+            pulseStrength: try container.decodeIfPresent(Double.self, forKey: .pulseStrength) ?? standard.pulseStrength,
             customColor: try container.decodeIfPresent(StudioColor.self, forKey: .customColor)
         )
         self = clamped()
@@ -1036,6 +1067,8 @@ extension OrbitPreferences: Codable {
         try container.encode(lineWidth, forKey: .lineWidth)
         try container.encode(amplitude, forKey: .amplitude)
         try container.encode(smoothing, forKey: .smoothing)
+        try container.encode(layerMode, forKey: .layerMode)
+        try container.encode(pulseStrength, forKey: .pulseStrength)
         try container.encodeIfPresent(customColor, forKey: .customColor)
     }
 

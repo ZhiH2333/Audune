@@ -532,7 +532,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
                 current: smoothedStudio,
                 toward: target,
                 count: count,
-                smoothing: Float(prefs.orbit.smoothing)
+                smoothing: Float(prefs.orbit.smoothing),
+                dt: dt
             )
             model.studioSpectrum = smoothedStudio
             model.spectrumPeaks = []

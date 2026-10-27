@@ -98,6 +98,67 @@ nonisolated enum OrbitLayout {
         return bars
     }
 
+    /// Mean absolute band energy in 0…1. Used for restrained pulse scaling.
+    static func meanEnergy(_ spectrum: [Float]) -> Float {
+        guard spectrum.isEmpty == false else { return 0 }
+        var sum: Float = 0
+        for sample in spectrum {
+            sum += sample.isFinite ? abs(sample) : 0
+        }
+        return min(max(sum / Float(spectrum.count), 0), 1)
+    }
+
+    /// Scales amplitude by mean energy when `strength` > 0. Strength is capped at 0.35.
+    static func pulsedAmplitude(base: CGFloat, spectrum: [Float], strength: Double) -> CGFloat {
+        let gain = base.isFinite ? max(base, 0) : 1
+        let pulse = strength.isFinite ? min(max(strength, 0), 0.35) : 0
+        guard pulse > 0 else { return gain }
+        return gain * (1 + CGFloat(pulse) * CGFloat(meanEnergy(spectrum)))
+    }
+
+    /// Dual-band layers: low half of `spectrum` drives the inner ring, high half drives the outer ring.
+    static func dualBars(
+        spectrum: [Float],
+        in bounds: CGRect,
+        count: Int,
+        innerRatio: CGFloat = defaultInnerRatio,
+        outerScale: CGFloat = defaultOuterScale,
+        gapDegrees: CGFloat = defaultGapDegrees,
+        amplitude: CGFloat = 1,
+        mirrored: Bool = true
+    ) -> (inner: [OrbitBar], outer: [OrbitBar]) {
+        let ratio = innerRatio.isFinite ? min(max(innerRatio, 0.2), 0.9) : defaultInnerRatio
+        let midRatio = min(max((ratio + 1) * 0.5, ratio + 0.05), 0.95)
+        let half = max(spectrum.count / 2, 1)
+        var low = Array(spectrum.prefix(half))
+        var high = Array(spectrum.suffix(max(spectrum.count - half, 0)))
+        if high.isEmpty { high = low }
+        while low.count < half { low.append(0) }
+        while high.count < half { high.append(0) }
+
+        let inner = bars(
+            spectrum: low,
+            in: bounds,
+            count: count,
+            innerRatio: ratio / midRatio,
+            outerScale: outerScale * midRatio,
+            gapDegrees: gapDegrees,
+            amplitude: amplitude,
+            mirrored: mirrored
+        )
+        let outer = bars(
+            spectrum: high,
+            in: bounds,
+            count: count,
+            innerRatio: midRatio,
+            outerScale: outerScale,
+            gapDegrees: gapDegrees,
+            amplitude: amplitude,
+            mirrored: mirrored
+        )
+        return (inner, outer)
+    }
+
     /// A rounded bar from `start` to `end` with caps of diameter `width`.
     static func capsule(for bar: OrbitBar) -> Path {
         let length = hypot(bar.end.x - bar.start.x, bar.end.y - bar.start.y)
@@ -132,6 +193,8 @@ struct OrbitCanvas: View {
     var innerRatio: Double = 0.55
     var outerScale: Double = 0.92
     var gapDegrees: Double = 2.5
+    var layerMode: OrbitLayerMode = .single
+    var pulseStrength: Double = 0
 
     var body: some View {
         Canvas { context, size in
@@ -145,16 +208,37 @@ struct OrbitCanvas: View {
                 outerScale: CGFloat(outerScale),
                 gapDegrees: CGFloat(gapDegrees)
             ) else { return }
-            let bars = OrbitLayout.bars(
+            let gain = OrbitLayout.pulsedAmplitude(
+                base: CGFloat(amplitude),
                 spectrum: source,
-                in: bounds,
-                count: barCount,
-                innerRatio: CGFloat(innerRatio),
-                outerScale: CGFloat(outerScale),
-                gapDegrees: CGFloat(gapDegrees),
-                amplitude: CGFloat(amplitude),
-                mirrored: mirrored
+                strength: pulseStrength
             )
+            let layers: [[OrbitBar]]
+            switch layerMode {
+            case .single:
+                layers = [OrbitLayout.bars(
+                    spectrum: source,
+                    in: bounds,
+                    count: barCount,
+                    innerRatio: CGFloat(innerRatio),
+                    outerScale: CGFloat(outerScale),
+                    gapDegrees: CGFloat(gapDegrees),
+                    amplitude: gain,
+                    mirrored: mirrored
+                )]
+            case .dualBand:
+                let dual = OrbitLayout.dualBars(
+                    spectrum: source,
+                    in: bounds,
+                    count: barCount,
+                    innerRatio: CGFloat(innerRatio),
+                    outerScale: CGFloat(outerScale),
+                    gapDegrees: CGFloat(gapDegrees),
+                    amplitude: gain,
+                    mirrored: mirrored
+                )
+                layers = [dual.inner, dual.outer]
+            }
             let ring = Path(ellipseIn: CGRect(
                 x: geometry.center.x - geometry.startRadius,
                 y: geometry.center.y - geometry.startRadius,
@@ -165,11 +249,16 @@ struct OrbitCanvas: View {
 
             let fill = GraphicsContext.Shading.color(color.opacity(opacity))
             let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
-            for bar in bars {
-                let shape = OrbitLayout.capsule(for: bar)
-                context.fill(shape, with: fill)
-                if drawsStroke {
-                    context.stroke(shape, with: outline, style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineJoin: .round))
+            for (layerIndex, bars) in layers.enumerated() {
+                let layerFill = layerMode == .dualBand && layerIndex == 0
+                    ? GraphicsContext.Shading.color(color.opacity(opacity * 0.72))
+                    : fill
+                for bar in bars {
+                    let shape = OrbitLayout.capsule(for: bar)
+                    context.fill(shape, with: layerFill)
+                    if drawsStroke {
+                        context.stroke(shape, with: outline, style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineJoin: .round))
+                    }
                 }
             }
         }
