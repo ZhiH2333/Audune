@@ -197,7 +197,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 `StudioPreferencesTests`, `SpectrumBandsTests`, `SpectrumDynamicsTests`, and `SpectrumBarsTests` use synthetic bins and values. They check migration, ranges, that adjacent bars do not repeat a value, motion math, and peak-cap geometry. They do not judge appearance or real playback. These rows stay `NOT TESTED`.
 
 - [ ] `NOT TESTED` — Appearance presets, the two color pickers, opacity, and stroke width change Studio immediately and survive relaunch. The window around the graphic stays transparent.
-- [ ] `NOT TESTED` — Spectrum bar counts 8 to 64 follow real playback; Logarithmic and Linear look different; low and high frequency limits move which bars react.
+- [ ] `NOT TESTED` — Spectrum bar counts 8 to 64 follow real playback; Logarithmic and Linear look different; low and high frequency limits move which bars react; Solid / Frequency / Amplitude color mapping are visibly different and Peak Hold caps stay readable.
 - [ ] `NOT TESTED` — Sensitivity, amplitude, smoothing, attack, release, and peak hold change the motion. Silence settles to the baseline. The menu bar stays at 16 bars.
 - [ ] `NOT TESTED` — Peak hold Fall speed changes how quickly caps drop after Hold time. Turning peak hold off removes caps without changing bar heights.
 - [ ] `NOT TESTED` — Silence gate Noise floor (RMS) with hysteresis: weak noise settles; normal quiet music still moves. Entering silence releases through Attack/Release (no snap). Disabling the gate keeps weak signal motion. Studio and Notch Island match.
@@ -209,7 +209,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 - [ ] `NOT TESTED` — The default Waveform is a smooth centered curve with a faint baseline and ends that rest on the baseline; it is not the old polyline in a new color.
 - [ ] `NOT TESTED` — Real playback changes the shape, quiet passages still move off the baseline, and silence settles to a flat line.
-- [ ] `NOT TESTED` — Line and Filled styles, density 32/64/128, custom line color, width, amplitude, and smoothing apply immediately, survive relaunch, and Reset Waveform restores them.
+- [ ] `NOT TESTED` — Fine Line, Soft Fill, and Mirror styles, density 32/64/128, custom line color, stroke width, visual amplitude, fill strength, and motion smoothing apply immediately, survive relaunch, and Reset Waveform restores them. Default visual amplitude stays calmer than the old ×3 boost.
 
 ### Studio v1.4 Orbit
 
@@ -217,7 +217,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 - [ ] `NOT TESTED` — The default Orbit looks deliberate: a centered ring of rounded bars, low frequencies at the top, left and right mirrored, not the old thin spokes.
 - [ ] `NOT TESTED` — Real playback moves the bars; silence settles to a ring of dots and does not rotate; resizing keeps the ring centered and inside the window.
-- [ ] `NOT TESTED` — Bars 8 to 64, mirror, inner and outer radius, angular gap, stroke, custom color, amplitude, and smoothing apply immediately, survive relaunch, and Reset Orbit restores them.
+- [ ] `NOT TESTED` — Bars 8 to 64, mirror, inner and outer radius, angular gap, Single/Dual Band layers, pulse strength, stroke, custom color, amplitude, and motion smoothing apply immediately, survive relaunch, and Reset Orbit restores them.
 
 ### Visual presets v1
 
@@ -235,6 +235,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Turning off "Allow dragging by the grip" stops the grip from moving the window; turning it on restores dragging.
 - [ ] `NOT TESTED` — Turning off "Allow resizing from the edges" stops edge resizing; turning it on restores it.
 - [ ] `NOT TESTED` — "Restore position and size at launch" off opens Studio centered at the default size; on restores the last frame. Reset Position and Size recenters at the default size on a visible screen.
+- [ ] `NOT TESTED` — Size limits (min/max width and height in points) clamp edge resize and shrink an oversized Studio when lowered; Notch Island size is unchanged.
 - [ ] `NOT TESTED` — Fade on/off and Follow system Reduce Motion change the control fade as described. There is no hide-delay slider; buttons hide 3 seconds after the pointer leaves. Studio never gets a window background.
 - [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
 
