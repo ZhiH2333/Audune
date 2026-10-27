@@ -190,7 +190,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     func setSpectrumBarCount(_ count: Int) {
-        model.prefs.spectrum.barCount = StudioPreferences.normalizedBarCount(count)
+        let next = StudioPreferences.normalizedBarCount(count)
+        if next != model.prefs.spectrum.barCount {
+            spectrumState = SpectrumDynamicsState()
+        }
+        model.prefs.spectrum.barCount = next
         savePreferences()
         refreshStudioSpectrum(dt: 0)
     }

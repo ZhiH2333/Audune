@@ -108,7 +108,8 @@ final class StudioPreferencesTests: XCTestCase {
             attackMs: 20,
             releaseMs: 400,
             peakHold: true,
-            peakHoldSeconds: 1.2
+            peakHoldSeconds: 1.2,
+            peakFallPerSecond: 1.4
         )
         stored.waveform = WaveformPreferences(
             lineWidth: 2.5,
@@ -201,6 +202,11 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(spectrum.attackMs, 5)
         XCTAssertEqual(spectrum.releaseMs, 1_000)
         XCTAssertEqual(spectrum.peakHoldSeconds, SpectrumPreferences.standard.peakHoldSeconds)
+        defaults.set(9.0, forKey: StudioPreferenceKey.spectrumPeakFallPerSecond)
+        XCTAssertEqual(
+            StudioPreferences.load(from: defaults).spectrum.peakFallPerSecond,
+            StudioPreferences.peakFallPerSecondRange.upperBound
+        )
         XCTAssertEqual(spectrum.scale, .log)
         XCTAssertEqual(spectrum.barCount, 32)
         XCTAssertEqual(spectrum.floorDecibels, -80, accuracy: 0.000_1)

@@ -6,7 +6,8 @@ final class SpectrumDynamicsTests: XCTestCase {
         attackSeconds: 0.04,
         releaseSeconds: 0.3,
         neighborSmoothing: 0,
-        peakHoldSeconds: nil
+        peakHoldSeconds: nil,
+        peakFallPerSecond: SpectrumDynamicsSettings.defaultPeakFallPerSecond
     )
 
     func testAttackIsFasterThanRelease() {
@@ -58,6 +59,43 @@ final class SpectrumDynamicsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(state.peaks[0], state.levels[0])
     }
 
+    func testPeakFallSpeedControlsDecayRateIndependentlyOfFrameCount() {
+        var slow = settings
+        slow.peakHoldSeconds = 0
+        slow.peakFallPerSecond = 0.3
+        var fast = slow
+        fast.peakFallPerSecond = 1.5
+
+        let start = SpectrumDynamicsState(levels: [0.2], peaks: [1], peakAge: [1])
+        var slowState = start
+        var fastState = start
+        for _ in 0..<20 {
+            slowState = SpectrumDynamics.step(state: slowState, target: [0], dt: 0.05, settings: slow)
+            fastState = SpectrumDynamics.step(state: fastState, target: [0], dt: 0.05, settings: fast)
+        }
+        XCTAssertLessThan(fastState.peaks[0], slowState.peaks[0])
+
+        var fine = start
+        for _ in 0..<5 {
+            fine = SpectrumDynamics.step(state: fine, target: [0], dt: 0.05, settings: slow)
+        }
+        let coarse = SpectrumDynamics.step(state: start, target: [0], dt: 0.25, settings: slow)
+        XCTAssertEqual(fine.peaks[0], coarse.peaks[0], accuracy: 0.001)
+    }
+
+    func testPeakHoldOffTracksLevelsWithoutCapsState() {
+        var state = SpectrumDynamics.step(state: SpectrumDynamicsState(), target: [1], dt: 0.2, settings: settings)
+        state = SpectrumDynamics.step(state: state, target: [0.2], dt: 0.2, settings: settings)
+        XCTAssertEqual(state.peaks[0], state.levels[0], accuracy: 0.000_1)
+    }
+
+    func testIsSettledIgnoresResidualNoiseBelowEpsilon() {
+        XCTAssertTrue(SpectrumDynamics.isSettled(levels: [0.005, 0], peaks: [0.008]))
+        XCTAssertFalse(SpectrumDynamics.isSettled(levels: [0.05], peaks: []))
+        XCTAssertFalse(SpectrumDynamics.isSettled(levels: [0], peaks: [0.2]))
+        XCTAssertTrue(SpectrumDynamics.isSettled(levels: [], peaks: []))
+    }
+
     func testNeighborSmoothingSpreadsOnlyBetweenBars() {
         var spread = settings
         spread.neighborSmoothing = 1
@@ -73,7 +111,13 @@ final class SpectrumDynamicsTests: XCTestCase {
             state: SpectrumDynamicsState(levels: [.nan], peaks: [.infinity], peakAge: [.nan]),
             target: [.nan, .infinity, -1, 2],
             dt: .nan,
-            settings: SpectrumDynamicsSettings(attackSeconds: 0, releaseSeconds: .nan, neighborSmoothing: .nan, peakHoldSeconds: .infinity)
+            settings: SpectrumDynamicsSettings(
+                attackSeconds: 0,
+                releaseSeconds: .nan,
+                neighborSmoothing: .nan,
+                peakHoldSeconds: .infinity,
+                peakFallPerSecond: .nan
+            )
         )
 
         XCTAssertEqual(state.levels.count, 4)

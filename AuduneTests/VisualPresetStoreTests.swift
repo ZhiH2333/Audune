@@ -36,6 +36,8 @@ final class VisualPresetStoreTests: XCTestCase {
         XCTAssertEqual(spectrum.amplitude, SpectrumPreferences.standard.amplitude)
         XCTAssertEqual(spectrum.scale, .log)
         XCTAssertEqual(spectrum.attackMs, SpectrumPreferences.standard.attackMs)
+        XCTAssertEqual(spectrum.peakFallPerSecond, SpectrumPreferences.standard.peakFallPerSecond)
+        XCTAssertFalse(spectrum.peakHold)
 
         let waveform = try JSONDecoder().decode(WaveformPreferences.self, from: Data(#"{"density":32}"#.utf8))
         XCTAssertEqual(waveform.density, 32)

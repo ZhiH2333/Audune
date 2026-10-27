@@ -195,6 +195,10 @@ struct SettingsView: View {
             Toggle("Peak hold", isOn: $model.prefs.spectrum.peakHold)
             SettingsSlider(title: "Hold time (s)", value: $model.prefs.spectrum.peakHoldSeconds, range: StudioPreferences.peakHoldSecondsRange, step: 0.1)
                 .disabled(model.prefs.spectrum.peakHold == false)
+            SettingsSlider(title: "Fall speed", value: $model.prefs.spectrum.peakFallPerSecond, range: StudioPreferences.peakFallPerSecondRange, step: 0.05)
+                .disabled(model.prefs.spectrum.peakHold == false)
+            Text("Hold time keeps each cap at its peak. Fall speed is how far the cap drops per second after that, in normalized display units.")
+                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Spectrum") {

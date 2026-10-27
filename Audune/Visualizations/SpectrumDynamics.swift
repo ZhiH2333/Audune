@@ -7,6 +7,10 @@ nonisolated struct SpectrumDynamicsSettings: Equatable {
     var neighborSmoothing: Float
     /// `nil` turns peak caps off.
     var peakHoldSeconds: Double?
+    /// How far peak caps fall per second after the hold time. Ignored when hold is off.
+    var peakFallPerSecond: Float
+
+    static let defaultPeakFallPerSecond: Float = 0.9
 }
 
 nonisolated struct SpectrumDynamicsState: Equatable {
@@ -17,9 +21,8 @@ nonisolated struct SpectrumDynamicsState: Equatable {
 
 /// Time-based bar motion for Studio Spectrum. Pure and independent of the frame rate.
 nonisolated enum SpectrumDynamics {
-    /// Peak caps fall this far per second once the hold time has passed.
-    static let peakFallPerSecond: Float = 0.9
     static let maximumStep = 0.25
+    static let settleEpsilon: Float = 0.01
 
     static func step(
         state: SpectrumDynamicsState,
@@ -33,6 +36,9 @@ nonisolated enum SpectrumDynamics {
         let goal = spread(sanitized(target), amount: settings.neighborSmoothing)
         let attack = coefficient(dt: dt, seconds: settings.attackSeconds)
         let release = coefficient(dt: dt, seconds: settings.releaseSeconds)
+        let fall = settings.peakFallPerSecond.isFinite
+            ? max(settings.peakFallPerSecond, 0)
+            : SpectrumDynamicsSettings.defaultPeakFallPerSecond
 
         var next = SpectrumDynamicsState()
         next.levels.reserveCapacity(count)
@@ -58,13 +64,31 @@ nonisolated enum SpectrumDynamics {
                 let age = oldAge + dt
                 var peak = oldPeak
                 if age > hold {
-                    peak = max(level, oldPeak - peakFallPerSecond * Float(dt))
+                    peak = max(level, oldPeak - fall * Float(dt))
                 }
                 next.peaks.append(min(max(peak, level), 1))
                 next.peakAge.append(age)
             }
         }
         return next
+    }
+
+    /// True when bars (and optional peak caps) have settled near zero.
+    static func isSettled(
+        levels: [Float],
+        peaks: [Float] = [],
+        epsilon: Float = settleEpsilon
+    ) -> Bool {
+        let limit = epsilon.isFinite ? max(epsilon, 0) : settleEpsilon
+        let levelQuiet = levels.allSatisfy { value in
+            let safe = value.isFinite ? value : 0
+            return abs(safe) <= limit
+        }
+        guard levelQuiet else { return false }
+        return peaks.allSatisfy { value in
+            let safe = value.isFinite ? value : 0
+            return abs(safe) <= limit
+        }
     }
 
     private static func coefficient(dt: Double, seconds: Double) -> Float {

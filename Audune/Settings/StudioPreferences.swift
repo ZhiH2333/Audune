@@ -34,6 +34,7 @@ nonisolated enum StudioPreferenceKey {
     static let spectrumReleaseMs = "studio.spectrum.releaseMs"
     static let spectrumPeakHold = "studio.spectrum.peakHold"
     static let spectrumPeakHoldSeconds = "studio.spectrum.peakHoldSeconds"
+    static let spectrumPeakFallPerSecond = "studio.spectrum.peakFallPerSecond"
 
     static let waveformLineWidth = "studio.waveform.lineWidth"
     static let waveformAmplitude = "studio.waveform.amplitude"
@@ -231,6 +232,8 @@ nonisolated struct SpectrumPreferences: Equatable {
     var releaseMs: Double
     var peakHold: Bool
     var peakHoldSeconds: Double
+    /// Peak cap fall speed after hold, in display units per second.
+    var peakFallPerSecond: Double
 
     static let standard = SpectrumPreferences(
         barCount: 32,
@@ -246,7 +249,8 @@ nonisolated struct SpectrumPreferences: Equatable {
         attackMs: 35,
         releaseMs: 260,
         peakHold: false,
-        peakHoldSeconds: 0.6
+        peakHoldSeconds: 0.6,
+        peakFallPerSecond: Double(SpectrumDynamicsSettings.defaultPeakFallPerSecond)
     )
 
     /// Sensitivity moves the quiet end of the dB window. 0.5 keeps the original -60 dB floor.
@@ -263,7 +267,8 @@ nonisolated struct SpectrumPreferences: Equatable {
             attackSeconds: attackMs / 1000,
             releaseSeconds: releaseMs / 1000,
             neighborSmoothing: Float(smoothing),
-            peakHoldSeconds: peakHold ? peakHoldSeconds : nil
+            peakHoldSeconds: peakHold ? peakHoldSeconds : nil,
+            peakFallPerSecond: Float(peakFallPerSecond)
         )
     }
 }
@@ -405,6 +410,7 @@ nonisolated struct StudioPreferences: Equatable {
     static let attackMsRange: ClosedRange<Double> = 5...200
     static let releaseMsRange: ClosedRange<Double> = 60...1_000
     static let peakHoldSecondsRange: ClosedRange<Double> = 0.1...2
+    static let peakFallPerSecondRange: ClosedRange<Double> = 0.2...2
     static let barCounts = [8, 12, 16, 24, 32, 48, 64]
     static let densities = [32, 64, 128]
 
@@ -467,7 +473,8 @@ nonisolated struct StudioPreferences: Equatable {
                 attackMs: reader.double(StudioPreferenceKey.spectrumAttackMs, range: attackMsRange, fallback: standard.spectrum.attackMs),
                 releaseMs: reader.double(StudioPreferenceKey.spectrumReleaseMs, range: releaseMsRange, fallback: standard.spectrum.releaseMs),
                 peakHold: reader.bool(StudioPreferenceKey.spectrumPeakHold, fallback: standard.spectrum.peakHold),
-                peakHoldSeconds: reader.double(StudioPreferenceKey.spectrumPeakHoldSeconds, range: peakHoldSecondsRange, fallback: standard.spectrum.peakHoldSeconds)
+                peakHoldSeconds: reader.double(StudioPreferenceKey.spectrumPeakHoldSeconds, range: peakHoldSecondsRange, fallback: standard.spectrum.peakHoldSeconds),
+                peakFallPerSecond: reader.double(StudioPreferenceKey.spectrumPeakFallPerSecond, range: peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond)
             ),
             waveform: WaveformPreferences(
                 lineWidth: reader.double(StudioPreferenceKey.waveformLineWidth, legacy: legacyLine, range: lineWidthRange, fallback: standard.waveform.lineWidth),
@@ -511,6 +518,7 @@ nonisolated struct StudioPreferences: Equatable {
         result.spectrum.attackMs = Self.clamped(spectrum.attackMs, to: Self.attackMsRange, fallback: standard.spectrum.attackMs)
         result.spectrum.releaseMs = Self.clamped(spectrum.releaseMs, to: Self.releaseMsRange, fallback: standard.spectrum.releaseMs)
         result.spectrum.peakHoldSeconds = Self.clamped(spectrum.peakHoldSeconds, to: Self.peakHoldSecondsRange, fallback: standard.spectrum.peakHoldSeconds)
+        result.spectrum.peakFallPerSecond = Self.clamped(spectrum.peakFallPerSecond, to: Self.peakFallPerSecondRange, fallback: standard.spectrum.peakFallPerSecond)
         result.waveform.lineWidth = Self.clamped(waveform.lineWidth, to: Self.lineWidthRange, fallback: standard.waveform.lineWidth)
         result.waveform.amplitude = Self.clamped(waveform.amplitude, to: Self.amplitudeRange, fallback: standard.waveform.amplitude)
         result.waveform.smoothing = Self.clamped(waveform.smoothing, to: Self.smoothingRange, fallback: standard.waveform.smoothing)
@@ -562,6 +570,7 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.spectrum.releaseMs, forKey: StudioPreferenceKey.spectrumReleaseMs)
         defaults.set(p.spectrum.peakHold, forKey: StudioPreferenceKey.spectrumPeakHold)
         defaults.set(p.spectrum.peakHoldSeconds, forKey: StudioPreferenceKey.spectrumPeakHoldSeconds)
+        defaults.set(p.spectrum.peakFallPerSecond, forKey: StudioPreferenceKey.spectrumPeakFallPerSecond)
 
         defaults.set(p.waveform.lineWidth, forKey: StudioPreferenceKey.waveformLineWidth)
         defaults.set(p.waveform.amplitude, forKey: StudioPreferenceKey.waveformAmplitude)
@@ -707,7 +716,7 @@ extension AppearancePreferences: Codable {
 extension SpectrumPreferences: Codable {
     private enum CodingKeys: String, CodingKey {
         case barCount, scale, minHz, maxHz, barGap, cornerRadius, stroke
-        case sensitivity, amplitude, smoothing, attackMs, releaseMs, peakHold, peakHoldSeconds
+        case sensitivity, amplitude, smoothing, attackMs, releaseMs, peakHold, peakHoldSeconds, peakFallPerSecond
     }
 
     init(from decoder: Decoder) throws {
@@ -727,7 +736,8 @@ extension SpectrumPreferences: Codable {
             attackMs: try container.decodeIfPresent(Double.self, forKey: .attackMs) ?? standard.attackMs,
             releaseMs: try container.decodeIfPresent(Double.self, forKey: .releaseMs) ?? standard.releaseMs,
             peakHold: try container.decodeIfPresent(Bool.self, forKey: .peakHold) ?? standard.peakHold,
-            peakHoldSeconds: try container.decodeIfPresent(Double.self, forKey: .peakHoldSeconds) ?? standard.peakHoldSeconds
+            peakHoldSeconds: try container.decodeIfPresent(Double.self, forKey: .peakHoldSeconds) ?? standard.peakHoldSeconds,
+            peakFallPerSecond: try container.decodeIfPresent(Double.self, forKey: .peakFallPerSecond) ?? standard.peakFallPerSecond
         )
         self = clamped()
     }
@@ -748,6 +758,7 @@ extension SpectrumPreferences: Codable {
         try container.encode(releaseMs, forKey: .releaseMs)
         try container.encode(peakHold, forKey: .peakHold)
         try container.encode(peakHoldSeconds, forKey: .peakHoldSeconds)
+        try container.encode(peakFallPerSecond, forKey: .peakFallPerSecond)
     }
 
     func clamped() -> SpectrumPreferences {
