@@ -33,6 +33,7 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(standard.spectrum.floorDecibels, -60, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.smoothing, 0.4, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.amplitude, 0.55, accuracy: 0.000_1)
+        XCTAssertEqual(standard.waveform.verticalRange, 0.7, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.lineWidth, 1.25, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.fillStrength, 0.32, accuracy: 0.000_1)
         XCTAssertEqual(standard.waveform.style, .line)
@@ -150,6 +151,7 @@ final class StudioPreferencesTests: XCTestCase {
         stored.waveform = WaveformPreferences(
             lineWidth: 2.5,
             amplitude: 1.2,
+            verticalRange: 0.85,
             smoothing: 0.6,
             density: 128,
             style: .softFill,
@@ -268,10 +270,35 @@ final class StudioPreferencesTests: XCTestCase {
         let motion = StudioPreferences.load(from: defaults).waveform
         XCTAssertEqual(motion.fillStrength, 0.7, accuracy: 0.000_1)
         XCTAssertEqual(motion.amplitude, 0.2, accuracy: 0.000_1)
+        XCTAssertEqual(motion.verticalRange, 0.7, accuracy: 0.000_1)
         loaded.waveform.customColor = nil
         loaded.save(to: defaults)
         XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.waveformColor))
         XCTAssertNil(StudioPreferences.load(from: defaults).waveform.customColor)
+    }
+
+    func testWaveformVerticalRangePersistsAndClamps() {
+        defaults.set(0.45, forKey: StudioPreferenceKey.waveformVerticalRange)
+        XCTAssertEqual(StudioPreferences.load(from: defaults).waveform.verticalRange, 0.45, accuracy: 0.000_1)
+
+        defaults.set(1.5, forKey: StudioPreferenceKey.waveformVerticalRange)
+        XCTAssertEqual(
+            StudioPreferences.load(from: defaults).waveform.verticalRange,
+            StudioPreferences.waveformVerticalRangeRange.upperBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(0.05, forKey: StudioPreferenceKey.waveformVerticalRange)
+        XCTAssertEqual(
+            StudioPreferences.load(from: defaults).waveform.verticalRange,
+            StudioPreferences.waveformVerticalRangeRange.lowerBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(Double.nan, forKey: StudioPreferenceKey.waveformVerticalRange)
+        XCTAssertEqual(
+            StudioPreferences.load(from: defaults).waveform.verticalRange,
+            WaveformPreferences.standard.verticalRange,
+            accuracy: 0.000_1
+        )
     }
 
     func testOrbitDefaultsAndRangesNormalize() {

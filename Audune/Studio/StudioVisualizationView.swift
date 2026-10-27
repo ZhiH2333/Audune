@@ -34,6 +34,7 @@ struct StudioVisualizationView: View {
                 color: (prefs.waveform.customColor ?? prefs.appearance.color).swiftUI,
                 opacity: prefs.appearance.opacity,
                 amplitude: prefs.waveform.amplitude,
+                verticalRange: prefs.waveform.verticalRange,
                 lineWidth: prefs.waveform.lineWidth,
                 smoothing: prefs.waveform.smoothing,
                 density: prefs.waveform.density,

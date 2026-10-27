@@ -10,10 +10,25 @@ nonisolated enum WaveformPath {
     static let densities = [32, 64, 128]
     /// Soft fill default opacity share of the appearance opacity.
     static let defaultFillStrength: CGFloat = 0.32
+    /// Default peak-to-peak share of drawable height when preferences are missing.
+    static let defaultVerticalRange: CGFloat = 0.7
 
-    static func points(samples: [Float], in bounds: CGRect, amplitude: CGFloat = 1) -> [CGPoint] {
+    /// Clamps the user vertical-range preference into the documented band.
+    static func clampedVerticalRange(_ value: CGFloat) -> CGFloat {
+        let range = StudioPreferences.waveformVerticalRangeRange
+        guard value.isFinite else { return defaultVerticalRange }
+        return min(max(value, CGFloat(range.lowerBound)), CGFloat(range.upperBound))
+    }
+
+    static func points(
+        samples: [Float],
+        in bounds: CGRect,
+        amplitude: CGFloat = 1,
+        verticalRange: CGFloat = 1
+    ) -> [CGPoint] {
         guard isDrawable(bounds), samples.count >= 2 else { return [] }
-        let half = bounds.height / 2
+        let range = verticalRange.isFinite ? min(max(verticalRange, 0), 1) : 1
+        let half = bounds.height / 2 * range
         let gain = amplitude.isFinite ? max(amplitude, 0) : 1
         let lastIndex = CGFloat(samples.count - 1)
         return samples.enumerated().map { index, sample in
@@ -160,6 +175,7 @@ struct WaveformCanvas: View {
     var color: Color
     var opacity: Double = 1
     var amplitude: Double = 0.55
+    var verticalRange: Double = 0.7
     var lineWidth: Double = 1.25
     var smoothing: Double = 0.4
     var density: Int = 64
@@ -173,7 +189,8 @@ struct WaveformCanvas: View {
             let plotted = WaveformPath.points(
                 samples: prepared,
                 in: bounds,
-                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: amplitude)
+                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: amplitude),
+                verticalRange: WaveformPath.clampedVerticalRange(CGFloat(verticalRange))
             )
             let points = plotted.count >= 2 ? plotted : WaveformPath.centerline(in: bounds)
             guard let first = points.first else { return }

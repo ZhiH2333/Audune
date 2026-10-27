@@ -317,12 +317,20 @@ struct SettingsView: View {
         }
         Section("Motion") {
             SettingsSlider(
+                title: "Maximum display height",
+                value: $model.prefs.waveform.verticalRange,
+                range: StudioPreferences.waveformVerticalRangeRange,
+                step: 0.05
+            )
+            Text("Peak-to-peak share of the drawable height. The hard ceiling for how tall the waveform may grow.")
+                .foregroundStyle(.secondary)
+            SettingsSlider(
                 title: "Visual amplitude",
                 value: $model.prefs.waveform.amplitude,
                 range: StudioPreferences.waveformAmplitudeRange,
                 step: 0.05
             )
-            Text("Scales the drawn waveform only. It does not change system volume or captured audio.")
+            Text("How strongly the signal fills that height. It does not change system volume, captured audio, or the maximum display height ceiling.")
                 .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Motion smoothing",

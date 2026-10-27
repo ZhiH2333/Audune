@@ -129,13 +129,42 @@ final class WaveformSamplerTests: XCTestCase {
         let redesigned = WaveformPath.points(
             samples: sample,
             in: bounds,
-            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: WaveformPreferences.standard.amplitude)
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: WaveformPreferences.standard.amplitude),
+            verticalRange: WaveformPath.clampedVerticalRange(CGFloat(WaveformPreferences.standard.verticalRange))
         )
         let legacySwing = abs(legacy[0].y - bounds.midY)
         let redesignSwing = abs(redesigned[0].y - bounds.midY)
         XCTAssertGreaterThan(legacySwing, redesignSwing * 1.5)
         XCTAssertLessThan(redesignSwing, bounds.height * 0.45)
         XCTAssertGreaterThan(redesignSwing, 5)
+    }
+
+    func testVerticalRangeCapsPeakToPeakAndAmplitudeCannotBypassIt() {
+        let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
+        let samples: [Float] = [1, -1, 1, -1]
+        let range: CGFloat = 0.5
+        let quiet = WaveformPath.points(
+            samples: samples,
+            in: bounds,
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 0.2),
+            verticalRange: range
+        )
+        let loud = WaveformPath.points(
+            samples: samples,
+            in: bounds,
+            amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 2),
+            verticalRange: range
+        )
+        let ceiling = bounds.height * range / 2
+        for point in quiet + loud {
+            XCTAssertLessThanOrEqual(abs(point.y - bounds.midY), ceiling + 0.001)
+        }
+        let quietSwing = quiet.map { abs($0.y - bounds.midY) }.max() ?? 0
+        let loudSwing = loud.map { abs($0.y - bounds.midY) }.max() ?? 0
+        XCTAssertGreaterThan(loudSwing, quietSwing)
+        XCTAssertEqual(loudSwing, ceiling, accuracy: 0.001)
+        XCTAssertEqual(WaveformPath.clampedVerticalRange(0.1), 0.3, accuracy: 0.000_1)
+        XCTAssertEqual(WaveformPath.clampedVerticalRange(1.5), 1, accuracy: 0.000_1)
     }
 
     func testMixDependsOnElapsedTimeNotFrameCount() {

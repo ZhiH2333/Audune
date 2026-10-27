@@ -320,6 +320,7 @@ struct IslandContentView: View {
                 color: (model.waveform.customColor ?? model.appearance.color).swiftUI,
                 opacity: model.appearance.opacity,
                 amplitude: model.waveform.amplitude,
+                verticalRange: model.waveform.verticalRange,
                 lineWidth: model.waveform.lineWidth,
                 smoothing: model.waveform.smoothing,
                 density: model.waveform.density,
