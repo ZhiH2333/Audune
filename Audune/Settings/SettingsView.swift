@@ -181,6 +181,14 @@ struct SettingsView: View {
             SettingsSlider(title: "Gap", value: $model.prefs.spectrum.barGap, range: StudioPreferences.barGapRange, step: 0.5)
             SettingsSlider(title: "Corner radius", value: $model.prefs.spectrum.cornerRadius, range: StudioPreferences.cornerRadiusRange, step: 0.5)
             Toggle("Bar stroke", isOn: $model.prefs.spectrum.stroke)
+            Picker("Color mapping", selection: $model.prefs.spectrum.colorMode) {
+                ForEach(SpectrumColorMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text("Solid uses Appearance fill. Frequency shifts hue across the band. Amplitude brightens taller bars. Peak caps keep the stroke color.")
+                .foregroundStyle(.secondary)
         }
         Section("Response") {
             SettingsSlider(title: "Sensitivity", value: $model.prefs.spectrum.sensitivity, range: StudioPreferences.sensitivityRange, step: 0.05)

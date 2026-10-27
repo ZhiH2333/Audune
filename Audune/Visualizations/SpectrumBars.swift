@@ -85,6 +85,7 @@ struct SpectrumCanvas: View {
     var peaks: [Float] = []
     var drawsBars: Bool
     var color: Color
+    var baseColor: StudioColor
     var strokeColor: Color
     var opacity: Double = 1
     var amplitude: Double = 1
@@ -92,11 +93,12 @@ struct SpectrumCanvas: View {
     var cornerRadius: Double = 2
     var barGap: Double = 2
     var drawsStroke: Bool = false
+    var colorMode: SpectrumColorMode = .solid
 
     var body: some View {
         Canvas { context, size in
             let bounds = CGRect(origin: .zero, size: size)
-            let shade = GraphicsContext.Shading.color(color.opacity(opacity))
+            let solid = GraphicsContext.Shading.color(color.opacity(opacity))
             if drawsBars {
                 let bars = SpectrumBars.bars(
                     spectrum: spectrum,
@@ -106,10 +108,21 @@ struct SpectrumCanvas: View {
                     amplitude: CGFloat(amplitude)
                 )
                 let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
-                for rect in bars {
+                for (index, rect) in bars.enumerated() {
+                    let level = index < spectrum.count ? spectrum[index] : 0
+                    let mapped = SpectrumColorMap.fill(
+                        mode: colorMode,
+                        base: baseColor,
+                        index: index,
+                        count: bars.count,
+                        level: level
+                    )
+                    let fill = colorMode == .solid
+                        ? solid
+                        : GraphicsContext.Shading.color(mapped.swiftUI.opacity(opacity))
                     let radius = min(CGFloat(cornerRadius), rect.width / 2, rect.height / 2)
                     let path = Path(roundedRect: rect, cornerRadius: max(radius, 0))
-                    context.fill(path, with: shade)
+                    context.fill(path, with: fill)
                     if drawsStroke {
                         context.stroke(
                             path,
@@ -124,7 +137,7 @@ struct SpectrumCanvas: View {
             } else {
                 let line = SpectrumBars.baseline(in: bounds)
                 if line.width > 0, line.height > 0 {
-                    context.fill(Path(roundedRect: line, cornerRadius: min(CGFloat(cornerRadius), line.height / 2)), with: shade)
+                    context.fill(Path(roundedRect: line, cornerRadius: min(CGFloat(cornerRadius), line.height / 2)), with: solid)
                 }
             }
         }

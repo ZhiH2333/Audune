@@ -88,6 +88,23 @@ final class SpectrumBarsTests: XCTestCase {
         XCTAssertEqual(SpectrumBars.baseline(in: .null), .zero)
     }
 
+    func testColorMappingModesStayFiniteAndDiffer() {
+        let base = StudioAccent.amber.color
+        let solid = SpectrumColorMap.fill(mode: .solid, base: base, index: 0, count: 8, level: 0.5)
+        XCTAssertEqual(solid, base)
+
+        let low = SpectrumColorMap.fill(mode: .frequency, base: base, index: 0, count: 8, level: 0.2)
+        let high = SpectrumColorMap.fill(mode: .frequency, base: base, index: 7, count: 8, level: 0.2)
+        XCTAssertNotEqual(low, high)
+        XCTAssertTrue([low.red, low.green, low.blue, high.red, high.green, high.blue].allSatisfy { $0.isFinite })
+
+        let quiet = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: 0.1)
+        let loud = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: 1)
+        XCTAssertNotEqual(quiet, loud)
+        let broken = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: .nan)
+        XCTAssertTrue([broken.red, broken.green, broken.blue].allSatisfy { $0.isFinite })
+    }
+
     private func assertInside(_ bars: [CGRect], bounds: CGRect, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertFalse(bars.isEmpty, file: file, line: line)
         for bar in bars {

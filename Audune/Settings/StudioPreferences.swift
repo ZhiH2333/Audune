@@ -37,6 +37,7 @@ nonisolated enum StudioPreferenceKey {
     static let spectrumPeakFallPerSecond = "studio.spectrum.peakFallPerSecond"
     static let spectrumSilenceGateEnabled = "studio.spectrum.silenceGateEnabled"
     static let spectrumSilenceThreshold = "studio.spectrum.silenceThreshold"
+    static let spectrumColorMode = "studio.spectrum.colorMode"
 
     static let waveformLineWidth = "studio.waveform.lineWidth"
     static let waveformAmplitude = "studio.waveform.amplitude"
@@ -149,9 +150,105 @@ nonisolated struct StudioColor: Equatable, Sendable {
         )
     }
 
+    /// Rotates hue by `delta` turns (−0.5…0.5 typical). Saturation and lightness stay close to the base.
+    func shiftedHue(by delta: Double) -> StudioColor {
+        let shift = delta.isFinite ? delta : 0
+        var h = 0.0, s = 0.0, l = 0.0
+        Self.rgbToHSL(red, green, blue, h: &h, s: &s, l: &l)
+        h = h + shift
+        h -= floor(h)
+        let rgb = Self.hslToRGB(h: h, s: s, l: l)
+        return StudioColor(red: rgb.0, green: rgb.1, blue: rgb.2)
+    }
+
+    /// Scales perceived lightness toward black (factor < 1) or white (factor > 1), clamped.
+    func scaledLightness(_ factor: Double) -> StudioColor {
+        let scale = factor.isFinite ? max(factor, 0) : 1
+        var h = 0.0, s = 0.0, l = 0.0
+        Self.rgbToHSL(red, green, blue, h: &h, s: &s, l: &l)
+        l = min(max(l * scale, 0), 1)
+        let rgb = Self.hslToRGB(h: h, s: s, l: l)
+        return StudioColor(red: rgb.0, green: rgb.1, blue: rgb.2)
+    }
+
     private static func snapped(_ value: Double) -> Double {
         guard value.isFinite else { return 0 }
         return (min(max(value, 0), 1) * 255).rounded() / 255
+    }
+
+    private static func rgbToHSL(_ r: Double, _ g: Double, _ b: Double, h: inout Double, s: inout Double, l: inout Double) {
+        let maxC = max(r, g, b)
+        let minC = min(r, g, b)
+        l = (maxC + minC) / 2
+        let delta = maxC - minC
+        guard delta > 0.000_001 else {
+            h = 0
+            s = 0
+            return
+        }
+        s = l > 0.5 ? delta / (2 - maxC - minC) : delta / (maxC + minC)
+        if maxC == r {
+            h = (g - b) / delta + (g < b ? 6 : 0)
+        } else if maxC == g {
+            h = (b - r) / delta + 2
+        } else {
+            h = (r - g) / delta + 4
+        }
+        h /= 6
+    }
+
+    private static func hslToRGB(h: Double, s: Double, l: Double) -> (Double, Double, Double) {
+        guard s > 0.000_001 else { return (l, l, l) }
+        func hue2rgb(_ p: Double, _ q: Double, _ tIn: Double) -> Double {
+            var t = tIn
+            if t < 0 { t += 1 }
+            if t > 1 { t -= 1 }
+            if t < 1.0 / 6 { return p + (q - p) * 6 * t }
+            if t < 1.0 / 2 { return q }
+            if t < 2.0 / 3 { return p + (q - p) * (2.0 / 3 - t) * 6 }
+            return p
+        }
+        let q = l < 0.5 ? l * (1 + s) : l + s - l * s
+        let p = 2 * l - q
+        return (hue2rgb(p, q, h + 1.0 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1.0 / 3))
+    }
+}
+
+nonisolated enum SpectrumColorMode: String, Codable, CaseIterable, Identifiable {
+    case solid
+    case frequency
+    case amplitude
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .solid: return "Solid"
+        case .frequency: return "Frequency"
+        case .amplitude: return "Amplitude"
+        }
+    }
+}
+
+/// Pure fill colors for Spectrum bars. Compact Island keeps Appearance solid color.
+nonisolated enum SpectrumColorMap {
+    static func fill(
+        mode: SpectrumColorMode,
+        base: StudioColor,
+        index: Int,
+        count: Int,
+        level: Float
+    ) -> StudioColor {
+        switch mode {
+        case .solid:
+            return base
+        case .frequency:
+            let t = count > 1 ? Double(index) / Double(count - 1) : 0
+            return base.shiftedHue(by: (t - 0.5) * 0.4)
+        case .amplitude:
+            let safe = level.isFinite ? min(max(Double(level), 0), 1) : 0
+            return base.scaledLightness(0.55 + 0.55 * safe)
+        }
     }
 }
 
@@ -232,6 +329,8 @@ nonisolated struct SpectrumPreferences: Equatable {
     var barGap: Double
     var cornerRadius: Double
     var stroke: Bool
+    /// How bar fill color is derived from Appearance. Default solid matches older installs.
+    var colorMode: SpectrumColorMode
     var sensitivity: Double
     var amplitude: Double
     var smoothing: Double
@@ -254,6 +353,7 @@ nonisolated struct SpectrumPreferences: Equatable {
         barGap: 2,
         cornerRadius: 2,
         stroke: false,
+        colorMode: .solid,
         sensitivity: 0.5,
         amplitude: 1,
         smoothing: 0.3,
@@ -532,6 +632,7 @@ nonisolated struct StudioPreferences: Equatable {
                 barGap: reader.double(StudioPreferenceKey.barGap, range: barGapRange, fallback: standard.spectrum.barGap),
                 cornerRadius: reader.double(StudioPreferenceKey.cornerRadius, range: cornerRadiusRange, fallback: standard.spectrum.cornerRadius),
                 stroke: reader.bool(StudioPreferenceKey.spectrumStroke, fallback: standard.spectrum.stroke),
+                colorMode: defaults.string(forKey: StudioPreferenceKey.spectrumColorMode).flatMap(SpectrumColorMode.init(rawValue:)) ?? standard.spectrum.colorMode,
                 sensitivity: reader.double(StudioPreferenceKey.spectrumSensitivity, range: sensitivityRange, fallback: standard.spectrum.sensitivity),
                 amplitude: reader.double(StudioPreferenceKey.spectrumAmplitude, legacy: legacyAmplitude, range: amplitudeRange, fallback: standard.spectrum.amplitude),
                 smoothing: reader.double(StudioPreferenceKey.spectrumSmoothing, legacy: legacySmoothing, range: smoothingRange, fallback: standard.spectrum.smoothing),
@@ -647,6 +748,7 @@ nonisolated struct StudioPreferences: Equatable {
         defaults.set(p.spectrum.barGap, forKey: StudioPreferenceKey.barGap)
         defaults.set(p.spectrum.cornerRadius, forKey: StudioPreferenceKey.cornerRadius)
         defaults.set(p.spectrum.stroke, forKey: StudioPreferenceKey.spectrumStroke)
+        defaults.set(p.spectrum.colorMode.rawValue, forKey: StudioPreferenceKey.spectrumColorMode)
         defaults.set(p.spectrum.sensitivity, forKey: StudioPreferenceKey.spectrumSensitivity)
         defaults.set(p.spectrum.amplitude, forKey: StudioPreferenceKey.spectrumAmplitude)
         defaults.set(p.spectrum.smoothing, forKey: StudioPreferenceKey.spectrumSmoothing)
@@ -802,7 +904,7 @@ extension AppearancePreferences: Codable {
 
 extension SpectrumPreferences: Codable {
     private enum CodingKeys: String, CodingKey {
-        case barCount, scale, minHz, maxHz, barGap, cornerRadius, stroke
+        case barCount, scale, minHz, maxHz, barGap, cornerRadius, stroke, colorMode
         case sensitivity, amplitude, smoothing, attackMs, releaseMs, peakHold, peakHoldSeconds, peakFallPerSecond
         case silenceGateEnabled, silenceThreshold
     }
@@ -818,6 +920,7 @@ extension SpectrumPreferences: Codable {
             barGap: try container.decodeIfPresent(Double.self, forKey: .barGap) ?? standard.barGap,
             cornerRadius: try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? standard.cornerRadius,
             stroke: try container.decodeIfPresent(Bool.self, forKey: .stroke) ?? standard.stroke,
+            colorMode: try container.decodeIfPresent(SpectrumColorMode.self, forKey: .colorMode) ?? standard.colorMode,
             sensitivity: try container.decodeIfPresent(Double.self, forKey: .sensitivity) ?? standard.sensitivity,
             amplitude: try container.decodeIfPresent(Double.self, forKey: .amplitude) ?? standard.amplitude,
             smoothing: try container.decodeIfPresent(Double.self, forKey: .smoothing) ?? standard.smoothing,
@@ -841,6 +944,7 @@ extension SpectrumPreferences: Codable {
         try container.encode(barGap, forKey: .barGap)
         try container.encode(cornerRadius, forKey: .cornerRadius)
         try container.encode(stroke, forKey: .stroke)
+        try container.encode(colorMode, forKey: .colorMode)
         try container.encode(sensitivity, forKey: .sensitivity)
         try container.encode(amplitude, forKey: .amplitude)
         try container.encode(smoothing, forKey: .smoothing)

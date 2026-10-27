@@ -135,13 +135,15 @@ struct StudioContentView: View {
                 peaks: model.spectrumPeaks,
                 drawsBars: drawsBars,
                 color: fill,
+                baseColor: prefs.appearance.color,
                 strokeColor: prefs.appearance.strokeColor.swiftUI,
                 opacity: prefs.appearance.opacity,
                 amplitude: prefs.spectrum.amplitude,
                 lineWidth: prefs.appearance.lineWidth,
                 cornerRadius: prefs.spectrum.cornerRadius,
                 barGap: prefs.spectrum.barGap,
-                drawsStroke: prefs.spectrum.stroke
+                drawsStroke: prefs.spectrum.stroke,
+                colorMode: prefs.spectrum.colorMode
             )
         case .waveform:
             WaveformCanvas(

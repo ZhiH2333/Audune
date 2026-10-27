@@ -26,6 +26,7 @@ nonisolated enum VisualPresetCatalog {
         prefs.sensitivity = 0.65
         prefs.minHz = 30
         prefs.maxHz = 18_000
+        prefs.colorMode = .frequency
     }
 
     static let dynamic = spectrum(id: "builtin.spectrum.dynamic", name: "Dynamic") { prefs in
@@ -38,6 +39,7 @@ nonisolated enum VisualPresetCatalog {
         prefs.peakHold = true
         prefs.peakHoldSeconds = 0.4
         prefs.stroke = true
+        prefs.colorMode = .amplitude
     }
 
     static let fineLine = waveform(id: "builtin.waveform.fineLine", name: "Fine Line") { prefs in

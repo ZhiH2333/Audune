@@ -304,13 +304,15 @@ struct IslandContentView: View {
                 peaks: model.expandedPeaks,
                 drawsBars: drawsBars,
                 color: fill,
+                baseColor: model.appearance.color,
                 strokeColor: stroke,
                 opacity: model.appearance.opacity,
                 amplitude: model.spectrum.amplitude,
                 lineWidth: model.appearance.lineWidth,
                 cornerRadius: model.spectrum.cornerRadius,
                 barGap: model.spectrum.barGap,
-                drawsStroke: model.spectrum.stroke
+                drawsStroke: model.spectrum.stroke,
+                colorMode: model.spectrum.colorMode
             )
         case .waveform:
             WaveformCanvas(

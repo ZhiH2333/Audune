@@ -135,6 +135,7 @@ final class StudioPreferencesTests: XCTestCase {
             barGap: 4,
             cornerRadius: 3,
             stroke: true,
+            colorMode: .frequency,
             sensitivity: 0.8,
             amplitude: 1.5,
             smoothing: 0.2,
