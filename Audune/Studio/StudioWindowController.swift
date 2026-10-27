@@ -492,6 +492,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             next = StudioFrame.clamped(next, to: [visible], fallback: visible, minimum: limits.minimum, maximum: limits.maximum)
         }
         panel.setFrame(next, display: panel.isVisible)
+        // AppKit may clamp below the preferred size; keep Settings in sync with the live frame.
+        syncSizeFromPanelToPrefs()
         syncPassthroughWindows()
     }
 

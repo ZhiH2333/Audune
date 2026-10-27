@@ -193,7 +193,7 @@ struct SettingsView: View {
                 }
             }
             .disabled(model.prefs.layout.mode == .fill)
-            Text("Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size limits.")
+            Text("Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size.")
                 .foregroundStyle(.secondary)
         }
         Section {

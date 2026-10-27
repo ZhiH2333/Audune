@@ -352,11 +352,24 @@ final class StudioWindowBehaviorTests: XCTestCase {
         let floored = controller.inspectWindowForTests().frame
         XCTAssertGreaterThanOrEqual(floored.width, StudioFrame.absoluteMinimum.width - 0.5)
         XCTAssertGreaterThanOrEqual(floored.height, StudioFrame.absoluteMinimum.height - 0.5)
+        XCTAssertEqual(controller.model.prefs.window.width, Double(floored.width), accuracy: 0.5)
+        XCTAssertEqual(controller.model.prefs.window.height, Double(floored.height), accuracy: 0.5)
+
+        controller.model.prefs.window.width = 9_000
+        controller.model.prefs.window.height = 9_000
+        controller.applyWindowPreferences()
+        let capped = controller.inspectWindowForTests().frame
+        XCTAssertLessThanOrEqual(capped.width, StudioFrame.defaultMaximumSize.width + 0.5)
+        XCTAssertLessThanOrEqual(capped.height, StudioFrame.defaultMaximumSize.height + 0.5)
+        XCTAssertEqual(controller.model.prefs.window.width, Double(capped.width), accuracy: 0.5)
+        XCTAssertEqual(controller.model.prefs.window.height, Double(capped.height), accuracy: 0.5)
 
         controller.resetWindowFrame()
         let reset = controller.inspectWindowForTests().frame
         XCTAssertEqual(reset.width, StudioFrame.defaultSize.width, accuracy: 1)
         XCTAssertEqual(reset.height, StudioFrame.defaultSize.height, accuracy: 1)
+        XCTAssertEqual(controller.model.prefs.window.width, Double(StudioFrame.defaultSize.width), accuracy: 0.5)
+        XCTAssertEqual(controller.model.prefs.window.height, Double(StudioFrame.defaultSize.height), accuracy: 0.5)
     }
 
     @MainActor
