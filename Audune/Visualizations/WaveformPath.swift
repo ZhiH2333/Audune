@@ -13,11 +13,51 @@ nonisolated enum WaveformPath {
     /// Default peak-to-peak share of drawable height when preferences are missing.
     static let defaultVerticalRange: CGFloat = 0.7
 
+    /// Canvas geometry used by every Waveform style: stroke-safe inset, then vertical range band.
+    struct DrawMetrics: Equatable {
+        var canvas: CGRect
+        var safeBounds: CGRect
+        var plotBounds: CGRect
+        var strokeInset: CGFloat
+    }
+
     /// Clamps the user vertical-range preference into the documented band.
     static func clampedVerticalRange(_ value: CGFloat) -> CGFloat {
         let range = StudioPreferences.waveformVerticalRangeRange
         guard value.isFinite else { return defaultVerticalRange }
         return min(max(value, CGFloat(range.lowerBound)), CGFloat(range.upperBound))
+    }
+
+    /// Half stroke width plus a small pad for round caps, never larger than half the shorter canvas side.
+    static func strokeInset(lineWidth: CGFloat, in canvas: CGRect) -> CGFloat {
+        guard isDrawable(canvas) else { return 0 }
+        let width = lineWidth.isFinite ? max(lineWidth, 0.5) : 0.5
+        let pad = width / 2 + 0.5
+        let limit = min(canvas.width, canvas.height) / 2
+        return min(max(pad, 0), max(limit - 0.25, 0))
+    }
+
+    /// Safe rectangle and centered plot band for the current canvas, range, and stroke width.
+    static func drawMetrics(
+        in canvas: CGRect,
+        verticalRange: CGFloat,
+        lineWidth: CGFloat
+    ) -> DrawMetrics? {
+        guard isDrawable(canvas) else { return nil }
+        let inset = strokeInset(lineWidth: lineWidth, in: canvas)
+        let safe = canvas.insetBy(dx: inset, dy: inset)
+        guard isDrawable(safe) else { return nil }
+        let range = clampedVerticalRange(verticalRange)
+        let band = safe.height * range
+        guard band.isFinite, band > 0 else { return nil }
+        let plot = CGRect(
+            x: safe.minX,
+            y: safe.midY - band / 2,
+            width: safe.width,
+            height: band
+        )
+        guard isDrawable(plot) else { return nil }
+        return DrawMetrics(canvas: canvas, safeBounds: safe, plotBounds: plot, strokeInset: inset)
     }
 
     static func points(
@@ -184,23 +224,32 @@ struct WaveformCanvas: View {
 
     var body: some View {
         Canvas { context, size in
-            let bounds = CGRect(origin: .zero, size: size)
+            let canvas = CGRect(origin: .zero, size: size)
+            // Last-resort clip; safe geometry should already keep ink inside the canvas.
+            context.clip(to: Path(canvas))
+            guard let metrics = WaveformPath.drawMetrics(
+                in: canvas,
+                verticalRange: CGFloat(verticalRange),
+                lineWidth: CGFloat(lineWidth)
+            ) else { return }
+
+            let plot = metrics.plotBounds
             let prepared = WaveformPath.prepared(samples, density: density, smoothing: Float(smoothing))
+            // Range is already baked into `plot`; amplitude only fills that band.
             let plotted = WaveformPath.points(
                 samples: prepared,
-                in: bounds,
-                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: amplitude),
-                verticalRange: WaveformPath.clampedVerticalRange(CGFloat(verticalRange))
+                in: plot,
+                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: amplitude)
             )
-            let points = plotted.count >= 2 ? plotted : WaveformPath.centerline(in: bounds)
+            let points = plotted.count >= 2 ? plotted : WaveformPath.centerline(in: plot)
             guard let first = points.first else { return }
 
             var base = Path()
-            base.move(to: CGPoint(x: bounds.minX, y: bounds.midY))
-            base.addLine(to: CGPoint(x: bounds.maxX, y: bounds.midY))
+            base.move(to: CGPoint(x: plot.minX, y: plot.midY))
+            base.addLine(to: CGPoint(x: plot.maxX, y: plot.midY))
             context.stroke(base, with: .color(color.opacity(opacity * 0.18)), style: StrokeStyle(lineWidth: 0.5))
 
-            let line = Self.curve(points, in: bounds, from: first)
+            let line = Self.curve(points, in: plot, from: first)
             let fill = fillStrength.isFinite ? min(max(fillStrength, 0), 1) : 0.32
 
             switch style {
@@ -212,7 +261,7 @@ struct WaveformCanvas: View {
                 )
             case .softFill:
                 if fill > 0 {
-                    Self.fillRibbon(context: context, line: line, points: points, in: bounds, color: color, opacity: opacity * fill)
+                    Self.fillRibbon(context: context, line: line, points: points, in: plot, color: color, opacity: opacity * fill)
                 }
                 context.stroke(
                     line,
@@ -220,9 +269,9 @@ struct WaveformCanvas: View {
                     style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                 )
             case .mirror:
-                let reflected = WaveformPath.mirrored(points, in: bounds)
+                let reflected = WaveformPath.mirrored(points, in: plot)
                 if fill > 0 {
-                    Self.fillRibbon(context: context, line: line, points: points, in: bounds, color: color, opacity: opacity * fill * 0.55)
+                    Self.fillRibbon(context: context, line: line, points: points, in: plot, color: color, opacity: opacity * fill * 0.55)
                 }
                 context.stroke(
                     line,
@@ -230,7 +279,7 @@ struct WaveformCanvas: View {
                     style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                 )
                 if let mirrorFirst = reflected.first {
-                    let mirrorLine = Self.curve(reflected, in: bounds, from: mirrorFirst)
+                    let mirrorLine = Self.curve(reflected, in: plot, from: mirrorFirst)
                     context.stroke(
                         mirrorLine,
                         with: .color(color.opacity(opacity * 0.85)),

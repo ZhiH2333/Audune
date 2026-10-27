@@ -167,6 +167,79 @@ final class WaveformSamplerTests: XCTestCase {
         XCTAssertEqual(WaveformPath.clampedVerticalRange(1.5), 1, accuracy: 0.000_1)
     }
 
+    func testDrawMetricsInsetKeepsStrokeInsideCanvas() throws {
+        let canvas = CGRect(x: 0, y: 0, width: 200, height: 100)
+        for lineWidth: CGFloat in [0.5, 1.25, 4] {
+            let metrics = try XCTUnwrap(
+                WaveformPath.drawMetrics(in: canvas, verticalRange: 1, lineWidth: lineWidth)
+            )
+            XCTAssertEqual(metrics.strokeInset, lineWidth / 2 + 0.5, accuracy: 0.000_1)
+            XCTAssertTrue(metrics.safeBounds.minX >= canvas.minX + metrics.strokeInset - 0.001)
+            XCTAssertTrue(metrics.safeBounds.maxX <= canvas.maxX - metrics.strokeInset + 0.001)
+            XCTAssertTrue(metrics.safeBounds.minY >= canvas.minY + metrics.strokeInset - 0.001)
+            XCTAssertTrue(metrics.safeBounds.maxY <= canvas.maxY - metrics.strokeInset + 0.001)
+            XCTAssertEqual(metrics.plotBounds.height, metrics.safeBounds.height, accuracy: 0.001)
+            XCTAssertEqual(metrics.plotBounds.midY, metrics.safeBounds.midY, accuracy: 0.001)
+        }
+        XCTAssertNil(WaveformPath.drawMetrics(in: .zero, verticalRange: 0.7, lineWidth: 2))
+        XCTAssertNil(WaveformPath.drawMetrics(
+            in: CGRect(x: 0, y: 0, width: CGFloat.nan, height: 10),
+            verticalRange: 0.7,
+            lineWidth: 1
+        ))
+    }
+
+    func testDrawMetricsPlotBandScalesWithVerticalRange() throws {
+        let canvas = CGRect(x: 0, y: 0, width: 320, height: 180)
+        let low = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 0.3, lineWidth: 2))
+        let mid = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 0.7, lineWidth: 2))
+        let high = try XCTUnwrap(WaveformPath.drawMetrics(in: canvas, verticalRange: 1, lineWidth: 2))
+        XCTAssertEqual(low.plotBounds.height, low.safeBounds.height * 0.3, accuracy: 0.001)
+        XCTAssertEqual(mid.plotBounds.height, mid.safeBounds.height * 0.7, accuracy: 0.001)
+        XCTAssertEqual(high.plotBounds.height, high.safeBounds.height, accuracy: 0.001)
+        XCTAssertLessThan(low.plotBounds.height, mid.plotBounds.height)
+        XCTAssertLessThan(mid.plotBounds.height, high.plotBounds.height)
+    }
+
+    func testSafePlotGeometryContainsPointsSegmentsAndMirror() throws {
+        let samples = sine(frequency: 7, amplitude: 1, count: 128)
+        for size in [
+            CGSize(width: 8, height: 4),
+            CGSize(width: 40, height: 12),
+            CGSize(width: 900, height: 500)
+        ] {
+            let canvas = CGRect(origin: .zero, size: size)
+            let metrics = try XCTUnwrap(
+                WaveformPath.drawMetrics(in: canvas, verticalRange: 1, lineWidth: 4)
+            )
+            let points = WaveformPath.points(
+                samples: samples,
+                in: metrics.plotBounds,
+                amplitude: WaveformPath.canvasAmplitude(visualAmplitude: 2)
+            )
+            XCTAssertFalse(points.isEmpty)
+            for point in points {
+                XCTAssertTrue(inside(point, metrics.plotBounds), "\(point) outside plot \(metrics.plotBounds)")
+                XCTAssertTrue(inside(point, metrics.safeBounds))
+            }
+            for segment in WaveformPath.segments(through: points, in: metrics.plotBounds) {
+                for point in [segment.control1, segment.control2, segment.end] {
+                    XCTAssertTrue(inside(point, metrics.plotBounds))
+                }
+            }
+            for point in WaveformPath.mirrored(points, in: metrics.plotBounds) {
+                XCTAssertTrue(inside(point, metrics.plotBounds))
+            }
+            let strokeReach = metrics.strokeInset
+            for point in points {
+                XCTAssertGreaterThanOrEqual(point.y - strokeReach, canvas.minY - 0.001)
+                XCTAssertLessThanOrEqual(point.y + strokeReach, canvas.maxY + 0.001)
+                XCTAssertGreaterThanOrEqual(point.x - strokeReach, canvas.minX - 0.001)
+                XCTAssertLessThanOrEqual(point.x + strokeReach, canvas.maxX + 0.001)
+            }
+        }
+    }
+
     func testMixDependsOnElapsedTimeNotFrameCount() {
         let start = Array(repeating: Float(0), count: 8)
         let target = Array(repeating: Float(1), count: 8)
