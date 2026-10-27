@@ -46,6 +46,16 @@ final class VisualPresetStoreTests: XCTestCase {
         XCTAssertEqual(waveform.style, .line)
         XCTAssertNil(waveform.customColor)
         XCTAssertEqual(waveform.lineWidth, WaveformPreferences.standard.lineWidth)
+        XCTAssertEqual(waveform.amplitude, WaveformPreferences.standard.amplitude, accuracy: 0.000_1)
+        XCTAssertEqual(waveform.fillStrength, WaveformPreferences.standard.fillStrength, accuracy: 0.000_1)
+
+        let legacyFilled = try JSONDecoder().decode(
+            WaveformPreferences.self,
+            from: Data(#"{"style":"filled","amplitude":1.8}"#.utf8)
+        )
+        XCTAssertEqual(legacyFilled.style, .softFill)
+        XCTAssertEqual(legacyFilled.amplitude, 1.8, accuracy: 0.000_1)
+        XCTAssertEqual(legacyFilled.fillStrength, WaveformPreferences.standard.fillStrength, accuracy: 0.000_1)
 
         let appearance = try JSONDecoder().decode(AppearancePreferences.self, from: Data(#"{}"#.utf8))
         XCTAssertEqual(appearance, .standard)

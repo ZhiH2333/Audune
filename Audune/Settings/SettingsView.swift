@@ -242,7 +242,7 @@ struct SettingsView: View {
             }
             .pickerStyle(.segmented)
         }
-        Section("Line") {
+        Section("Look") {
             Toggle("Custom line color", isOn: Binding(
                 get: { model.prefs.waveform.customColor != nil },
                 set: { model.prefs.waveform.customColor = $0 ? model.prefs.appearance.color : nil }
@@ -253,7 +253,17 @@ struct SettingsView: View {
                     set: { model.prefs.waveform.customColor = StudioColor($0) }
                 ), supportsOpacity: false)
             }
-            SettingsSlider(title: "Line width", value: $model.prefs.waveform.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+            SettingsSlider(title: "Stroke width", value: $model.prefs.waveform.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
+            SettingsSlider(
+                title: "Fill strength",
+                value: $model.prefs.waveform.fillStrength,
+                range: StudioPreferences.fillStrengthRange,
+                step: 0.05
+            )
+            Text("Fill strength applies to Soft Fill and Mirror. Fine Line stays a stroke only.")
+                .foregroundStyle(.secondary)
+        }
+        Section("Motion") {
             SettingsSlider(
                 title: "Visual amplitude",
                 value: $model.prefs.waveform.amplitude,
@@ -262,12 +272,6 @@ struct SettingsView: View {
             )
             Text("Scales the drawn waveform only. It does not change system volume or captured audio.")
                 .foregroundStyle(.secondary)
-            SettingsSlider(
-                title: "Fill strength",
-                value: $model.prefs.waveform.fillStrength,
-                range: StudioPreferences.fillStrengthRange,
-                step: 0.05
-            )
             SettingsSlider(
                 title: "Motion smoothing",
                 value: $model.prefs.waveform.smoothing,

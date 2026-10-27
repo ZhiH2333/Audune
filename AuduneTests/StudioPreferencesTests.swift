@@ -260,6 +260,11 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.waveform.customColor, StudioColor(red: 0, green: 0, blue: 1))
         defaults.set("filled", forKey: StudioPreferenceKey.waveformStyle)
         XCTAssertEqual(StudioPreferences.load(from: defaults).waveform.style, .softFill)
+        defaults.set(0.7, forKey: StudioPreferenceKey.waveformFillStrength)
+        defaults.set(0.2, forKey: StudioPreferenceKey.waveformAmplitude)
+        let motion = StudioPreferences.load(from: defaults).waveform
+        XCTAssertEqual(motion.fillStrength, 0.7, accuracy: 0.000_1)
+        XCTAssertEqual(motion.amplitude, 0.2, accuracy: 0.000_1)
         loaded.waveform.customColor = nil
         loaded.save(to: defaults)
         XCTAssertNil(defaults.object(forKey: StudioPreferenceKey.waveformColor))
