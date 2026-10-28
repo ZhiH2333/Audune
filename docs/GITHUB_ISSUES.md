@@ -20,7 +20,7 @@
 
 ## AUD-01 — [SPIKE] Verify Core Audio Process Tap on supported macOS
 
-**Labels:** `P0`, `audio`, `spike`  
+**Labels:** `P0`, `audio`, `spike`
 **Milestone:** Phase 0 — Audio Spike
 
 ### Goal
@@ -50,7 +50,7 @@ None. This is the release-blocking technical spike.
 
 ## AUD-02 — Create native project and repository foundation
 
-**Labels:** `P0`, `setup`, `docs`  
+**Labels:** `P0`, `setup`, `docs`
 **Milestone:** Phase 1 — Foundation
 
 ### Tasks
@@ -74,7 +74,7 @@ AUD-01 conclusion.
 
 ## AUD-03 — Implement audio capture lifecycle and permission state
 
-**Labels:** `P0`, `audio`  
+**Labels:** `P0`, `audio`
 **Milestone:** Phase 1 — Foundation
 
 ### Tasks
@@ -99,7 +99,7 @@ AUD-01, AUD-02.
 
 ## AUD-04 — Implement bounded audio buffering for real-time capture
 
-**Labels:** `P0`, `audio`, `performance`  
+**Labels:** `P0`, `audio`, `performance`
 **Milestone:** Phase 1 — Foundation
 
 ### Tasks
@@ -120,7 +120,7 @@ AUD-03.
 
 ## AUD-05 — Implement AudioSnapshot and AudioAnalyzer DSP
 
-**Labels:** `P0`, `dsp`, `test`  
+**Labels:** `P0`, `dsp`, `test`
 **Milestone:** Phase 1 — Foundation
 
 ### Tasks
@@ -145,7 +145,7 @@ AUD-04.
 
 ## AUD-06 — Add core audio analyzer and settings tests
 
-**Labels:** `P0`, `test`  
+**Labels:** `P0`, `test`
 **Milestone:** Phase 1 — Foundation
 
 ### Tasks
@@ -164,7 +164,7 @@ AUD-05, AUD-02.
 
 ## AUD-07 — Implement dynamic menu bar item
 
-**Labels:** `P0`, `menu-bar`, `ui`  
+**Labels:** `P0`, `menu-bar`, `ui`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -188,7 +188,7 @@ AUD-05.
 
 ## AUD-08 — Implement menu bar popover and app controls
 
-**Labels:** `P0`, `menu-bar`, `ui`  
+**Labels:** `P0`, `menu-bar`, `ui`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -209,7 +209,7 @@ AUD-03, AUD-07.
 
 ## AUD-09 — Implement Studio floating panel
 
-**Labels:** `P0`, `ui`  
+**Labels:** `P0`, `ui`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -233,7 +233,7 @@ AUD-02, AUD-08.
 
 ## AUD-10 — Implement Spectrum renderer
 
-**Labels:** `P0`, `visualization`  
+**Labels:** `P0`, `visualization`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -254,7 +254,7 @@ AUD-05, AUD-09.
 
 ## AUD-11 — Implement Waveform renderer
 
-**Labels:** `P0`, `visualization`  
+**Labels:** `P0`, `visualization`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -274,7 +274,7 @@ AUD-05, AUD-09.
 
 ## AUD-12 — Implement Orbit renderer
 
-**Labels:** `P0`, `visualization`  
+**Labels:** `P0`, `visualization`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -294,7 +294,7 @@ AUD-05, AUD-09.
 
 ## AUD-13 — Implement SettingsStore and settings UI
 
-**Labels:** `P0`, `settings`, `ui`  
+**Labels:** `P0`, `settings`, `ui`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -317,7 +317,7 @@ AUD-07 through AUD-12 as needed.
 
 ## AUD-14 — Permission/error UX and privacy documentation
 
-**Labels:** `P0`, `audio`, `docs`  
+**Labels:** `P0`, `audio`, `docs`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -338,7 +338,7 @@ AUD-03, AUD-08.
 
 ## AUD-15 — Performance, lifecycle, and device-change hardening
 
-**Labels:** `P0`, `performance`, `test`  
+**Labels:** `P0`, `performance`, `test`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
@@ -361,7 +361,7 @@ AUD-03 through AUD-13.
 
 ## AUD-16 — [SPIKE] Prototype safe notch positioning for Island
 
-**Labels:** `P1`, `island`, `spike`  
+**Labels:** `P1`, `island`, `spike`
 **Milestone:** Phase 3 — Island
 
 ### Tasks
@@ -384,7 +384,7 @@ AUD-09, AUD-13.
 
 ## AUD-17 — Implement Island collapsed/expanded states
 
-**Labels:** `P1`, `island`, `ui`  
+**Labels:** `P1`, `island`, `ui`
 **Milestone:** Phase 3 — Island
 
 ### Tasks
@@ -407,7 +407,7 @@ AUD-16.
 
 ## AUD-18 — Implement Desktop Magnet as normal-level window
 
-**Labels:** `P1`, `desktop-magnet`, `ui`  
+**Labels:** `P1`, `desktop-magnet`, `ui`
 **Milestone:** Phase 4 — Desktop Magnet
 
 ### Tasks
@@ -430,7 +430,7 @@ AUD-09, AUD-13, AUD-15.
 
 ## AUD-19 — Implement SurfaceManager and per-surface preferences
 
-**Labels:** `P1`, `settings`, `ui`  
+**Labels:** `P1`, `settings`, `ui`
 **Milestone:** Phase 4 — Desktop Magnet
 
 ### Tasks
@@ -452,7 +452,7 @@ AUD-17, AUD-18.
 
 ## AUD-20 — Accessibility, Reduce Motion, and visual polish
 
-**Labels:** `P1`, `ui`  
+**Labels:** `P1`, `ui`
 **Milestone:** Phase 4 — Desktop Magnet
 
 ### Tasks
@@ -474,7 +474,7 @@ AUD-08 through AUD-19.
 
 ## AUD-21 — Add manual test matrix and CI hardening
 
-**Labels:** `P0`, `test`, `release`  
+**Labels:** `P0`, `test`, `release`
 **Milestone:** Phase 5 — Release Readiness
 
 ### Tasks
@@ -495,7 +495,7 @@ AUD-06, AUD-14, AUD-15, AUD-20.
 
 ## AUD-22 — README, CONTRIBUTING, license, and first test build
 
-**Labels:** `P0`, `docs`, `release`  
+**Labels:** `P0`, `docs`, `release`
 **Milestone:** Phase 5 — Release Readiness
 
 ### Tasks
@@ -517,21 +517,21 @@ AUD-02, AUD-14, AUD-21.
 
 ## AUD-23 — [CANCELLED] Apple Music metadata and controls
 
-**Labels:** `P2`, `audio`  
+**Labels:** `P2`, `audio`
 **Status:** Cancelled — removed from product path. No public system-wide Now Playing API; per-app Apple Events Play/Pause and Settings → Playback were deleted from Audune.
 
 ---
 
 ## AUD-24 — [CANCELLED] Spotify metadata and controls
 
-**Labels:** `P2`, `audio`  
+**Labels:** `P2`, `audio`
 **Status:** Cancelled — same as AUD-23. Audune does not integrate Spotify Automation or metadata.
 
 ---
 
 ## AUD-25 — [FUTURE] Advanced visual modes (preset file exchange delivered)
 
-**Labels:** `P2`, `visualization`, `settings`  
+**Labels:** `P2`, `visualization`, `settings`
 **Milestone:** Future
 
 ### Tasks
@@ -551,7 +551,7 @@ Core MVP released and profiled. Preset import/export lives in Settings Visual pr
 
 ## AUD-26 — Studio v1.4: Settings Window & Interaction Polish
 
-**Labels:** `P1`, `ui`, `settings`  
+**Labels:** `P1`, `ui`, `settings`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Tasks
