@@ -223,12 +223,14 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 ### Visual presets v1
 
-`VisualPresetStoreTests`, `VisualPresetApplyTests`, `VisualPresetSelectorTests`, `VisualPresetCustomTests`, and `VisualPresetIslandTests` check encoding, corrupt data, mode isolation, built-in values, custom save/rename/delete, and that Studio and Notch Island hold the same mode structs. They do not judge how the presets look or how the settings window sits on a desktop. These rows stay `NOT TESTED`.
+`VisualPresetStoreTests`, `VisualPresetApplyTests`, `VisualPresetSelectorTests`, `VisualPresetCustomTests`, `VisualPresetIslandTests`, `VisualPresetExchangeCodecTests`, `VisualPresetExchangeExportTests`, and `VisualPresetExchangeImportTests` check encoding, corrupt data, mode isolation, built-in values, custom save/rename/delete, portable exchange round-trips, import validation/conflicts, and that Studio and Notch Island hold the same mode structs. They do not judge how the presets look or how the settings window sits on a desktop. These rows stay `NOT TESTED`.
 
 - [ ] `NOT TESTED` — Spectrum, Waveform, and Orbit each show a Visual preset control at the top. Choosing Clean, Dense, Dynamic, Fine Line, Soft Fill, Mirror, Compact, Halo, or Dense Ring changes that mode immediately in an open Studio. The other mode, Appearance colors, and the window mode stay as they were.
 - [ ] `NOT TESTED` — Saving the current settings asks for a name, then shows that custom preset. Duplicate, Rename, and Delete work on custom presets. Built-in presets cannot be renamed or deleted. Delete asks first and leaves the current sliders where they are.
 - [ ] `NOT TESTED` — After a preset is applied, moving one of that mode's sliders changes the status to Modified. Changing only Appearance does not. Quit and relaunch keeps the custom preset.
 - [ ] `NOT TESTED` — With Notch Island expanded on the same mode, the graphic follows the preset. Compact wings keep their own bar count. Studio and Island can show different modes at the same time. Applying a preset does not start a second Process Tap.
+- [ ] `NOT TESTED` — Export… opens a multi-select sheet for the current mode (built-in and custom). Exporting one or many presets writes a `.json` file via the save panel. The file opens as readable JSON with `format` `audune.visualPresetExchange` and does not change Appearance, Window, or other modes.
+- [ ] `NOT TESTED` — Import… opens a file picker, shows a preview with names, modes, and name conflicts, and offers Import as copies / Skip conflicts / Cancel. Confirming adds only new custom presets (new ids). Cancel leaves the library unchanged. Importing a built-in snapshot creates a custom copy and does not alter the built-in definition. A file with an unsupported schema version is rejected with an error and does not write.
 
 ### Studio v1.4 Window settings
 

@@ -374,6 +374,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 应用预设只替换该模式的全部字段（含新增的 colorMode、fillStrength、layerMode、pulseStrength 等）。Waveform 和 Orbit 的自定义颜色属于该模式，会被这份预设替换；内置预设不带自定义颜色，所以继续跟随 Appearance。Appearance 的填充色、描边色、透明度和线宽是全局的，预设不改它们。Window 的 Width / Height 属于应用级窗口偏好，不写入视觉预设。另一模式、窗口、播放，以及 Island 的开关、屏幕、悬停、收起和 Compact 每侧柱数也不改。
 - 状态会显示 Built-in、Custom 或 Modified。继续改该模式的参数后显示 Modified。只改 Appearance 不会把当前模式预设标成 Modified。
 - 自定义预设和每个模式最后应用的 id 存在 UserDefaults 键 `studio.visualPresets`，是 schema version 1 的 JSON。新字段用 `decodeIfPresent` 回落到标准默认；读取失败或 schema 更高时保留原数据，不自动覆盖；设置页可以显式 Reset Preset Library。分类 Reset 会恢复该模式的出厂参数并清掉它的已应用标记，不删除自定义预设。
+- **预设导入 / 导出：** Settings 各模式 Visual preset 区提供 Export… / Import…。导出使用独立交换格式 `audune.visualPresetExchange`（`schemaVersion` 1，与内部 `studio.visualPresets` schema 分离），可导出当前模式的单个或多个预设（含内置快照）为 pretty-printed `.json`；文件只含名称、模式与该模式完整参数，不含 Appearance、Window、Island、音频权限、`appliedIDByMode` 或内部 UUID。导入经原生打开面板 → 严格验证（文件 ≤512 KB、最多 72 条、必填字段、有限数值、允许范围、未知枚举拒绝）→ 预览名称/模式/冲突 → 用户选择「导入为副本」或「跳过冲突」或取消 → 一次性 `commitImport` 追加自定义预设。导入始终生成新 UUID 与 `kind = custom`；内置定义不可覆盖；确认前与取消/失败路径不改存储；超每模式 24 上限整批拒绝。不支持的 schema 版本整文件拒绝，不做猜测性解析。
 - Studio 和 Notch Island 的展开视图读取同一份模式参数。两个窗口各自记住自己正在显示的模式。Island Compact 侧翼仍使用 Island 的每侧柱数和 Appearance 单色，不跟随 Spectrum 色彩映射或柱数。预设不创建或重启 Process Tap。Appearance 页原有的 Warm / Amber / Sea / Mist 只改全局颜色，不属于这套可视化预设。实时动画缓冲与峰值临时状态不写入预设。
 
 ---

@@ -555,24 +555,23 @@ Core MVP released.
 
 ---
 
-## AUD-25 — [FUTURE] Evaluate preset export/import and advanced visual modes
+## AUD-25 — [FUTURE] Advanced visual modes (preset file exchange delivered)
 
 **Labels:** `P2`, `visualization`, `settings`  
 **Milestone:** Future
 
 ### Tasks
-- [ ] Visual presets v1 already stores custom presets in UserDefaults. File import and export stay in this issue and are not part of v1.
+- [x] Portable preset file import/export (`audune.visualPresetExchange` schema 1) with Settings Export… / Import…, preview, conflict handling, and strict validation.
 - [ ] Evaluate Ribbon, Particles and Spectrogram only after profiling basic views.
-- [ ] Design a versioned, validated JSON preset format if user demand justifies it.
-- [ ] Import presets safely without executing code or loading arbitrary shaders.
+- [ ] Keep import path free of code execution or arbitrary shader loading when adding advanced visuals.
 
 ### Acceptance criteria
-- [ ] No preset can execute code or load arbitrary binary payloads.
-- [ ] Invalid/unknown preset versions fail gracefully.
+- [x] No preset exchange file can execute code or load arbitrary binary payloads.
+- [x] Invalid/unknown preset exchange versions fail gracefully.
 - [ ] Advanced visuals do not regress the core app's idle power use.
 
 ### Dependencies
-Core MVP released and profiled.
+Core MVP released and profiled. Preset import/export lives in Settings Visual preset controls; remaining work is advanced modes only.
 
 ---
 
