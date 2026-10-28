@@ -22,7 +22,7 @@ struct MenuBarPopoverView: View {
     var toggleStudio: () -> Void
     var toggleIsland: () -> Void = {}
     var openSettings: () -> Void
-    var openDebug: () -> Void
+    var openDebug: (() -> Void)?
     var quit: () -> Void
 
     var body: some View {
@@ -34,10 +34,12 @@ struct MenuBarPopoverView: View {
                     .font(.callout)
                     .foregroundStyle(.red)
                     .textSelection(.enabled)
-                Text(model.statusText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+                if model.statusText.isEmpty == false {
+                    Text(model.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
             }
             HStack {
                 Button("Start", action: start)
@@ -49,7 +51,11 @@ struct MenuBarPopoverView: View {
             Button(islandButtonTitle, action: toggleIsland)
                 .disabled(model.islandSupported == false)
             Button("Settings\u{2026}", action: openSettings)
-            Button("Open Debug Window", action: openDebug)
+            #if DEBUG
+            if let openDebug {
+                Button("Open Debug Window", action: openDebug)
+            }
+            #endif
             Divider()
             Button("Quit Audune", action: quit)
         }

@@ -1,24 +1,17 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
+/// Audune is a menu bar utility. `AppDelegate` creates the menu bar item and windows;
+/// the only scene is an empty one because SwiftUI requires at least one.
 @main struct MyApp: App {
     #if os(macOS)
-    @State private var spike = ProcessTapSpike()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
 
     var body: some Scene {
-        WindowGroup(id: "debug") {
-            #if os(macOS)
-            ContentView(spike: spike)
-                .background(MenuBarInstaller(spike: spike))
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    spike.stop()
-                }
-            #else
-            ContentView()
-            #endif
-        }
+        #if os(macOS)
+        Settings { EmptyView() }
+        #else
+        WindowGroup { Text("Audune runs on macOS.") }
+        #endif
     }
 }

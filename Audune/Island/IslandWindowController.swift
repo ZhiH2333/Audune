@@ -2,6 +2,7 @@
 import AppKit
 import SwiftUI
 
+#if DEBUG
 struct IslandWindowInspection: Equatable {
     var frame: NSRect
     var isVisible: Bool
@@ -20,6 +21,7 @@ struct IslandWindowInspection: Equatable {
     var isTimerRunning: Bool
     var unsupportedReason: IslandUnsupportedReason?
 }
+#endif
 
 final class IslandHostingView<Content: View>: NSHostingView<Content> {
     var onPointerEntered: (() -> Void)?
@@ -294,6 +296,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         rearmHoverIfPointerStillInside()
     }
 
+    #if DEBUG
     // MARK: Test Entry Points
 
     func simulatePointerEntered(at timestamp: TimeInterval = 0) {
@@ -348,6 +351,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.expandedSpectrum = levels
         model.expandedPeaks = model.spectrum.peakHold ? peaks : []
     }
+    #endif
 
     // MARK: Private Setup & Event Handling
 

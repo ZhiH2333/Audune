@@ -171,6 +171,7 @@ enum StudioWindowDrag {
     }
 }
 
+#if DEBUG
 struct StudioWindowInspection: Equatable {
     var frame: NSRect
     var level: NSWindow.Level
@@ -187,4 +188,5 @@ struct StudioWindowInspection: Equatable {
     var ignoresMouseEvents: Bool
     var hostIsOpaque: Bool
 }
+#endif
 #endif

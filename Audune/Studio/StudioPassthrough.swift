@@ -14,6 +14,7 @@ struct StudioEdgeBand: Equatable, Sendable {
     var frame: CGRect
 }
 
+#if DEBUG
 struct StudioPassthroughInspection: Equatable {
     var visualIgnoresMouseEvents: Bool
     var interactionVisible: Bool
@@ -23,6 +24,7 @@ struct StudioPassthroughInspection: Equatable {
     var interactionCollectionBehavior: NSWindow.CollectionBehavior
     var edgeFrames: [CGRect]
 }
+#endif
 
 /// Screen-coordinate frames for the controls panel and the resize strips.
 /// The visual window itself ignores mouse events while passthrough is on, so these frames are the only hit targets.
@@ -307,7 +309,7 @@ struct StudioInteractionRoot: View {
     private var revealedButtons: some View {
         HStack(spacing: 4) {
             if spike.phase == .failed {
-                Text(spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText)
+                Text(spike.userFailureSummary)
                     .font(.system(size: 11))
                     .lineLimit(2)
                     .frame(width: 160, alignment: .leading)

@@ -1,12 +1,9 @@
-import SwiftUI
-#if os(macOS)
+#if DEBUG && os(macOS)
 import AppKit
-#else
-import Playgrounds
-#endif
+import SwiftUI
 
-#if os(macOS)
-struct ContentView: View {
+/// Developer-only capture counters. This file is not compiled into Release builds.
+struct DebugCaptureView: View {
     @Bindable var spike: ProcessTapSpike
 
     var body: some View {
@@ -77,21 +74,35 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(spike: ProcessTapSpike())
+    DebugCaptureView(spike: ProcessTapSpike())
 }
-#else
-struct ContentView: View {
-    var body: some View {
-        Text("Hello, world!")
-            .padding()
+
+/// Hosts `DebugCaptureView` in a plain window so it does not depend on a SwiftUI scene.
+@MainActor
+final class DebugWindowController {
+    private let window: NSWindow
+
+    init(spike: ProcessTapSpike) {
+        window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 420),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Audune Debug"
+        window.isReleasedWhenClosed = false
+        window.contentMinSize = NSSize(width: 560, height: 420)
+        window.contentView = NSHostingView(rootView: DebugCaptureView(spike: spike))
+        window.center()
     }
-}
 
-#Preview {
-    ContentView()
-}
+    func show() {
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
 
-#Playground {
-    _ = 1 + 2
+    func shutdown() {
+        window.orderOut(nil)
+    }
 }
 #endif

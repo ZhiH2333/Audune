@@ -159,9 +159,11 @@ struct StudioContentView: View {
     }
 
     private var failureLine: String {
-        let primary = spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText
-        guard spike.statusText.isEmpty == false else { return primary }
-        return "\(primary) \(spike.statusText)"
+        #if DEBUG
+        return "\(spike.userFailureSummary) \(spike.statusText)"
+        #else
+        return spike.userFailureSummary
+        #endif
     }
 
     private var playbackDisabled: Bool {

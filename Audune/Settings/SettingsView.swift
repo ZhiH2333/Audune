@@ -425,8 +425,6 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Text(windowSpacesDescription)
                 .foregroundStyle(.secondary)
-            Text("Window levels, multiple desktops, and full-screen behavior have not been verified on a real Mac yet.")
-                .foregroundStyle(.secondary)
         }
         Section("Move and resize") {
             Toggle("Allow dragging by the grip", isOn: $model.prefs.window.allowsDrag)
@@ -616,8 +614,6 @@ struct SettingsView: View {
         }
         Section {
             Text("Audune can only control Music or Spotify, and only after you allow it. It cannot pause browser audio or other system output. Open the player first, then choose Request Access.")
-                .foregroundStyle(.secondary)
-            Text("Automation has not been verified on a real Mac yet.")
                 .foregroundStyle(.secondary)
         }
     }

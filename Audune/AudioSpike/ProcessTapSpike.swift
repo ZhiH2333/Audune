@@ -13,6 +13,42 @@ enum SpikePhase: String {
     case failed
 }
 
+/// The part of a capture failure that a person can act on.
+/// `ProcessTapSpike.failureText` and `statusText` stay developer diagnostics and are not shown in Release.
+enum CaptureFailure: Equatable {
+    case noOutputDevice
+    case captureUnavailable
+    case deviceNotReady
+    case unsupportedFormat
+
+    /// One short line for Studio's compact controls. `message` has the recovery steps for the menu bar.
+    var summary: String {
+        switch self {
+        case .noOutputDevice:
+            return String(localized: "No audio output device.")
+        case .captureUnavailable:
+            return String(localized: "System audio capture is not allowed.")
+        case .deviceNotReady:
+            return String(localized: "Audio output device not ready.")
+        case .unsupportedFormat:
+            return String(localized: "Unsupported audio format.")
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .noOutputDevice:
+            return String(localized: "No audio output device was found. Connect or choose an output device, then press Start.")
+        case .captureUnavailable:
+            return String(localized: "Audune could not start system audio capture. Allow Audune in System Settings > Privacy & Security > Screen & System Audio Recording, then press Start again.")
+        case .deviceNotReady:
+            return String(localized: "The audio output device did not respond. Try again, or switch the output device and press Start.")
+        case .unsupportedFormat:
+            return String(localized: "This output device uses an audio format Audune cannot visualize. Choose another output device and press Start.")
+        }
+    }
+}
+
 struct SpikeAliveResult: Sendable {
     var ready: Bool
     var cancelled: Bool
@@ -28,6 +64,7 @@ final class ProcessTapSpike {
     var appliedTapAutoStart = false
     var statusText = "noErr (0)"
     var failureText = ""
+    var failure: CaptureFailure?
     var outputUIDAtStart = ""
     var outputUIDAfterStart = ""
     var outputUIDAfterStop = ""
@@ -46,6 +83,14 @@ final class ProcessTapSpike {
     let snapshots = AudioSnapshotBox()
     let silenceGate = SilenceGateBox()
     private var analysisTask: Task<Void, Never>?
+
+    var userFailureMessage: String {
+        failure?.message ?? String(localized: "Audio capture failed.")
+    }
+
+    var userFailureSummary: String {
+        failure?.summary ?? String(localized: "Audio capture failed.")
+    }
 
     var displayState: String {
         switch phase {
@@ -77,16 +122,17 @@ final class ProcessTapSpike {
         active = true
         phase = .starting
         failureText = ""
+        failure = nil
         cleanupText = ""
         appliedTapAutoStart = tapAutoStart
         reading = SpikeLevelSnapshot(frames: 0, rms: nil, finiteSamples: 0, nonFiniteSamples: 0, formatMismatch: false, bufferCount: 0)
 
         guard let outputDevice = copyDefaultOutputDevice() else {
-            fail("The default output device is unavailable.", status: kAudioHardwareBadDeviceError)
+            fail(.noOutputDevice, "The default output device is unavailable.", status: kAudioHardwareBadDeviceError)
             return
         }
         guard let outputUID = copyDeviceUID(outputDevice) else {
-            fail("The default output device has no UID.", status: kAudioHardwareBadDeviceError)
+            fail(.noOutputDevice, "The default output device has no UID.", status: kAudioHardwareBadDeviceError)
             return
         }
         outputUIDAtStart = outputUID
@@ -94,7 +140,7 @@ final class ProcessTapSpike {
         outputUIDAfterStop = ""
 
         let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-        description.name = "Audune Spike Tap"
+        description.name = "Audune System Audio Tap"
         description.muteBehavior = .unmuted
         description.isPrivate = true
         description.isExclusive = true
@@ -103,14 +149,14 @@ final class ProcessTapSpike {
         let tapStatus = AudioHardwareCreateProcessTap(description, &createdTap)
         statusText = describe(tapStatus)
         guard tapStatus == noErr, createdTap != kAudioObjectUnknown else {
-            fail("AudioHardwareCreateProcessTap failed.", status: tapStatus)
+            fail(.captureUnavailable, "AudioHardwareCreateProcessTap failed.", status: tapStatus)
             return
         }
         tapID = createdTap
         guard stillActive else { return }
 
         let aggregateDescription: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Audune Spike Aggregate",
+            kAudioAggregateDeviceNameKey: "Audune System Audio Capture",
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceMainSubDeviceKey: outputUID,
             kAudioAggregateDeviceIsPrivateKey: NSNumber(value: 1),
@@ -130,7 +176,7 @@ final class ProcessTapSpike {
         let aggregateStatus = AudioHardwareCreateAggregateDevice(aggregateDescription as CFDictionary, &createdAggregate)
         statusText = describe(aggregateStatus)
         guard aggregateStatus == noErr, createdAggregate != kAudioObjectUnknown else {
-            fail("AudioHardwareCreateAggregateDevice failed.", status: aggregateStatus)
+            fail(.deviceNotReady, "AudioHardwareCreateAggregateDevice failed.", status: aggregateStatus)
             return
         }
         aggregateID = createdAggregate
@@ -140,18 +186,18 @@ final class ProcessTapSpike {
         aliveText = alive.detail
         guard stillActive else { return }
         guard alive.ready else {
-            fail("Aggregate device was not alive within 2 seconds. \(alive.detail)", status: kAudioHardwareBadDeviceError)
+            fail(.deviceNotReady, "Aggregate device was not alive within 2 seconds. \(alive.detail)", status: kAudioHardwareBadDeviceError)
             return
         }
 
         guard let asbd = copyInputStreamFormat(createdAggregate) else {
-            fail("The aggregate input stream format is unavailable.", status: kAudioHardwareBadStreamError)
+            fail(.unsupportedFormat, "The aggregate input stream format is unavailable.", status: kAudioHardwareBadStreamError)
             return
         }
         let format = SpikeStreamFormat(asbd)
         formatText = formatDescription(format)
         guard format.isFloat32 else {
-            fail("Input format is not 32-bit float linear PCM. \(formatText)", status: kAudioHardwareUnsupportedOperationError)
+            fail(.unsupportedFormat, "Input format is not 32-bit float linear PCM. \(formatText)", status: kAudioHardwareUnsupportedOperationError)
             return
         }
 
@@ -161,7 +207,7 @@ final class ProcessTapSpike {
         let procStatus = AudioDeviceCreateIOProcID(createdAggregate, auduneSpikeIOProc, Unmanaged.passUnretained(levelMeter).toOpaque(), &createdProc)
         statusText = describe(procStatus)
         guard procStatus == noErr, let createdProc else {
-            fail("AudioDeviceCreateIOProcID failed.", status: procStatus)
+            fail(.deviceNotReady, "AudioDeviceCreateIOProcID failed.", status: procStatus)
             return
         }
         ioProcID = createdProc
@@ -181,7 +227,7 @@ final class ProcessTapSpike {
             return
         }
         guard startStatus == noErr else {
-            fail("AudioDeviceStart failed.", status: startStatus)
+            fail(.deviceNotReady, "AudioDeviceStart failed.", status: startStatus)
             return
         }
 
@@ -213,9 +259,10 @@ final class ProcessTapSpike {
         active && !startInFlight
     }
 
-    private func fail(_ message: String, status: OSStatus) {
+    private func fail(_ kind: CaptureFailure, _ message: String, status: OSStatus) {
         statusText = describe(status)
         failureText = message
+        failure = kind
         phase = .failed
         active = false
         releaseResources()

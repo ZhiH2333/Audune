@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class MenuBarController: NSObject {
     private let spike: ProcessTapSpike
-    private let openDebug: () -> Void
+    private let openDebug: (() -> Void)?
     private let toggleStudio: () -> Void
     private let toggleIsland: () -> Void
     private let openSettings: () -> Void
@@ -24,7 +24,7 @@ final class MenuBarController: NSObject {
 
     init(
         spike: ProcessTapSpike,
-        openDebug: @escaping () -> Void,
+        openDebug: (() -> Void)? = nil,
         toggleStudio: @escaping () -> Void,
         toggleIsland: @escaping () -> Void = {},
         openSettings: @escaping () -> Void,
@@ -93,7 +93,7 @@ final class MenuBarController: NSObject {
 
     private func showDebugWindow() {
         popover.performClose(nil)
-        openDebug()
+        openDebug?()
     }
 
     private func showSettingsWindow() {
@@ -172,8 +172,12 @@ final class MenuBarController: NSObject {
         case .starting:
             return Presentation(state: .starting, title: "Starting", detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
         case .failed:
-            let detail = spike.failureText.isEmpty ? "Audio capture failed." : spike.failureText
-            return Presentation(state: .failed, title: "Capture failed", detail: detail, statusText: spike.statusText, showDetail: true, startDisabled: false, stopDisabled: false)
+            #if DEBUG
+            let statusText = spike.statusText
+            #else
+            let statusText = ""
+            #endif
+            return Presentation(state: .failed, title: "Capture failed", detail: spike.userFailureMessage, statusText: statusText, showDetail: true, startDisabled: false, stopDisabled: false)
         case .running:
             if snapshot.isSilent {
                 return Presentation(state: .silent, title: "No audio", detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
@@ -191,51 +195,5 @@ private struct Presentation: Equatable {
     var showDetail: Bool
     var startDisabled: Bool
     var stopDisabled: Bool
-}
-
-struct MenuBarInstaller: View {
-    @Bindable var spike: ProcessTapSpike
-    @Environment(\.openWindow) private var openWindow
-    @State private var controller: MenuBarController?
-    @State private var studio: StudioWindowController?
-    @State private var island: IslandWindowController?
-    @State private var settings: SettingsWindowController?
-
-    var body: some View {
-        Color.clear
-            .frame(width: 0, height: 0)
-            .onAppear {
-                guard controller == nil else { return }
-                let studio = StudioWindowController(spike: spike)
-                self.studio = studio
-                let island = IslandWindowController(spike: spike)
-                self.island = island
-                let settings = SettingsWindowController(studio: studio, island: island)
-                self.settings = settings
-                studio.openSettings = { settings.show() }
-                island.openStudio = { studio.show() }
-                island.openSettings = { settings.show(category: .island) }
-                let openWindow = openWindow
-                controller = MenuBarController(
-                    spike: spike,
-                    openDebug: {
-                        openWindow(id: "debug")
-                        NSApp.activate()
-                    },
-                    toggleStudio: { studio.toggle() },
-                    toggleIsland: { island.toggleEnabled() },
-                    openSettings: { settings.show() },
-                    studioVisible: { studio.isVisible },
-                    islandEnabled: { island.model.prefs.isEnabled },
-                    islandSupported: { island.model.isSupported }
-                )
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                controller?.shutdown()
-                studio?.shutdown()
-                island?.shutdown()
-                settings?.shutdown()
-            }
-    }
 }
 #endif

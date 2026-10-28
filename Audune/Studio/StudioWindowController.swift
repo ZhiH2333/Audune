@@ -325,6 +325,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         syncSizeFromPanelToPrefs()
     }
 
+    #if DEBUG
     var allowsDragForTests: Bool { hitMap.allowsDrag }
 
     func inspectWindowForTests() -> StudioWindowInspection {
@@ -345,6 +346,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             hostIsOpaque: (panel.contentView as? StudioHostingView<StudioContentView>)?.isOpaque ?? true
         )
     }
+    #endif
 
     private func configurePanel() {
         panel.delegate = self
@@ -809,6 +811,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         refreshWaveform(dt: dt)
     }
 
+    #if DEBUG
     func placeForTests(_ frame: CGRect) {
         panel.setFrame(frame, display: false)
         syncPassthroughWindows()
@@ -857,6 +860,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             edgeFrames: edgePanels.map(\.frame)
         )
     }
+    #endif
 
     private func ownsEventWindow(_ window: NSWindow?) -> Bool {
         guard let window else { return false }
