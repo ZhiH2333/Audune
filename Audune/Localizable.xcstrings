@@ -91,6 +91,16 @@
         }
       }
     },
+    "About Audune": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关于 Audune"
+          }
+        }
+      }
+    },
     "Active on %@": {
       "localizations": {
         "zh-Hans": {
@@ -257,6 +267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "起音（ms）"
+          }
+        }
+      }
+    },
+    "Audio below the noise floor counts as silence. Bars then settle to the baseline instead of switching off. This only affects the visualization, not system audio.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低于噪声下限的音频视为静音。此时条形会平稳回落到基线，而不是突然消失。这只影响可视化，不影响系统音频。"
           }
         }
       }
@@ -791,12 +811,12 @@
         }
       }
     },
-    "Draws the real captured PCM samples. Density only chooses how many of them are drawn.": {
+    "Draws the real captured audio signal. Density sets how many points are drawn.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "绘制真实捕获到的 PCM 采样。密度只决定绘制其中多少个采样。"
+            "value": "绘制真实捕获到的音频信号。密度决定绘制多少个点。"
           }
         }
       }
@@ -851,12 +871,12 @@
         }
       }
     },
-    "Each bar reads real FFT bins. A bar narrower than one bin reads the bins on either side of it.": {
+    "Each bar shows the strength of one real frequency range from the captured audio.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每根条形读取真实的 FFT 频点。比一个频点还窄的条形会读取其两侧的频点。"
+            "value": "每根条形显示捕获音频中一段真实频率范围的强度。"
           }
         }
       }
@@ -1031,6 +1051,16 @@
         }
       }
     },
+    "Free and open source. Audune keeps audio on your Mac: it never records, saves, or uploads it, and has no accounts, ads, or analytics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费开源。音频只留在你的 Mac 上：Audune 不会录制、保存或上传音频，没有账号、广告或数据分析。"
+          }
+        }
+      }
+    },
     "Frequency": {
       "localizations": {
         "zh-Hans": {
@@ -1131,12 +1161,12 @@
         }
       }
     },
-    "Hold time keeps each cap at its peak. Fall speed is how far the cap drops per second after that, in normalized display units.": {
+    "Hold time keeps each cap at its peak. Fall speed sets how fast it drops afterwards.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持时间决定每个峰值帽停留在峰值的时长。下落速度是之后峰值帽每秒下落的距离（按归一化显示单位）。"
+            "value": "保持时间决定每个峰值帽停留在峰值的时长。下落速度决定它之后下落的快慢。"
           }
         }
       }
@@ -1231,12 +1261,12 @@
         }
       }
     },
-    "Light, Medium, and Strong use the Alignment, Generic, and Level Change trackpad patterns. macOS does not expose haptic amplitude, and a Mac without a Force Touch trackpad will not vibrate.": {
+    "Light, Medium, and Strong use different trackpad feedback patterns. A Mac without a Force Touch trackpad does not vibrate.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "“轻”“中”“强”分别使用触控板的“对齐”“通用”和“级别变化”触感模式。macOS 不提供触感强度调节，没有力度触控板的 Mac 不会震动。"
+            "value": "“轻”“中”“强”使用不同的触控板反馈模式。没有力度触控板的 Mac 不会震动。"
           }
         }
       }
@@ -1501,12 +1531,12 @@
         }
       }
     },
-    "Noise floor (RMS)": {
+    "Noise floor": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "噪声下限（RMS）"
+            "value": "噪声下限"
           }
         }
       }
@@ -1651,12 +1681,12 @@
         }
       }
     },
-    "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed.": {
+    "On Desktop is set to appear on all desktops.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "“在桌面”已设为加入所有桌面。是否会出现在每个桌面上尚未确认。"
+            "value": "“在桌面”已设为显示在所有桌面。"
           }
         }
       }
@@ -1897,6 +1927,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "预设"
+          }
+        }
+      }
+    },
+    "Press Start to visualize your Mac's system audio. macOS asks for permission the first time. Audio is never recorded or uploaded.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按“开始”即可将这台 Mac 的系统音频可视化。首次使用时 macOS 会请求权限。音频不会被录制或上传。"
           }
         }
       }
@@ -2221,12 +2261,12 @@
         }
       }
     },
-    "Sensitivity moves the quiet dB floor. Amplitude scales drawn height. Smoothing blends neighboring bars. Attack and Release are independent rise and fall times in milliseconds.": {
+    "Sensitivity sets how quiet a sound can be and still show. Amplitude scales the bar height. Smoothing blends neighboring bars. Attack and Release set how fast bars rise and fall, in milliseconds.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "灵敏度会调整安静时的 dB 下限。幅度会缩放绘制高度。平滑会混合相邻的条形。起音和释放分别是上升与下降时间，单位为毫秒。"
+            "value": "灵敏度决定多轻的声音仍能显示。幅度会缩放条形高度。平滑会混合相邻的条形。起音和释放分别决定条形上升和下降的速度，单位为毫秒。"
           }
         }
       }
@@ -2777,16 +2817,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "请使用不超过 40 个字符。"
-          }
-        }
-      }
-    },
-    "Uses raw PCM RMS with hysteresis. When silent, bars release to the baseline through Release and peak fall — they do not snap off. This only affects visualization, not system audio.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用原始 PCM 的 RMS 并带有滞回。静音时，条形会按“释放”和峰值下落速度回落到基线，而不是突然消失。这只影响可视化，不影响系统音频。"
           }
         }
       }

@@ -8,6 +8,7 @@ final class MenuBarModel {
     var detail = ""
     var statusText = ""
     var showDetail = false
+    var showIdleHint = false
     var startDisabled = false
     var stopDisabled = true
     var studioVisible = false
@@ -22,6 +23,7 @@ struct MenuBarPopoverView: View {
     var toggleStudio: () -> Void
     var toggleIsland: () -> Void = {}
     var openSettings: () -> Void
+    var openAbout: () -> Void = {}
     var openDebug: (() -> Void)?
     var quit: () -> Void
 
@@ -40,35 +42,60 @@ struct MenuBarPopoverView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
+            } else if model.showIdleHint {
+                Text("Press Start to visualize your Mac's system audio. macOS asks for permission the first time. Audio is never recorded or uploaded.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            HStack {
-                Button("Start", action: start)
+            HStack(spacing: 8) {
+                PopoverButton(title: "Start", symbol: "play.fill", action: start)
                     .disabled(model.startDisabled)
-                Button("Stop", action: stop)
+                PopoverButton(title: "Stop", symbol: "stop.fill", action: stop)
                     .disabled(model.stopDisabled)
             }
-            Button(model.studioVisible ? String(localized: "Hide Studio") : String(localized: "Open Studio"), action: toggleStudio)
-            Button(islandButtonTitle, action: toggleIsland)
+            PopoverButton(title: studioTitle, symbol: "macwindow", leading: true, action: toggleStudio)
+            PopoverButton(title: islandTitle, symbol: "rectangle.topthird.inset.filled", leading: true, action: toggleIsland)
                 .disabled(model.islandSupported == false)
-            Button("Settings\u{2026}", action: openSettings)
+            PopoverButton(title: "Settings\u{2026}", symbol: "gearshape", leading: true, action: openSettings)
+                .keyboardShortcut(",")
+            PopoverButton(title: "About Audune", symbol: "info.circle", leading: true, action: openAbout)
             #if DEBUG
             if let openDebug {
-                Button("Open Debug Window", action: openDebug)
+                PopoverButton(title: "Open Debug Window", symbol: "ladybug", leading: true, action: openDebug)
             }
             #endif
             Divider()
-            Button("Quit Audune", action: quit)
+            PopoverButton(title: "Quit Audune", symbol: "power", leading: true, action: quit)
+                .keyboardShortcut("q")
         }
         .padding(12)
-        .frame(width: 220)
+        .frame(width: 244)
         .fixedSize(horizontal: true, vertical: true)
     }
 
-    private var islandButtonTitle: String {
-        guard model.islandSupported else {
-            return String(localized: "Notch Island (No Notch)")
+    private var studioTitle: LocalizedStringKey {
+        model.studioVisible ? "Hide Studio" : "Open Studio"
+    }
+
+    private var islandTitle: LocalizedStringKey {
+        guard model.islandSupported else { return "Notch Island (No Notch)" }
+        return model.islandEnabled ? "Hide Notch Island" : "Show Notch Island"
+    }
+}
+
+/// Every popover action uses the same height and fills the row, so English and Chinese labels line up.
+private struct PopoverButton: View {
+    var title: LocalizedStringKey
+    var symbol: String
+    var leading = false
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .frame(maxWidth: .infinity, alignment: leading ? .leading : .center)
         }
-        return model.islandEnabled ? String(localized: "Hide Notch Island") : String(localized: "Show Notch Island")
+        .controlSize(.large)
     }
 }
 #endif

@@ -230,7 +230,7 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
             SettingsSlider(title: "Low frequency (Hz)", value: $model.prefs.spectrum.minHz, range: StudioPreferences.minHzRange, step: 5, fractionDigits: 0)
             SettingsSlider(title: "High frequency (Hz)", value: $model.prefs.spectrum.maxHz, range: StudioPreferences.maxHzRange, step: 100, fractionDigits: 0)
-            Text("Each bar reads real FFT bins. A bar narrower than one bin reads the bins on either side of it.")
+            Text("Each bar shows the strength of one real frequency range from the captured audio.")
                 .foregroundStyle(.secondary)
         }
         Section("Shape") {
@@ -252,7 +252,7 @@ struct SettingsView: View {
             SettingsSlider(title: "Smoothing", value: $model.prefs.spectrum.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
             SettingsSlider(title: "Attack (ms)", value: $model.prefs.spectrum.attackMs, range: StudioPreferences.attackMsRange, step: 5, fractionDigits: 0)
             SettingsSlider(title: "Release (ms)", value: $model.prefs.spectrum.releaseMs, range: StudioPreferences.releaseMsRange, step: 10, fractionDigits: 0)
-            Text("Sensitivity moves the quiet dB floor. Amplitude scales drawn height. Smoothing blends neighboring bars. Attack and Release are independent rise and fall times in milliseconds.")
+            Text("Sensitivity sets how quiet a sound can be and still show. Amplitude scales the bar height. Smoothing blends neighboring bars. Attack and Release set how fast bars rise and fall, in milliseconds.")
                 .foregroundStyle(.secondary)
         }
         Section("Peaks") {
@@ -261,20 +261,20 @@ struct SettingsView: View {
                 .disabled(model.prefs.spectrum.peakHold == false)
             SettingsSlider(title: "Fall speed", value: $model.prefs.spectrum.peakFallPerSecond, range: StudioPreferences.peakFallPerSecondRange, step: 0.05)
                 .disabled(model.prefs.spectrum.peakHold == false)
-            Text("Hold time keeps each cap at its peak. Fall speed is how far the cap drops per second after that, in normalized display units.")
+            Text("Hold time keeps each cap at its peak. Fall speed sets how fast it drops afterwards.")
                 .foregroundStyle(.secondary)
         }
         Section("Silence") {
             Toggle("Silence gate", isOn: $model.prefs.spectrum.silenceGateEnabled)
             SettingsSlider(
-                title: "Noise floor (RMS)",
+                title: "Noise floor",
                 value: $model.prefs.spectrum.silenceThreshold,
                 range: StudioPreferences.silenceThresholdRange,
                 step: 0.0001,
                 fractionDigits: 4
             )
             .disabled(model.prefs.spectrum.silenceGateEnabled == false)
-            Text("Uses raw PCM RMS with hysteresis. When silent, bars release to the baseline through Release and peak fall — they do not snap off. This only affects visualization, not system audio.")
+            Text("Audio below the noise floor counts as silence. Bars then settle to the baseline instead of switching off. This only affects the visualization, not system audio.")
                 .foregroundStyle(.secondary)
         }
         Section {
@@ -291,7 +291,7 @@ struct SettingsView: View {
     private var waveformPane: some View {
         visualPresetSection(.waveform)
         Section("Shape") {
-            Text("Draws the real captured PCM samples. Density only chooses how many of them are drawn.")
+            Text("Draws the real captured audio signal. Density sets how many points are drawn.")
                 .foregroundStyle(.secondary)
             Picker("Style", selection: $model.prefs.waveform.style) {
                 ForEach(WaveformStyle.allCases) { style in
@@ -545,7 +545,7 @@ struct SettingsView: View {
                     Text(strength.title).tag(strength)
                 }
             }
-            Text("Light, Medium, and Strong use the Alignment, Generic, and Level Change trackpad patterns. macOS does not expose haptic amplitude, and a Mac without a Force Touch trackpad will not vibrate.")
+            Text("Light, Medium, and Strong use different trackpad feedback patterns. A Mac without a Force Touch trackpad does not vibrate.")
                 .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Collapse delay (s)",
@@ -613,7 +613,7 @@ struct SettingsView: View {
             }
             .disabled(model.playbackAvailability != .automationNotRequested || model.playbackRequesting)
             Button("Open Automation Settings") { studio.openAutomationSettings() }
-            Button(PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState)) {
+            Button("Play/Pause") {
                 studio.togglePlayback()
             }
             .disabled(PlaybackButton.isEnabled(
@@ -711,7 +711,7 @@ struct SettingsView: View {
 
     private var windowSpacesDescription: LocalizedStringKey {
         switch model.prefs.windowMode {
-        case .onDesktop: return "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed."
+        case .onDesktop: return "On Desktop is set to appear on all desktops."
         case .onTop: return "On Top joins all desktops and is allowed beside full-screen apps."
         case .asWindow: return "As Window stays on its own desktop and full-screen apps can cover it."
         }

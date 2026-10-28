@@ -218,6 +218,7 @@ struct StudioControlButton: View {
         }
         .buttonStyle(StudioPlainButtonStyle(showsFill: selected))
         .disabled(disabled)
+        .opacity(disabled ? 0.45 : 1)
         .onHover { hovering = $0 }
         .help(title)
         .accessibilityLabel(accessibilityLabel ?? title)

@@ -48,6 +48,7 @@ final class MenuBarController: NSObject {
             toggleStudio: { [weak self] in self?.toggleStudioWindow() },
             toggleIsland: { [weak self] in self?.toggleIslandWindow() },
             openSettings: { [weak self] in self?.showSettingsWindow() },
+            openAbout: { [weak self] in self?.showAboutPanel() },
             openDebug: { [weak self] in self?.showDebugWindow() },
             quit: { NSApp.terminate(nil) }
         )
@@ -101,6 +102,18 @@ final class MenuBarController: NSObject {
         openSettings()
     }
 
+    private func showAboutPanel() {
+        popover.performClose(nil)
+        let credits = String(localized: "Free and open source. Audune keeps audio on your Mac: it never records, saves, or uploads it, and has no accounts, ads, or analytics.")
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .credits: NSAttributedString(string: credits, attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.labelColor,
+            ]),
+        ])
+    }
+
     private func toggleStudioWindow() {
         popover.performClose(nil)
         toggleStudio()
@@ -148,6 +161,8 @@ final class MenuBarController: NSObject {
         if model.detail != presentation.detail { model.detail = presentation.detail }
         if model.statusText != presentation.statusText { model.statusText = presentation.statusText }
         if model.showDetail != presentation.showDetail { model.showDetail = presentation.showDetail }
+        let showsIdleHint = presentation.state == .idle
+        if model.showIdleHint != showsIdleHint { model.showIdleHint = showsIdleHint }
         if model.startDisabled != presentation.startDisabled { model.startDisabled = presentation.startDisabled }
         if model.stopDisabled != presentation.stopDisabled { model.stopDisabled = presentation.stopDisabled }
         let studioOpen = studioVisible()
