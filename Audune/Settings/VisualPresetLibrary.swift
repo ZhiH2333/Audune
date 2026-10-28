@@ -241,11 +241,79 @@ nonisolated struct VisualPresetLibrary {
         lhs.compare(rhs, options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX")) == .orderedSame
     }
 
+    /// Validates a finished import name without checking library uniqueness (planner already did).
+    nonisolated static func validateImportName(_ raw: String) -> Result<String, VisualPresetEditError> {
+        let name = normalizedName(raw)
+        guard name.isEmpty == false else { return .failure(.emptyName) }
+        guard name.count <= maximumNameLength else { return .failure(.nameTooLong) }
+        return .success(name)
+    }
+
+    /// Atomically appends planned custom presets. Rolls back memory if persistence fails.
+    mutating func commitImport(
+        _ plan: VisualPresetImportPlan,
+        to defaults: UserDefaults
+    ) -> Result<[VisualPreset], VisualPresetEditError> {
+        guard canPersist else { return .failure(.unreadableStore) }
+        if let capacityError = VisualPresetImportPlanner.capacityError(for: plan, library: self) {
+            return .failure(capacityError)
+        }
+
+        let previousCustom = customPresets
+        var created: [VisualPreset] = []
+        created.reserveCapacity(plan.importCount)
+
+        for item in plan.items {
+            guard let finalName = item.finalName else { continue }
+            guard let id = makeID(excluding: created.map(\.id)) else {
+                customPresets = previousCustom
+                return .failure(.duplicateID)
+            }
+            let preset = item.entry.asCustomPreset(id: id)
+            let named = VisualPreset(
+                id: id,
+                name: finalName,
+                mode: preset.mode,
+                kind: .custom,
+                spectrum: preset.spectrum,
+                waveform: preset.waveform,
+                orbit: preset.orbit
+            ).clamped()
+            guard named.hasMatchingPayload() else {
+                customPresets = previousCustom
+                return .failure(.modeMismatch)
+            }
+            switch validatedName(finalName, mode: named.mode, ignoringID: nil) {
+            case .failure(let error):
+                customPresets = previousCustom
+                return .failure(error)
+            case .success:
+                break
+            }
+            customPresets.append(named)
+            created.append(named)
+        }
+
+        guard created.isEmpty == false else {
+            return .success([])
+        }
+        guard save(to: defaults) else {
+            customPresets = previousCustom
+            return .failure(.persistFailed)
+        }
+        return .success(created)
+    }
+
     private func makeID() -> String? {
+        makeID(excluding: [])
+    }
+
+    private func makeID(excluding extra: [String]) -> String? {
         for _ in 0..<8 {
             let id = UUID().uuidString
-            let taken = customPresets.contains { $0.id == id } || builtIns.contains { $0.id == id }
-            if taken == false { return id }
+            let takenInLibrary = customPresets.contains { $0.id == id } || builtIns.contains { $0.id == id }
+            let takenInBatch = extra.contains(id)
+            if takenInLibrary == false && takenInBatch == false { return id }
         }
         return nil
     }

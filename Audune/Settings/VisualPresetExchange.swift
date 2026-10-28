@@ -210,7 +210,7 @@ extension VisualPresetExchange {
         return nil
     }
 
-    static func sameName(_ lhs: String, _ rhs: String) -> Bool {
+    nonisolated static func sameName(_ lhs: String, _ rhs: String) -> Bool {
         lhs.compare(rhs, options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX")) == .orderedSame
     }
 }
