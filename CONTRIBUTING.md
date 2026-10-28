@@ -28,6 +28,33 @@ Thanks for contributing. Audune is a native, local-first macOS audio visualizer.
 - Keep one shared audio capture and analysis pipeline for all display surfaces.
 - Keep changes focused; no unrequested advanced visuals or unrelated refactors.
 
+## Build and test
+
+```bash
+xcodebuild -project Audune.xcodeproj -scheme Audune -configuration Debug -destination 'platform=macOS' build
+xcodebuild -project Audune.xcodeproj -scheme Audune -configuration Debug -destination 'platform=macOS' test
+xcodebuild -project Audune.xcodeproj -scheme Audune -configuration Release -destination 'platform=macOS' build
+```
+
+- The shared scheme runs tests in English (`language = "en"` on the test action), so tests that compare English text pass on any Mac. The Simplified Chinese checks read `zh-Hans.lproj` directly.
+- If a test run fails at `CodeSign` because of an unsigned `AuduneTests.xctest`, run `xcodebuild ... clean` and test again. This came from stale build products, not from the code.
+- A Release build separates code problems from signing problems: add `CODE_SIGNING_ALLOWED=NO` to check that it compiles without a signing identity.
+
+## Debug and Release builds
+
+- Developer-only code lives behind `#if DEBUG`: the capture counter window (`Audune/Debug`), the menu item that opens it, raw status codes next to capture errors, the drag trace log, and the `...ForTests` hooks on window controllers.
+- Everything a user needs stays in both configurations: capture, Studio, Notch Island, Settings, Playback, and the permission and error messages. Never put a product feature or user-facing error behind `#if DEBUG`.
+- Release types must not reference Debug-only types. Pass an optional closure (as `openDebug` does) instead of a Debug-only type.
+
+## Localization
+
+- User-visible text is localized with String Catalogs: `Audune/Localizable.xcstrings` and `Audune/InfoPlist.xcstrings` (permission descriptions). Languages are English (`en`, the key text) and Simplified Chinese (`zh-Hans`).
+- SwiftUI literals (`Text("...")`, `Button("...")`, `Section("...")`) localize automatically. Text held in a `String` needs `String(localized: "...")`; use `LocalizedStringKey` for computed SwiftUI text. Do not pick between literals with an inline `cond ? "A" : "B"` where the result is a `String`.
+- Stored values (preference keys, preset ids, mode raw values, preset `name`) must not depend on the language. Built-in preset names are translated only for display through `VisualPreset.displayName`.
+- Adding or changing text: add the `zh-Hans` value in the catalog. `LocalizationTests` fails if a key has no translation or the placeholders differ, and `UserFacingCopyTests` rejects developer vocabulary.
+- Keep product names such as Studio and Notch Island untranslated in `zh-Hans`.
+- Release users should see plain-language errors. Keep raw status codes and counters in Debug.
+
 ## Tests
 
 - Use XCTest for audio analysis math, settings, and geometry logic that can run without hardware.

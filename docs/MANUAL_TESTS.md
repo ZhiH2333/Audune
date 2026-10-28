@@ -325,6 +325,23 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `PASS` — Every completed and validated TODO has its own commit using `:gitmoji: short-git-message`. Spectrum path is `75cef7e`; menu bar is `400e264`.
 - [ ] `PASS` — No automatic push occurred and no pre-existing user changes were included in commits. `dev` has no upstream.
 
+## I. Production polish (P1)
+
+> Added with P1. These rows were not run by the agent that wrote them; mark them on a real Release build.
+
+- [ ] `NOT TESTED` — Release build launches with only the menu bar item: no counter window, no Dock icon, and no `Open Debug Window` item.
+- [ ] `NOT TESTED` — Debug build still shows the counter window at launch and `Open Debug Window` in the popover.
+- [ ] `NOT TESTED` — Release capture failure shows a plain-language message in the popover and Studio, with no raw status code.
+- [ ] `NOT TESTED` — Release (sandboxed) build can start system audio capture and asks for the expected permission.
+- [ ] `NOT TESTED` — Release (sandboxed) build can request Automation and play/pause Music or Spotify. Expected to need entitlements; record the exact result.
+- [ ] `NOT TESTED` — With the system language set to Simplified Chinese, the popover, Studio controls, Notch Island, every Settings pane, preset dialogs, and Playback messages are Chinese and nothing is clipped at the 640 pt Settings width.
+- [ ] `NOT TESTED` — With the system language set to English, the same surfaces are English and nothing is clipped.
+- [ ] `NOT TESTED` — The macOS permission prompts show the Chinese and English descriptions for the matching system language.
+- [ ] `NOT TESTED` — About Audune opens the standard panel with version, build, and the privacy statement.
+- [ ] `NOT TESTED` — The popover idle hint shows before the first Start and is replaced by the error text if capture fails.
+- [ ] `NOT TESTED` — The disabled Studio play/pause button is visibly dimmed, and Settings > Playback > Play/Pause matches the player state.
+- [ ] `NOT TESTED` — Switching the system language and relaunching keeps saved presets, selected modes, and window settings unchanged.
+
 ## Results
 
 - Passed: local playback, pause, resume, menu-bar response, silence baseline, popover, shared debug-window counters, Quit, and both appearance checks recorded on 2026-10-24. `Open Debug Window` brought the existing counter window forward. Frames stayed at 1326080 across two reads after Stop. Quit left output unmuted on `MacBook Pro扬声器`.
