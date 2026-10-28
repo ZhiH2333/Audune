@@ -19,16 +19,16 @@ nonisolated enum VisualPresetEditError: String, Error, Equatable {
 
     var message: String {
         switch self {
-        case .unreadableStore: return "Saved presets could not be read."
-        case .emptyName: return "Enter a name."
-        case .nameTooLong: return "Use 40 characters or fewer."
-        case .duplicateName: return "That name is already used for this mode."
-        case .builtInLocked: return "Built-in presets cannot be changed."
-        case .notFound: return "That preset is no longer available."
-        case .duplicateID: return "A new preset id could not be created."
-        case .limitReached: return "This mode already has 24 custom presets."
-        case .modeMismatch: return "The preset does not match this visual mode."
-        case .persistFailed: return "The preset could not be saved."
+        case .unreadableStore: return String(localized: "Saved presets could not be read.")
+        case .emptyName: return String(localized: "Enter a name.")
+        case .nameTooLong: return String(localized: "Use 40 characters or fewer.")
+        case .duplicateName: return String(localized: "That name is already used for this mode.")
+        case .builtInLocked: return String(localized: "Built-in presets cannot be changed.")
+        case .notFound: return String(localized: "That preset is no longer available.")
+        case .duplicateID: return String(localized: "A new preset id could not be created.")
+        case .limitReached: return String(localized: "This mode already has 24 custom presets.")
+        case .modeMismatch: return String(localized: "The preset does not match this visual mode.")
+        case .persistFailed: return String(localized: "The preset could not be saved.")
         }
     }
 }
@@ -42,6 +42,12 @@ nonisolated struct VisualPreset: Codable, Equatable, Identifiable {
     var spectrum: SpectrumPreferences?
     var waveform: WaveformPreferences?
     var orbit: OrbitPreferences?
+
+    /// What the UI shows. `name` stays the stable English value used for ids and duplicate checks;
+    /// only built-in looks are translated, and custom names are shown exactly as the user typed them.
+    var displayName: String {
+        kind == .builtIn ? VisualPresetCatalog.localizedName(forBuiltInID: id) ?? name : name
+    }
 
     func hasMatchingPayload() -> Bool {
         switch mode {

@@ -26,13 +26,13 @@ struct VisualPresetSelector: View {
                 Text("Unsaved settings").tag("")
                 Section("Built-in") {
                     ForEach(builtIns) { preset in
-                        Text(preset.name).tag(preset.id)
+                        Text(preset.displayName).tag(preset.id)
                     }
                 }
                 if custom.isEmpty == false {
                     Section("Custom") {
                         ForEach(custom) { preset in
-                            Text(preset.name).tag(preset.id)
+                            Text(preset.displayName).tag(preset.id)
                         }
                     }
                 }
@@ -99,7 +99,7 @@ struct VisualPresetSelector: View {
             Button("Delete", role: .destructive) { commitDelete() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("\(selectedPreset?.name ?? "This preset") will be removed. The current \(mode.title) settings stay as they are.")
+            Text(deleteMessage)
         }
     }
 
@@ -166,10 +166,17 @@ struct VisualPresetSelector: View {
         )
     }
 
+    private var deleteMessage: String {
+        if let selectedPreset {
+            return String(localized: "\(selectedPreset.displayName) will be removed. The current \(mode.title) settings stay as they are.")
+        }
+        return String(localized: "This preset will be removed. The current \(mode.title) settings stay as they are.")
+    }
+
     private var footnote: String {
-        var text = "Applies \(mode.title) settings only. Appearance, Window, and the other visual modes stay as they are."
+        var text = String(localized: "Applies \(mode.title) settings only. Appearance, Window, and the other visual modes stay as they are.")
         if mode != .spectrum {
-            text += " A custom color on this mode is replaced when the preset is applied."
+            text += String(localized: " A custom color on this mode is replaced when the preset is applied.")
         }
         return text
     }

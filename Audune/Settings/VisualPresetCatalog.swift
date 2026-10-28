@@ -111,6 +111,22 @@ nonisolated enum VisualPresetCatalog {
 
     static let all = [clean, dense, dynamic, fineLine, softFill, mirror, compact, halo, denseRing]
 
+    /// Display names for built-in looks. Ids and `name` stay English so saved state never depends on the language.
+    static func localizedName(forBuiltInID id: String) -> String? {
+        switch id {
+        case clean.id: return String(localized: "Clean")
+        case dense.id: return String(localized: "Dense")
+        case dynamic.id: return String(localized: "Dynamic")
+        case fineLine.id: return String(localized: "Fine Line")
+        case softFill.id: return String(localized: "Soft Fill")
+        case mirror.id: return String(localized: "Mirror")
+        case compact.id: return String(localized: "Compact")
+        case halo.id: return String(localized: "Halo")
+        case denseRing.id: return String(localized: "Dense Ring")
+        default: return nil
+        }
+    }
+
     static func restoring(from defaults: UserDefaults = .standard) -> VisualPresetLibrary {
         VisualPresetLibrary.load(from: defaults, builtIns: all)
     }
@@ -154,11 +170,13 @@ nonisolated enum VisualPresetMatch: Equatable {
     var statusText: String {
         switch self {
         case .applied(let preset):
-            return preset.kind == .builtIn ? "\(preset.name) · Built-in" : "\(preset.name) · Custom"
+            return preset.kind == .builtIn
+                ? String(localized: "\(preset.displayName) · Built-in")
+                : String(localized: "\(preset.displayName) · Custom")
         case .modified(let preset):
-            return "\(preset.name) · Modified"
+            return String(localized: "\(preset.displayName) · Modified")
         case .unsaved:
-            return "Unsaved settings"
+            return String(localized: "Unsaved settings")
         }
     }
 }

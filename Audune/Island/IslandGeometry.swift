@@ -40,11 +40,11 @@ nonisolated enum IslandUnsupportedReason: String, Error, Equatable, Sendable {
     var userMessage: String {
         switch self {
         case .noScreens:
-            return "No active display is available."
+            return String(localized: "No active display is available.")
         case .noNotch:
-            return "No notched display detected. Notch Island is only shown on displays with a camera housing."
+            return String(localized: "No notched display detected. Notch Island is only shown on displays with a camera housing.")
         case .invalidGeometry:
-            return "The display reported incomplete or unsupported top safe-area geometry."
+            return String(localized: "The display reported incomplete or unsupported top safe-area geometry.")
         }
     }
 }

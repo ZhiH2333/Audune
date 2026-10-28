@@ -32,7 +32,7 @@ final class SettingsWindowController: NSObject {
             defer: false
         )
         super.init()
-        window.title = "Audune Settings"
+        window.title = String(localized: "Audune Settings")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false

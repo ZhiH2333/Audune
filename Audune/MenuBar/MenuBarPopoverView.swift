@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class MenuBarModel {
-    var title = "Not listening"
+    var title = String(localized: "Not listening")
     var detail = ""
     var statusText = ""
     var showDetail = false
@@ -47,7 +47,7 @@ struct MenuBarPopoverView: View {
                 Button("Stop", action: stop)
                     .disabled(model.stopDisabled)
             }
-            Button(model.studioVisible ? "Hide Studio" : "Open Studio", action: toggleStudio)
+            Button(model.studioVisible ? String(localized: "Hide Studio") : String(localized: "Open Studio"), action: toggleStudio)
             Button(islandButtonTitle, action: toggleIsland)
                 .disabled(model.islandSupported == false)
             Button("Settings\u{2026}", action: openSettings)
@@ -66,9 +66,9 @@ struct MenuBarPopoverView: View {
 
     private var islandButtonTitle: String {
         guard model.islandSupported else {
-            return "Notch Island (No Notch)"
+            return String(localized: "Notch Island (No Notch)")
         }
-        return model.islandEnabled ? "Hide Notch Island" : "Show Notch Island"
+        return model.islandEnabled ? String(localized: "Hide Notch Island") : String(localized: "Show Notch Island")
     }
 }
 #endif

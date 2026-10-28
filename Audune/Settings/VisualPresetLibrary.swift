@@ -253,15 +253,15 @@ nonisolated struct VisualPresetLibrary {
     private func copyName(for source: VisualPreset) -> String {
         func candidate(_ suffix: String) -> String {
             let room = max(0, Self.maximumNameLength - suffix.count)
-            return String(source.name.prefix(room)) + suffix
+            return String(source.displayName.prefix(room)) + suffix
         }
-        let first = candidate(" Copy")
+        let first = candidate(String(localized: " Copy"))
         if case .success = validatedName(first, mode: source.mode, ignoringID: nil) {
             return first
         }
         var index = 2
         while index < 100 {
-            let next = candidate(" Copy \(index)")
+            let next = candidate(String(localized: " Copy \(index)"))
             if case .success = validatedName(next, mode: source.mode, ignoringID: nil) {
                 return next
             }

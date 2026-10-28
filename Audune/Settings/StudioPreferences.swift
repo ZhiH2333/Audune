@@ -91,9 +91,9 @@ nonisolated enum StudioVisualMode: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .spectrum: return "Spectrum"
-        case .waveform: return "Waveform"
-        case .orbit: return "Orbit"
+        case .spectrum: return String(localized: "Spectrum")
+        case .waveform: return String(localized: "Waveform")
+        case .orbit: return String(localized: "Orbit")
         }
     }
 
@@ -115,9 +115,9 @@ nonisolated enum StudioWindowMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .onDesktop: return "On Desktop"
-        case .onTop: return "On Top"
-        case .asWindow: return "As Window"
+        case .onDesktop: return String(localized: "On Desktop")
+        case .onTop: return String(localized: "On Top")
+        case .asWindow: return String(localized: "As Window")
         }
     }
 }
@@ -231,9 +231,9 @@ nonisolated enum SpectrumColorMode: String, Codable, CaseIterable, Identifiable 
 
     var title: String {
         switch self {
-        case .solid: return "Solid"
-        case .frequency: return "Frequency"
-        case .amplitude: return "Amplitude"
+        case .solid: return String(localized: "Solid")
+        case .frequency: return String(localized: "Frequency")
+        case .amplitude: return String(localized: "Amplitude")
         }
     }
 }
@@ -271,10 +271,10 @@ nonisolated enum StudioAccent: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .warm: return "Warm"
-        case .amber: return "Amber"
-        case .sea: return "Sea"
-        case .mist: return "Mist"
+        case .warm: return String(localized: "Warm")
+        case .amber: return String(localized: "Amber")
+        case .sea: return String(localized: "Sea")
+        case .mist: return String(localized: "Mist")
         }
     }
 
@@ -304,8 +304,8 @@ nonisolated enum SpectrumScale: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .log: return "Logarithmic"
-        case .linear: return "Linear"
+        case .log: return String(localized: "Logarithmic")
+        case .linear: return String(localized: "Linear")
         }
     }
 }
@@ -407,9 +407,9 @@ nonisolated enum WaveformStyle: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .line: return "Fine Line"
-        case .softFill: return "Soft Fill"
-        case .mirror: return "Mirror"
+        case .line: return String(localized: "Fine Line")
+        case .softFill: return String(localized: "Soft Fill")
+        case .mirror: return String(localized: "Mirror")
         }
     }
 
@@ -470,8 +470,8 @@ nonisolated enum OrbitLayerMode: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .single: return "Single"
-        case .dualBand: return "Dual Band"
+        case .single: return String(localized: "Single")
+        case .dualBand: return String(localized: "Dual Band")
         }
     }
 }
@@ -585,8 +585,8 @@ nonisolated enum VisualLayoutMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .fill: return "Fill window"
-        case .fixed: return "Fixed size"
+        case .fill: return String(localized: "Fill window")
+        case .fixed: return String(localized: "Fixed size")
         }
     }
 }

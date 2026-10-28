@@ -54,9 +54,9 @@ enum AppleEventFailure {
         case applicationNotRunning:
             return .notRunning
         case timedOut:
-            return .failed("The player did not answer in time.")
+            return .failed(String(localized: "The player did not answer in time."))
         default:
-            return .failed("Apple Event \(status)")
+            return .failed(String(localized: "Apple Event \(status)"))
         }
     }
 }
@@ -86,7 +86,7 @@ enum AutomationPermission: Equatable {
         case .notRequested: return .automationNotRequested
         case .denied: return .automationDenied
         case .targetNotRunning: return .notRunning
-        case .failed(let status): return .failed("Apple Event \(status)")
+        case .failed(let status): return .failed(String(localized: "Apple Event \(status)"))
         }
     }
 }
@@ -156,27 +156,27 @@ enum PlaybackButton {
     static func title(availability: PlayerAvailability, state: PlayerPlaybackState) -> String {
         switch availability {
         case .noSelection:
-            return "Player"
+            return String(localized: "Player")
         case .notInstalled:
-            return "Missing"
+            return String(localized: "Missing")
         case .notRunning:
-            return "Not running"
+            return String(localized: "Not running")
         case .checking:
-            return "Checking"
+            return String(localized: "Checking")
         case .automationNotRequested:
-            return "Needs access"
+            return String(localized: "Needs access")
         case .automationDenied:
-            return "Denied"
+            return String(localized: "Denied")
         case .failed:
-            return "Failed"
+            return String(localized: "Failed")
         case .ready:
             switch state {
             case .playing:
-                return "Pause"
+                return String(localized: "Pause")
             case .paused, .stopped:
-                return "Play"
+                return String(localized: "Play")
             case .unknown:
-                return "Play/Pause"
+                return String(localized: "Play/Pause")
             }
         }
     }
@@ -209,7 +209,7 @@ enum AppleScriptPlayer {
     static func run(bundleIdentifier: String, source body: String) -> PlayerCommandResult {
         let source = "with timeout of 2 seconds\ntell application id \"\(bundleIdentifier)\"\n\(body)\nend tell\nend timeout"
         guard let script = NSAppleScript(source: source) else {
-            return .failed("The play command could not be prepared.")
+            return .failed(String(localized: "The play command could not be prepared."))
         }
         var error: NSDictionary?
         let descriptor = script.executeAndReturnError(&error)
@@ -225,11 +225,11 @@ enum AppleScriptPlayer {
         }
         let text = descriptor.stringValue ?? ""
         guard text.isEmpty == false else {
-            return .failed("The player did not return a state.")
+            return .failed(String(localized: "The player did not return a state."))
         }
         let state = PlayerStateText.parse(text)
         guard state != .unknown else {
-            return .failed("The player returned an unrecognized state.")
+            return .failed(String(localized: "The player returned an unrecognized state."))
         }
         return .state(state)
     }

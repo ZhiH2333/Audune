@@ -1,0 +1,2926 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    " A custom color on this mode is replaced when the preset is applied.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 应用预设时，此模式下的自定义颜色会被替换。"
+          }
+        }
+      }
+    },
+    " Copy": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 副本"
+          }
+        }
+      }
+    },
+    " Copy %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 副本 %lld"
+          }
+        }
+      }
+    },
+    "%@ will be removed. The current %@ settings stay as they are.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”将被移除。当前的%2$@设置保持不变。"
+          }
+        }
+      }
+    },
+    "%@ · Built-in": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 内置"
+          }
+        }
+      }
+    },
+    "%@ · Custom": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 自定义"
+          }
+        }
+      }
+    },
+    "%@ · Modified": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 已修改"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "A new preset id could not be created.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法创建新的预设标识。"
+          }
+        }
+      }
+    },
+    "Active on %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在%@上运行"
+          }
+        }
+      }
+    },
+    "Active on %@ (fallback notched display)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在%@上运行（备用刘海显示器）"
+          }
+        }
+      }
+    },
+    "Allow dragging by the grip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许通过拖动手柄移动"
+          }
+        }
+      }
+    },
+    "Allow resizing from the edges": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许从边缘调整大小"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已允许"
+          }
+        }
+      }
+    },
+    "Amber": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "琥珀"
+          }
+        }
+      }
+    },
+    "Amplitude": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幅度"
+          }
+        }
+      }
+    },
+    "Angular gap (deg)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "角度间隙（度）"
+          }
+        }
+      }
+    },
+    "Animation speed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动画速度"
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外观"
+          }
+        }
+      }
+    },
+    "Apple Event %lld": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 事件错误 %lld"
+          }
+        }
+      }
+    },
+    "Applies %@ settings only. Appearance, Window, and the other visual modes stay as they are.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅应用%@设置。外观、窗口和其他可视化模式保持不变。"
+          }
+        }
+      }
+    },
+    "As Window": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作为窗口"
+          }
+        }
+      }
+    },
+    "As Window behaves like an ordinary window and can be covered by others.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“作为窗口”与普通窗口一样，可被其他窗口遮挡。"
+          }
+        }
+      }
+    },
+    "As Window stays on its own desktop and full-screen apps can cover it.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“作为窗口”只停留在自己的桌面上，全屏 App 可以将其遮挡。"
+          }
+        }
+      }
+    },
+    "Aspect ratio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宽高比"
+          }
+        }
+      }
+    },
+    "Attack (ms)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起音（ms）"
+          }
+        }
+      }
+    },
+    "Audio capture failed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音频捕获失败。"
+          }
+        }
+      }
+    },
+    "Audio output device not ready.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音频输出设备尚未就绪。"
+          }
+        }
+      }
+    },
+    "Audune Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 设置"
+          }
+        }
+      }
+    },
+    "Audune can only control Music or Spotify, and only after you allow it. It cannot pause browser audio or other system output. Open the player first, then choose Request Access.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 只能控制“音乐”或 Spotify，且需要你先允许。它无法暂停浏览器音频或其他系统输出。请先打开播放器，然后选择“请求授权”。"
+          }
+        }
+      }
+    },
+    "Audune could not start system audio capture. Allow Audune in System Settings > Privacy & Security > Screen & System Audio Recording, then press Start again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 无法开始捕获系统音频。请在“系统设置 > 隐私与安全性 > 屏幕与系统音频录制”中允许 Audune，然后再次点按“开始”。"
+          }
+        }
+      }
+    },
+    "Audune has not been allowed to control this player yet. Use Request Access in Settings > Playback.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未允许 Audune 控制此播放器。请在“设置 > 播放”中选择“请求授权”。"
+          }
+        }
+      }
+    },
+    "Audune, %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune，%@"
+          }
+        }
+      }
+    },
+    "Automatic (Notched Display)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动（带刘海的显示器）"
+          }
+        }
+      }
+    },
+    "Automatically hide controls": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动隐藏控件"
+          }
+        }
+      }
+    },
+    "Automation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动化"
+          }
+        }
+      }
+    },
+    "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“自动化”权限已被拒绝。请在“系统设置 > 隐私与安全性 > 自动化”中允许 Audune。"
+          }
+        }
+      }
+    },
+    "Bands": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "频段"
+          }
+        }
+      }
+    },
+    "Bar stroke": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条形描边"
+          }
+        }
+      }
+    },
+    "Bars": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条形"
+          }
+        }
+      }
+    },
+    "Built-in": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置"
+          }
+        }
+      }
+    },
+    "Built-in presets cannot be changed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置预设无法更改。"
+          }
+        }
+      }
+    },
+    "Built-in presets keep their names.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内置预设保留原有名称。"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "Capture failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "捕获失败"
+          }
+        }
+      }
+    },
+    "Changes show in Studio immediately.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改会立即显示在 Studio 中。"
+          }
+        }
+      }
+    },
+    "Checking": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查中"
+          }
+        }
+      }
+    },
+    "Checking Automation access…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查“自动化”权限…"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查中…"
+          }
+        }
+      }
+    },
+    "Choose Music or Spotify to enable Play/Pause in Studio.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择“音乐”或 Spotify，即可在 Studio 中使用播放/暂停。"
+          }
+        }
+      }
+    },
+    "Choose a player": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择播放器"
+          }
+        }
+      }
+    },
+    "Clean": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简洁"
+          }
+        }
+      }
+    },
+    "Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear when the pointer is near and hide after 3 seconds without it.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在“置顶”“在桌面”和“作为窗口”模式下，点击可视化区域的操作会传递给下方的 App。拖动手柄始终可见。其他按钮在指针靠近时出现，指针离开 3 秒后隐藏。"
+          }
+        }
+      }
+    },
+    "Collapse Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起 Notch Island"
+          }
+        }
+      }
+    },
+    "Collapse Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即收起"
+          }
+        }
+      }
+    },
+    "Collapse delay (s)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起延迟（秒）"
+          }
+        }
+      }
+    },
+    "Color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色"
+          }
+        }
+      }
+    },
+    "Color mapping": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色映射"
+          }
+        }
+      }
+    },
+    "Colors": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色"
+          }
+        }
+      }
+    },
+    "Compact": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紧凑"
+          }
+        }
+      }
+    },
+    "Compact bars per side": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紧凑模式每侧条形数"
+          }
+        }
+      }
+    },
+    "Compact mode draws a symmetric live spectrum on both sides of the notch. Colors follow Appearance.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紧凑模式会在刘海两侧绘制对称的实时频谱。颜色跟随“外观”。"
+          }
+        }
+      }
+    },
+    "Control": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控制"
+          }
+        }
+      }
+    },
+    "Controls": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控件"
+          }
+        }
+      }
+    },
+    "Corner radius": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "圆角半径"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义"
+          }
+        }
+      }
+    },
+    "Custom color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义颜色"
+          }
+        }
+      }
+    },
+    "Custom line color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义线条颜色"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除"
+          }
+        }
+      }
+    },
+    "Delete this preset?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除此预设？"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝"
+          }
+        }
+      }
+    },
+    "Dense": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密集"
+          }
+        }
+      }
+    },
+    "Dense Ring": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密集环"
+          }
+        }
+      }
+    },
+    "Density": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密度"
+          }
+        }
+      }
+    },
+    "Disabled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停用"
+          }
+        }
+      }
+    },
+    "Disabled on %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在%@上停用"
+          }
+        }
+      }
+    },
+    "Display": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示器"
+          }
+        }
+      }
+    },
+    "Display & Status": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示器与状态"
+          }
+        }
+      }
+    },
+    "Drag Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动 Studio"
+          }
+        }
+      }
+    },
+    "Draws the real captured PCM samples. Density only chooses how many of them are drawn.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "绘制真实捕获到的 PCM 采样。密度只决定绘制其中多少个采样。"
+          }
+        }
+      }
+    },
+    "Dual Band": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双频段"
+          }
+        }
+      }
+    },
+    "Dual Band maps the lower half of the bands to an inner ring and the upper half to an outer ring.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“双频段”会把较低的一半频段映射到内圈，较高的一半映射到外圈。"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        }
+      }
+    },
+    "Dynamic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动感"
+          }
+        }
+      }
+    },
+    "Each bar reads its own real band.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每根条形读取各自的真实频段。"
+          }
+        }
+      }
+    },
+    "Each bar reads real FFT bins. A bar narrower than one bin reads the bins on either side of it.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每根条形读取真实的 FFT 频点。比一个频点还窄的条形会读取其两侧的频点。"
+          }
+        }
+      }
+    },
+    "Enable Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 Notch Island"
+          }
+        }
+      }
+    },
+    "Enter a name.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入名称。"
+          }
+        }
+      }
+    },
+    "Expand Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即展开"
+          }
+        }
+      }
+    },
+    "Expand delay (s)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开延迟（秒）"
+          }
+        }
+      }
+    },
+    "Expand on pointer hover": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指针悬停时展开"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已展开"
+          }
+        }
+      }
+    },
+    "Expanded mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开模式"
+          }
+        }
+      }
+    },
+    "Fade controls in and out": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "控件淡入淡出"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失败"
+          }
+        }
+      }
+    },
+    "Fall speed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下落速度"
+          }
+        }
+      }
+    },
+    "Fill and line": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填充与线条"
+          }
+        }
+      }
+    },
+    "Fill strength": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填充强度"
+          }
+        }
+      }
+    },
+    "Fill strength applies to Soft Fill and Mirror. Fine Line stays a stroke only.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填充强度适用于“柔和填充”和“镜像”。“细线”仅保留描边。"
+          }
+        }
+      }
+    },
+    "Fill window": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填满窗口"
+          }
+        }
+      }
+    },
+    "Fine Line": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "细线"
+          }
+        }
+      }
+    },
+    "Fixed size": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定大小"
+          }
+        }
+      }
+    },
+    "Follow system Reduce Motion": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统“减弱动态效果”"
+          }
+        }
+      }
+    },
+    "Frequency": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "频率"
+          }
+        }
+      }
+    },
+    "Gap": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "间距"
+          }
+        }
+      }
+    },
+    "Halo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "光环"
+          }
+        }
+      }
+    },
+    "Haptic feedback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "触感反馈"
+          }
+        }
+      }
+    },
+    "Height (pt)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高度（pt）"
+          }
+        }
+      }
+    },
+    "Hidden buttons do not receive clicks. Reduce Motion removes the fade.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏的按钮不会响应点击。开启“减弱动态效果”后将不再有淡入淡出。"
+          }
+        }
+      }
+    },
+    "Hide Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏 Notch Island"
+          }
+        }
+      }
+    },
+    "Hide Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏 Studio"
+          }
+        }
+      }
+    },
+    "High frequency (Hz)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高频（Hz）"
+          }
+        }
+      }
+    },
+    "Hold time (s)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持时间（秒）"
+          }
+        }
+      }
+    },
+    "Hold time keeps each cap at its peak. Fall speed is how far the cap drops per second after that, in normalized display units.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持时间决定每个峰值帽停留在峰值的时长。下落速度是之后峰值帽每秒下落的距离（按归一化显示单位）。"
+          }
+        }
+      }
+    },
+    "How much of the stroke-safe canvas height the waveform may occupy. This is not a clip box and does not change the Studio window size (see Layout and Window).": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "波形可占用描边安全画布高度的比例。这不是裁剪框，也不会改变 Studio 窗口大小（参见“布局”和“窗口”）。"
+          }
+        }
+      }
+    },
+    "How strongly the signal fills that height. It does not change system volume, captured audio, or the window size.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信号填满该高度的力度。它不会改变系统音量、捕获的音频或窗口大小。"
+          }
+        }
+      }
+    },
+    "Inner radius": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内半径"
+          }
+        }
+      }
+    },
+    "Installed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装"
+          }
+        }
+      }
+    },
+    "Interaction & Motion": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "交互与动画"
+          }
+        }
+      }
+    },
+    "Layers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "层数"
+          }
+        }
+      }
+    },
+    "Layout": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "布局"
+          }
+        }
+      }
+    },
+    "Layout preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "布局预览"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻"
+          }
+        }
+      }
+    },
+    "Light, Medium, and Strong use the Alignment, Generic, and Level Change trackpad patterns. macOS does not expose haptic amplitude, and a Mac without a Force Touch trackpad will not vibrate.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“轻”“中”“强”分别使用触控板的“对齐”“通用”和“级别变化”触感模式。macOS 不提供触感强度调节，没有力度触控板的 Mac 不会震动。"
+          }
+        }
+      }
+    },
+    "Line color": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "线条颜色"
+          }
+        }
+      }
+    },
+    "Linear": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "线性"
+          }
+        }
+      }
+    },
+    "Listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在监听"
+          }
+        }
+      }
+    },
+    "Logarithmic": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对数"
+          }
+        }
+      }
+    },
+    "Look": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "观感"
+          }
+        }
+      }
+    },
+    "Low frequency (Hz)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低频（Hz）"
+          }
+        }
+      }
+    },
+    "Maximum display height": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大显示高度"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
+          }
+        }
+      }
+    },
+    "Mirror": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "镜像"
+          }
+        }
+      }
+    },
+    "Mirror left and right": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右镜像"
+          }
+        }
+      }
+    },
+    "Mirrored rings read %lld real bands and show each twice, low at the top.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "镜像圆环读取 %lld 个真实频段，并将每个频段显示两次，低频在顶部。"
+          }
+        }
+      }
+    },
+    "Missing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装"
+          }
+        }
+      }
+    },
+    "Mist": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "薄雾"
+          }
+        }
+      }
+    },
+    "Mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模式"
+          }
+        }
+      }
+    },
+    "Motion": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动态"
+          }
+        }
+      }
+    },
+    "Motion smoothing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动态平滑"
+          }
+        }
+      }
+    },
+    "Move and resize": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动与调整大小"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "Name the current %@ settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为当前的%@设置命名。"
+          }
+        }
+      }
+    },
+    "Needs access": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要授权"
+          }
+        }
+      }
+    },
+    "No": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "否"
+          }
+        }
+      }
+    },
+    "No active display is available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有可用的显示器。"
+          }
+        }
+      }
+    },
+    "No audio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无音频"
+          }
+        }
+      }
+    },
+    "No audio output device was found. Connect or choose an output device, then press Start.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到音频输出设备。请连接或选择一个输出设备，然后点按“开始”。"
+          }
+        }
+      }
+    },
+    "No audio output device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有音频输出设备。"
+          }
+        }
+      }
+    },
+    "No notched display detected. Notch Island is only shown on displays with a camera housing.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未检测到带刘海的显示器。Notch Island 只会显示在带摄像头刘海的显示器上。"
+          }
+        }
+      }
+    },
+    "Noise floor (RMS)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "噪声下限（RMS）"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "Not available": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可用"
+          }
+        }
+      }
+    },
+    "Not listening": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未在监听"
+          }
+        }
+      }
+    },
+    "Not requested yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未请求"
+          }
+        }
+      }
+    },
+    "Not running": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未运行"
+          }
+        }
+      }
+    },
+    "Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island"
+          }
+        }
+      }
+    },
+    "Notch Island (No Notch)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island（无刘海）"
+          }
+        }
+      }
+    },
+    "Notch Island Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 设置"
+          }
+        }
+      }
+    },
+    "Notch Island compact baseline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 紧凑基线"
+          }
+        }
+      }
+    },
+    "Notch Island compact spectrum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 紧凑频谱"
+          }
+        }
+      }
+    },
+    "Notch Island requires a Mac display with a camera housing and valid top auxiliary areas. Menu Bar and Studio remain available on non-notched displays.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 需要带摄像头刘海且顶部辅助区域有效的 Mac 显示器。在没有刘海的显示器上，菜单栏和 Studio 仍然可用。"
+          }
+        }
+      }
+    },
+    "Notch Island, %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island，%@"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关"
+          }
+        }
+      }
+    },
+    "On Desktop": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在桌面"
+          }
+        }
+      }
+    },
+    "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“在桌面”已设为加入所有桌面。是否会出现在每个桌面上尚未确认。"
+          }
+        }
+      }
+    },
+    "On Desktop sits above the wallpaper and below ordinary windows.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“在桌面”显示在壁纸之上、普通窗口之下。"
+          }
+        }
+      }
+    },
+    "On Top": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "置顶"
+          }
+        }
+      }
+    },
+    "On Top joins all desktops and is allowed beside full-screen apps.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“置顶”会加入所有桌面，并可显示在全屏 App 旁边。"
+          }
+        }
+      }
+    },
+    "On Top stays above ordinary windows and can sit beside a full-screen app.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“置顶”显示在普通窗口之上，并可与全屏 App 并排显示。"
+          }
+        }
+      }
+    },
+    "Opacity": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不透明度"
+          }
+        }
+      }
+    },
+    "Open Automation Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开“自动化”设置"
+          }
+        }
+      }
+    },
+    "Open Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Studio"
+          }
+        }
+      }
+    },
+    "Orbit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "环形"
+          }
+        }
+      }
+    },
+    "Orbit baseline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "环形基线"
+          }
+        }
+      }
+    },
+    "Outer radius": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外半径"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停"
+          }
+        }
+      }
+    },
+    "Peak hold": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值保持"
+          }
+        }
+      }
+    },
+    "Peaks": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "峰值"
+          }
+        }
+      }
+    },
+    "Pin Expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定展开"
+          }
+        }
+      }
+    },
+    "Pin Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定 Notch Island"
+          }
+        }
+      }
+    },
+    "Pinned Expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已固定展开"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放"
+          }
+        }
+      }
+    },
+    "Play or pause": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放或暂停"
+          }
+        }
+      }
+    },
+    "Play/Pause": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放/暂停"
+          }
+        }
+      }
+    },
+    "Playback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放"
+          }
+        }
+      }
+    },
+    "Player": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放器"
+          }
+        }
+      }
+    },
+    "Playing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在播放"
+          }
+        }
+      }
+    },
+    "Preset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预设"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览"
+          }
+        }
+      }
+    },
+    "Pulse gently lengthens bars from mean band energy. Set to 0 to disable.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脉动会根据平均频段能量轻微拉长条形。设为 0 可关闭。"
+          }
+        }
+      }
+    },
+    "Pulse strength": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脉动强度"
+          }
+        }
+      }
+    },
+    "Quit Audune": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出 Audune"
+          }
+        }
+      }
+    },
+    "Reduce Motion is off in System Settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统设置中未开启“减弱动态效果”。"
+          }
+        }
+      }
+    },
+    "Reduce Motion is on in System Settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统设置中已开启“减弱动态效果”。"
+          }
+        }
+      }
+    },
+    "Release (ms)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "释放（ms）"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名"
+          }
+        }
+      }
+    },
+    "Rename Preset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名预设"
+          }
+        }
+      }
+    },
+    "Request Access": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求授权"
+          }
+        }
+      }
+    },
+    "Reset All Studio Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置所有 Studio 设置"
+          }
+        }
+      }
+    },
+    "Reset Appearance": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置外观"
+          }
+        }
+      }
+    },
+    "Reset Layout": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置布局"
+          }
+        }
+      }
+    },
+    "Reset Notch Island Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置 Notch Island 设置"
+          }
+        }
+      }
+    },
+    "Reset Orbit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置环形"
+          }
+        }
+      }
+    },
+    "Reset Position and Size": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置位置与大小"
+          }
+        }
+      }
+    },
+    "Reset Preset Library": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置预设库"
+          }
+        }
+      }
+    },
+    "Reset Spectrum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置频谱"
+          }
+        }
+      }
+    },
+    "Reset Waveform": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置波形"
+          }
+        }
+      }
+    },
+    "Reset Window Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置窗口设置"
+          }
+        }
+      }
+    },
+    "Response": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "响应"
+          }
+        }
+      }
+    },
+    "Restore position and size at launch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时恢复位置与大小"
+          }
+        }
+      }
+    },
+    "Ring": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "圆环"
+          }
+        }
+      }
+    },
+    "Running": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "Save Current": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存当前设置"
+          }
+        }
+      }
+    },
+    "Saved presets could not be read.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取已保存的预设。"
+          }
+        }
+      }
+    },
+    "Saved presets could not be read. They were left unchanged.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取已保存的预设，它们保持原样。"
+          }
+        }
+      }
+    },
+    "Scale": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缩放"
+          }
+        }
+      }
+    },
+    "Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缩放 100% 即 640 pt 宽。若窗口小于可视化区域，它会等比缩小以适应窗口。这与“窗口 → 尺寸”无关。"
+          }
+        }
+      }
+    },
+    "Sea": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "海洋"
+          }
+        }
+      }
+    },
+    "Sensitivity": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵敏度"
+          }
+        }
+      }
+    },
+    "Sensitivity moves the quiet dB floor. Amplitude scales drawn height. Smoothing blends neighboring bars. Attack and Release are independent rise and fall times in milliseconds.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵敏度会调整安静时的 dB 下限。幅度会缩放绘制高度。平滑会混合相邻的条形。起音和释放分别是上升与下降时间，单位为毫秒。"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置"
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置…"
+          }
+        }
+      }
+    },
+    "Shape": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "形状"
+          }
+        }
+      }
+    },
+    "Show Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Notch Island"
+          }
+        }
+      }
+    },
+    "Show Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Studio"
+          }
+        }
+      }
+    },
+    "Show in full-screen apps": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在全屏 App 中显示"
+          }
+        }
+      }
+    },
+    "Silence": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "静音"
+          }
+        }
+      }
+    },
+    "Silence gate": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "静音门限"
+          }
+        }
+      }
+    },
+    "Single": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单层"
+          }
+        }
+      }
+    },
+    "Size": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尺寸"
+          }
+        }
+      }
+    },
+    "Smoothing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平滑"
+          }
+        }
+      }
+    },
+    "Soft Fill": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柔和填充"
+          }
+        }
+      }
+    },
+    "Solid": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "纯色"
+          }
+        }
+      }
+    },
+    "Solid uses Appearance fill. Frequency shifts hue across the band. Amplitude brightens taller bars. Peak caps keep the stroke color.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“纯色”使用外观中的填充色。“频率”按频段改变色相。“幅度”让更高的条形更亮。峰值帽沿用描边颜色。"
+          }
+        }
+      }
+    },
+    "Spectrum": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "频谱"
+          }
+        }
+      }
+    },
+    "Spectrum baseline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "频谱基线"
+          }
+        }
+      }
+    },
+    "Stabilizes motion over real time. Separate from Spectrum Attack / Release.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在实时范围内稳定动态效果。与频谱的起音/释放无关。"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始"
+          }
+        }
+      }
+    },
+    "Starting": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动"
+          }
+        }
+      }
+    },
+    "State": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停止"
+          }
+        }
+      }
+    },
+    "Stroke": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描边"
+          }
+        }
+      }
+    },
+    "Stroke width": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描边宽度"
+          }
+        }
+      }
+    },
+    "Strong": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强"
+          }
+        }
+      }
+    },
+    "Studio is hidden. Show it to preview changes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Studio 已隐藏。显示后即可预览更改。"
+          }
+        }
+      }
+    },
+    "Style": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "样式"
+          }
+        }
+      }
+    },
+    "System audio capture is not allowed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统音频捕获未获允许。"
+          }
+        }
+      }
+    },
+    "That name is already used for this mode.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此模式下已有同名预设。"
+          }
+        }
+      }
+    },
+    "That preset is no longer available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设已不存在。"
+          }
+        }
+      }
+    },
+    "The Studio window background is always fully transparent. Opacity only changes the graphic.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Studio 窗口背景始终完全透明。不透明度只影响图形。"
+          }
+        }
+      }
+    },
+    "The audio output device did not respond. Try again, or switch the output device and press Start.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音频输出设备没有响应。请重试，或切换输出设备后点按“开始”。"
+          }
+        }
+      }
+    },
+    "The display reported incomplete or unsupported top safe-area geometry.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示器报告的顶部安全区域信息不完整或不受支持。"
+          }
+        }
+      }
+    },
+    "The outer frame is the Studio window; the inner frame is the visualization. In Fixed size mode the visualization keeps its own size when the window grows, which can look like an empty border around the graphic. Use Fill window to draw edge to edge.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外框是 Studio 窗口，内框是可视化区域。在“固定大小”模式下，窗口变大时可视化区域保持自身大小，图形周围可能出现空白边框。使用“填满窗口”可让图形铺满边缘。"
+          }
+        }
+      }
+    },
+    "The play command could not be prepared.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法准备播放指令。"
+          }
+        }
+      }
+    },
+    "The player did not answer in time.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放器未及时响应。"
+          }
+        }
+      }
+    },
+    "The player did not return a state.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放器没有返回状态。"
+          }
+        }
+      }
+    },
+    "The player returned an unrecognized state.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放器返回了无法识别的状态。"
+          }
+        }
+      }
+    },
+    "The preset could not be saved.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存该预设。"
+          }
+        }
+      }
+    },
+    "The preset does not match this visual mode.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设与当前可视化模式不匹配。"
+          }
+        }
+      }
+    },
+    "The selected player is not installed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选播放器尚未安装。"
+          }
+        }
+      }
+    },
+    "The selected player is not running.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选播放器未运行。"
+          }
+        }
+      }
+    },
+    "This mode already has 24 custom presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此模式已有 24 个自定义预设。"
+          }
+        }
+      }
+    },
+    "This output device uses an audio format Audune cannot visualize. Choose another output device and press Start.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此输出设备使用的音频格式 Audune 无法可视化。请选择其他输出设备后点按“开始”。"
+          }
+        }
+      }
+    },
+    "This preset will be removed. The current %@ settings stay as they are.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此预设将被移除。当前的%@设置保持不变。"
+          }
+        }
+      }
+    },
+    "Unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可用"
+          }
+        }
+      }
+    },
+    "Unknown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知"
+          }
+        }
+      }
+    },
+    "Unknown until the player is running": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放器运行后才能确定"
+          }
+        }
+      }
+    },
+    "Unpin Expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消固定展开"
+          }
+        }
+      }
+    },
+    "Unpin Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消固定 Notch Island"
+          }
+        }
+      }
+    },
+    "Unsaved settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未保存的设置"
+          }
+        }
+      }
+    },
+    "Unsupported audio format.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持的音频格式。"
+          }
+        }
+      }
+    },
+    "Unsupported display": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持的显示器"
+          }
+        }
+      }
+    },
+    "Use 40 characters or fewer.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请使用不超过 40 个字符。"
+          }
+        }
+      }
+    },
+    "Uses raw PCM RMS with hysteresis. When silent, bars release to the baseline through Release and peak fall — they do not snap off. This only affects visualization, not system audio.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用原始 PCM 的 RMS 并带有滞回。静音时，条形会按“释放”和峰值下落速度回落到基线，而不是突然消失。这只影响可视化，不影响系统音频。"
+          }
+        }
+      }
+    },
+    "Visual amplitude": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视觉幅度"
+          }
+        }
+      }
+    },
+    "Visual preset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化预设"
+          }
+        }
+      }
+    },
+    "Visualization size": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化尺寸"
+          }
+        }
+      }
+    },
+    "Visuals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化"
+          }
+        }
+      }
+    },
+    "Waiting for macOS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待 macOS"
+          }
+        }
+      }
+    },
+    "Warm": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暖白"
+          }
+        }
+      }
+    },
+    "Waveform": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "波形"
+          }
+        }
+      }
+    },
+    "Width (pt)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宽度（pt）"
+          }
+        }
+      }
+    },
+    "Width and height set the Studio window frame in points (not Retina pixels). Dragging the window edges updates these values. Layout controls the visualization inside the window. Notch Island is unchanged.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宽度和高度以点（不是 Retina 像素）为单位设置 Studio 窗口的大小。拖动窗口边缘也会更新这些值。“布局”控制窗口内的可视化区域。Notch Island 不受影响。"
+          }
+        }
+      }
+    },
+    "Window": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窗口"
+          }
+        }
+      }
+    },
+    "Window %lld by %lld points": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窗口 %1$lld × %2$lld 点"
+          }
+        }
+      }
+    },
+    "Window mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窗口模式"
+          }
+        }
+      }
+    },
+    "Yes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "是"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

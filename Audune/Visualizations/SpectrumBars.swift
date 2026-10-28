@@ -247,6 +247,6 @@ struct SpectrumCanvas: View {
                 }
             }
         }
-        .accessibilityLabel(drawsBars ? "Spectrum" : "Spectrum baseline")
+        .accessibilityLabel(drawsBars ? String(localized: "Spectrum") : String(localized: "Spectrum baseline"))
     }
 }

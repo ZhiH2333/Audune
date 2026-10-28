@@ -162,27 +162,27 @@ final class MenuBarController: NSObject {
         renderedState = presentation.state
         renderedSequence = sequence
         button.image = spectrumImage.render(state: presentation.state, spectrum: snapshot.spectrum)
-        button.setAccessibilityLabel("Audune, \(presentation.title)")
+        button.setAccessibilityLabel(String(localized: "Audune, \(presentation.title)"))
     }
 
     private func presentation(snapshot: AudioSnapshot) -> Presentation {
         switch spike.phase {
         case .idle:
-            return Presentation(state: .idle, title: "Not listening", detail: "", statusText: "", showDetail: false, startDisabled: false, stopDisabled: true)
+            return Presentation(state: .idle, title: String(localized: "Not listening"), detail: "", statusText: "", showDetail: false, startDisabled: false, stopDisabled: true)
         case .starting:
-            return Presentation(state: .starting, title: "Starting", detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
+            return Presentation(state: .starting, title: String(localized: "Starting"), detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
         case .failed:
             #if DEBUG
             let statusText = spike.statusText
             #else
             let statusText = ""
             #endif
-            return Presentation(state: .failed, title: "Capture failed", detail: spike.userFailureMessage, statusText: statusText, showDetail: true, startDisabled: false, stopDisabled: false)
+            return Presentation(state: .failed, title: String(localized: "Capture failed"), detail: spike.userFailureMessage, statusText: statusText, showDetail: true, startDisabled: false, stopDisabled: false)
         case .running:
             if snapshot.isSilent {
-                return Presentation(state: .silent, title: "No audio", detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
+                return Presentation(state: .silent, title: String(localized: "No audio"), detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
             }
-            return Presentation(state: .receiving, title: "Listening", detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
+            return Presentation(state: .receiving, title: String(localized: "Listening"), detail: "", statusText: "", showDetail: false, startDisabled: true, stopDisabled: false)
         }
     }
 }

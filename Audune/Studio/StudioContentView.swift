@@ -88,7 +88,7 @@ struct StudioContentView: View {
                 title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
                 symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
                 disabled: playbackDisabled,
-                accessibilityLabel: "Play or pause",
+                accessibilityLabel: String(localized: "Play or pause"),
                 accessibilityValue: model.playbackDetail,
                 action: togglePlayback
             )
@@ -102,7 +102,7 @@ struct StudioContentView: View {
                     savePreferences()
                 }
             }
-            StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
+            StudioControlButton(title: String(localized: "Settings"), symbol: "gearshape", action: openSettings)
         }
         .frame(height: StudioChrome.barHeight)
     }

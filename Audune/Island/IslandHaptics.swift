@@ -14,10 +14,10 @@ nonisolated enum IslandHapticStrength: String, CaseIterable, Identifiable, Senda
 
     var title: String {
         switch self {
-        case .off: return "Off"
-        case .light: return "Light"
-        case .medium: return "Medium"
-        case .strong: return "Strong"
+        case .off: return String(localized: "Off")
+        case .light: return String(localized: "Light")
+        case .medium: return String(localized: "Medium")
+        case .strong: return String(localized: "Strong")
         }
     }
 

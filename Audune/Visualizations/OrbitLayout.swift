@@ -262,6 +262,6 @@ struct OrbitCanvas: View {
                 }
             }
         }
-        .accessibilityLabel(drawsLevels ? "Orbit" : "Orbit baseline")
+        .accessibilityLabel(drawsLevels ? String(localized: "Orbit") : String(localized: "Orbit baseline"))
     }
 }

@@ -1,0 +1,26 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSAppleEventsUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 会向你选择的音乐 App 发送播放和暂停指令。它不会读取你的资料库，也不会录制音频。"
+          }
+        }
+      }
+    },
+    "NSAudioCaptureUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 会捕获系统音频输出，用于在本机实时可视化。音频不会被保存或上传。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

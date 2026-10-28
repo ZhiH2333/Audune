@@ -16,14 +16,14 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .appearance: return "Appearance"
-        case .layout: return "Layout"
-        case .spectrum: return "Spectrum"
-        case .waveform: return "Waveform"
-        case .orbit: return "Orbit"
-        case .window: return "Window"
-        case .island: return "Notch Island"
-        case .playback: return "Playback"
+        case .appearance: return String(localized: "Appearance")
+        case .layout: return String(localized: "Layout")
+        case .spectrum: return String(localized: "Spectrum")
+        case .waveform: return String(localized: "Waveform")
+        case .orbit: return String(localized: "Orbit")
+        case .window: return String(localized: "Window")
+        case .island: return String(localized: "Notch Island")
+        case .playback: return String(localized: "Playback")
         }
     }
 
@@ -114,13 +114,25 @@ struct SettingsView: View {
 
     private var studioPreviewRow: some View {
         HStack {
-            Text(model.isShown ? "Changes show in Studio immediately." : "Studio is hidden. Show it to preview changes.")
+            Text(studioPreviewText)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(model.isShown ? "Hide Studio" : "Show Studio") {
+            Button(studioToggleTitle) {
                 studio.toggle()
             }
         }
+    }
+
+    private var islandToggleTitle: LocalizedStringKey {
+        islandModel.prefs.isEnabled ? "Hide Notch Island" : "Show Notch Island"
+    }
+
+    private var studioPreviewText: LocalizedStringKey {
+        model.isShown ? "Changes show in Studio immediately." : "Studio is hidden. Show it to preview changes."
+    }
+
+    private var studioToggleTitle: LocalizedStringKey {
+        model.isShown ? "Hide Studio" : "Show Studio"
     }
 
     private var islandStatusRow: some View {
@@ -129,7 +141,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Spacer()
             if islandModel.isSupported {
-                Button(islandModel.prefs.isEnabled ? "Hide Notch Island" : "Show Notch Island") {
+                Button(islandToggleTitle) {
                     island.toggleEnabled()
                 }
             }
@@ -360,9 +372,7 @@ struct SettingsView: View {
                 }
             }
             Toggle("Mirror left and right", isOn: $model.prefs.orbit.mirrored)
-            Text(model.prefs.orbit.mirrored
-                ? "Mirrored rings read \(model.prefs.orbit.bandCount) real bands and show each twice, low at the top."
-                : "Each bar reads its own real band.")
+            Text(orbitRingDescription)
                 .foregroundStyle(.secondary)
             SettingsSlider(title: "Inner radius", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
             SettingsSlider(title: "Outer radius", value: $model.prefs.orbit.outerScale, range: StudioPreferences.orbitOuterRange, step: 0.02)
@@ -458,7 +468,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
             Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
-            Text(reduceMotion ? "Reduce Motion is on in System Settings." : "Reduce Motion is off in System Settings.")
+            Text(reduceMotionStatus)
                 .foregroundStyle(.secondary)
         }
         Section {
@@ -554,14 +564,14 @@ struct SettingsView: View {
             Toggle("Follow system Reduce Motion", isOn: $islandModel.prefs.followsReduceMotion)
             if islandModel.isSupported && islandModel.prefs.isEnabled {
                 HStack {
-                    Button(islandModel.state.isExpandedOrPinned ? "Collapse Now" : "Expand Now") {
+                    Button(islandExpandTitle) {
                         if islandModel.state.isExpandedOrPinned {
                             island.collapse()
                         } else {
                             island.expand()
                         }
                     }
-                    Button(islandModel.isPinned ? "Unpin Expanded" : "Pin Expanded") {
+                    Button(islandPinTitle) {
                         island.togglePin()
                     }
                 }
@@ -598,7 +608,7 @@ struct SettingsView: View {
             }
         }
         Section("Control") {
-            Button(model.playbackRequesting ? "Waiting for macOS" : "Request Access") {
+            Button(model.playbackRequesting ? String(localized: "Waiting for macOS") : String(localized: "Request Access")) {
                 studio.requestPlayerAccess()
             }
             .disabled(model.playbackAvailability != .automationNotRequested || model.playbackRequesting)
@@ -677,7 +687,21 @@ struct SettingsView: View {
         )
     }
 
-    private var windowModeDescription: String {
+    private var orbitRingDescription: LocalizedStringKey {
+        model.prefs.orbit.mirrored
+            ? "Mirrored rings read \(model.prefs.orbit.bandCount) real bands and show each twice, low at the top."
+            : "Each bar reads its own real band."
+    }
+
+    private var islandExpandTitle: LocalizedStringKey {
+        islandModel.state.isExpandedOrPinned ? "Collapse Now" : "Expand Now"
+    }
+
+    private var islandPinTitle: LocalizedStringKey {
+        islandModel.isPinned ? "Unpin Expanded" : "Pin Expanded"
+    }
+
+    private var windowModeDescription: LocalizedStringKey {
         switch model.prefs.windowMode {
         case .onDesktop: return "On Desktop sits above the wallpaper and below ordinary windows."
         case .onTop: return "On Top stays above ordinary windows and can sit beside a full-screen app."
@@ -685,7 +709,7 @@ struct SettingsView: View {
         }
     }
 
-    private var windowSpacesDescription: String {
+    private var windowSpacesDescription: LocalizedStringKey {
         switch model.prefs.windowMode {
         case .onDesktop: return "On Desktop is set to join all desktops. Whether it appears on every desktop is not confirmed."
         case .onTop: return "On Top joins all desktops and is allowed beside full-screen apps."
@@ -693,7 +717,7 @@ struct SettingsView: View {
         }
     }
 
-    private var islandStateDescription: String {
+    private var islandStateDescription: LocalizedStringKey {
         switch islandModel.state {
         case .disabled:
             return islandModel.isSupported ? "Disabled" : "Unsupported display"
@@ -706,15 +730,19 @@ struct SettingsView: View {
         }
     }
 
+    private var reduceMotionStatus: LocalizedStringKey {
+        reduceMotion ? "Reduce Motion is on in System Settings." : "Reduce Motion is off in System Settings."
+    }
+
     private var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
-    private var installedText: String {
+    private var installedText: LocalizedStringKey {
         model.playbackAvailability == .notInstalled ? "No" : "Yes"
     }
 
-    private var runningText: String {
+    private var runningText: LocalizedStringKey {
         switch model.playbackAvailability {
         case .notInstalled, .noSelection: return "Unknown"
         case .notRunning: return "No"
@@ -722,7 +750,7 @@ struct SettingsView: View {
         }
     }
 
-    private var automationText: String {
+    private var automationText: LocalizedStringKey {
         switch model.playbackAvailability {
         case .ready: return "Allowed"
         case .automationNotRequested: return "Not requested yet"
@@ -733,7 +761,7 @@ struct SettingsView: View {
         }
     }
 
-    private var playbackStateText: String {
+    private var playbackStateText: LocalizedStringKey {
         guard model.playbackAvailability == .ready else { return "Not available" }
         switch model.playbackState {
         case .playing: return "Playing"
@@ -781,7 +809,7 @@ private struct LayoutPreview: View {
 }
 
 private struct SettingsSlider: View {
-    var title: String
+    var title: LocalizedStringKey
     @Binding var value: Double
     var range: ClosedRange<Double>
     var step: Double

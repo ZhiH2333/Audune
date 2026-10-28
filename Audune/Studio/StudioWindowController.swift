@@ -131,7 +131,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         model.playbackState = .unknown
         if stored.isEmpty {
             model.playbackAvailability = .noSelection
-            model.playbackDetail = "Choose a player"
+            model.playbackDetail = String(localized: "Choose a player")
             model.playbackBusy = false
             return
         }
@@ -412,7 +412,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             model.playbackDetail = playbackDetail(gate)
         } else {
             model.playbackAvailability = .noSelection
-            model.playbackDetail = "Choose a player"
+            model.playbackDetail = String(localized: "Choose a player")
         }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -657,7 +657,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         guard let player = selectedPlayer() else {
             model.playbackAvailability = .noSelection
             model.playbackState = .unknown
-            model.playbackDetail = "Choose a player"
+            model.playbackDetail = String(localized: "Choose a player")
             return
         }
         let gate = effectiveAvailability(of: player)
@@ -730,19 +730,19 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private func playbackDetail(_ availability: PlayerAvailability) -> String {
         switch availability {
         case .noSelection:
-            return "Choose a player"
+            return String(localized: "Choose a player")
         case .ready:
             return ""
         case .notInstalled:
-            return "The selected player is not installed."
+            return String(localized: "The selected player is not installed.")
         case .notRunning:
-            return "The selected player is not running."
+            return String(localized: "The selected player is not running.")
         case .checking:
-            return "Checking Automation access\u{2026}"
+            return String(localized: "Checking Automation access\u{2026}")
         case .automationNotRequested:
-            return "Audune has not been allowed to control this player yet. Use Request Access in Settings > Playback."
+            return String(localized: "Audune has not been allowed to control this player yet. Use Request Access in Settings > Playback.")
         case .automationDenied:
-            return "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation."
+            return String(localized: "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation.")
         case .failed(let message):
             return message
         }

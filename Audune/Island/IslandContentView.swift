@@ -35,12 +35,12 @@ final class IslandModel {
     var statusSummary: String {
         if let geometry {
             if prefs.isEnabled == false {
-                return "Disabled on \(geometry.screenName)"
+                return String(localized: "Disabled on \(geometry.screenName)")
             }
             if usedFallbackScreen {
-                return "Active on \(geometry.screenName) (fallback notched display)"
+                return String(localized: "Active on \(geometry.screenName) (fallback notched display)")
             }
-            return "Active on \(geometry.screenName)"
+            return String(localized: "Active on \(geometry.screenName)")
         }
         if let unsupportedReason {
             return unsupportedReason.userMessage
@@ -51,13 +51,13 @@ final class IslandModel {
     func captureLabel(phase: SpikePhase) -> String {
         switch phase {
         case .idle:
-            return "Not listening"
+            return String(localized: "Not listening")
         case .starting:
-            return "Starting"
+            return String(localized: "Starting")
         case .failed:
-            return "Failed"
+            return String(localized: "Failed")
         case .running:
-            return snapshot.isSilent ? "No audio" : "Listening"
+            return snapshot.isSilent ? String(localized: "No audio") : String(localized: "Listening")
         }
     }
 
@@ -142,7 +142,7 @@ struct IslandCompactSpectrumCanvas: View {
                 context.fill(Path(roundedRect: rect, cornerRadius: radius), with: shading)
             }
         }
-        .accessibilityLabel(drawsBars ? "Notch Island compact spectrum" : "Notch Island compact baseline")
+        .accessibilityLabel(drawsBars ? String(localized: "Notch Island compact spectrum") : String(localized: "Notch Island compact baseline"))
     }
 }
 
@@ -254,25 +254,25 @@ struct IslandContentView: View {
         HStack(spacing: 2) {
             IslandIconButton(
                 symbol: model.isPinned ? "pin.fill" : "pin",
-                label: model.isPinned ? "Unpin Notch Island" : "Pin Notch Island",
+                label: model.isPinned ? String(localized: "Unpin Notch Island") : String(localized: "Pin Notch Island"),
                 selected: model.isPinned,
                 action: togglePin
             )
             IslandIconButton(
                 symbol: "macwindow",
-                label: "Open Studio",
+                label: String(localized: "Open Studio"),
                 selected: false,
                 action: openStudio
             )
             IslandIconButton(
                 symbol: "gearshape",
-                label: "Notch Island Settings",
+                label: String(localized: "Notch Island Settings"),
                 selected: false,
                 action: openSettings
             )
             IslandIconButton(
                 symbol: "chevron.up",
-                label: "Collapse Notch Island",
+                label: String(localized: "Collapse Notch Island"),
                 selected: false,
                 action: collapse
             )

@@ -322,7 +322,7 @@ struct StudioInteractionRoot: View {
                     availability: model.playbackAvailability,
                     busy: model.playbackBusy
                 ) == false,
-                accessibilityLabel: "Play or pause",
+                accessibilityLabel: String(localized: "Play or pause"),
                 accessibilityValue: model.playbackDetail,
                 action: togglePlayback
             )
@@ -336,7 +336,7 @@ struct StudioInteractionRoot: View {
                     savePreferences()
                 }
             }
-            StudioControlButton(title: "Settings", symbol: "gearshape", action: openSettings)
+            StudioControlButton(title: String(localized: "Settings"), symbol: "gearshape", action: openSettings)
         }
     }
 
