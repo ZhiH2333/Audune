@@ -11,11 +11,13 @@ struct VisualPresetSelector: View {
     var rename: (VisualPreset, String) -> Result<Void, VisualPresetEditError>
     var delete: (VisualPreset) -> Result<Void, VisualPresetEditError>
     var resetLibrary: () -> Bool
+    var exportPresets: ([VisualPreset]) -> String?
 
     @State private var draftName = ""
     @State private var isSaving = false
     @State private var isRenaming = false
     @State private var isDeleting = false
+    @State private var isExporting = false
     @State private var notice: String?
 
     var body: some View {
@@ -65,6 +67,13 @@ struct VisualPresetSelector: View {
                 }
                 .disabled(selectedPreset?.kind != .custom || library.canPersist == false)
             }
+            HStack {
+                Button("Export…") {
+                    notice = nil
+                    isExporting = true
+                }
+                .disabled(exportablePresets.isEmpty)
+            }
             if let notice {
                 Text(notice)
                     .foregroundStyle(.secondary)
@@ -100,6 +109,22 @@ struct VisualPresetSelector: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(deleteMessage)
+        }
+        .sheet(isPresented: $isExporting) {
+            VisualPresetExportSheet(
+                mode: mode,
+                presets: exportablePresets,
+                initiallySelectedIDs: Set(selectedPreset.map { [$0.id] } ?? []),
+                onExport: { chosen in
+                    isExporting = false
+                    if let error = exportPresets(chosen) {
+                        notice = error
+                    } else if chosen.isEmpty == false {
+                        notice = String(localized: "Exported \(chosen.count) presets.")
+                    }
+                },
+                onCancel: { isExporting = false }
+            )
         }
     }
 
@@ -147,6 +172,10 @@ struct VisualPresetSelector: View {
 
     private var custom: [VisualPreset] {
         library.customPresets.filter { $0.mode == mode }
+    }
+
+    private var exportablePresets: [VisualPreset] {
+        library.presets(for: mode)
     }
 
     private var selection: Binding<String> {

@@ -299,6 +299,20 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         return library.resetLibrary(in: defaults)
     }
 
+    /// Encodes the selected presets into the portable exchange format. Does not write UserDefaults.
+    func encodeVisualPresets(_ presets: [VisualPreset]) -> Result<Data, VisualPresetExchangeError> {
+        let library = VisualPresetCatalog.restoring(from: defaults)
+        var snapshots: [VisualPreset] = []
+        snapshots.reserveCapacity(presets.count)
+        for preset in presets {
+            guard let source = library.preset(id: preset.id), source.mode == preset.mode else {
+                return .failure(.invalidPayload(preset.name))
+            }
+            snapshots.append(source)
+        }
+        return VisualPresetExchange.encode(snapshots)
+    }
+
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
         model.chromeVisible = visible

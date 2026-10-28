@@ -661,6 +661,20 @@ struct SettingsView: View {
                 let didReset = studio.resetVisualPresetLibrary()
                 reloadPresetLibrary()
                 return didReset
+            },
+            exportPresets: { presets in
+                switch studio.encodeVisualPresets(presets) {
+                case .failure(let error):
+                    return error.message
+                case .success(let data):
+                    var writeError: String?
+                    _ = VisualPresetFilePanel.runSavePanel(
+                        suggestedName: VisualPresetFilePanel.defaultExportName(mode: mode, presets: presets),
+                        data: data,
+                        onError: { writeError = $0 }
+                    )
+                    return writeError
+                }
             }
         )
     }

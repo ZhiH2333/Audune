@@ -2950,6 +2950,206 @@
           }
         }
       }
+    },
+    "Export…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出…"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
+          }
+        }
+      }
+    },
+    "Export Presets": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出预设"
+          }
+        }
+      }
+    },
+    "Choose which %@ presets to export.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择要导出的%@预设。"
+          }
+        }
+      }
+    },
+    "Choose where to save the Audune preset file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 Audune 预设文件的保存位置。"
+          }
+        }
+      }
+    },
+    "Select All": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全选"
+          }
+        }
+      }
+    },
+    "Select None": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全不选"
+          }
+        }
+      }
+    },
+    "Exported %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导出 %lld 个预设。"
+          }
+        }
+      }
+    },
+    "The presets could not be exported.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法导出这些预设。"
+          }
+        }
+      }
+    },
+    "That preset file is too large.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件过大。"
+          }
+        }
+      }
+    },
+    "That file is not valid JSON.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该文件不是有效的 JSON。"
+          }
+        }
+      }
+    },
+    "That file is not an Audune preset exchange file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该文件不是 Audune 预设交换文件。"
+          }
+        }
+      }
+    },
+    "That preset file is missing a schema version.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件缺少 schema 版本。"
+          }
+        }
+      }
+    },
+    "That preset file uses an unsupported schema version.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件使用了不支持的 schema 版本。"
+          }
+        }
+      }
+    },
+    "That preset file does not contain any presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件不包含任何预设。"
+          }
+        }
+      }
+    },
+    "That preset file contains too many presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件包含的预设过多。"
+          }
+        }
+      }
+    },
+    "A selected preset is missing its visual settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选预设缺少视觉设置。"
+          }
+        }
+      }
+    },
+    "That preset file lists \"%@\" more than once for the same mode.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件在同一模式下多次列出了“%@”。"
+          }
+        }
+      }
+    },
+    "Import Presets": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入预设"
+          }
+        }
+      }
+    },
+    "Choose an Audune preset JSON file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一个 Audune 预设 JSON 文件。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
