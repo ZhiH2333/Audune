@@ -61,7 +61,7 @@ final class SettingsWindowTests: XCTestCase {
     func testSettingsCategoriesMatchTheApprovedSidebar() {
         XCTAssertEqual(
             SettingsCategory.allCases.map(\.title),
-            ["Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window", "Notch Island", "Playback"]
+            ["Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window", "Notch Island"]
         )
         XCTAssertEqual(SettingsWindowController.initialSize, CGSize(width: 760, height: 600))
     }

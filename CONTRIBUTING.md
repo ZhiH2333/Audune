@@ -43,7 +43,7 @@ xcodebuild -project Audune.xcodeproj -scheme Audune -configuration Release -dest
 ## Debug and Release builds
 
 - Developer-only code lives behind `#if DEBUG`: the capture counter window (`Audune/Debug`), the menu item that opens it, raw status codes next to capture errors, the drag trace log, and the `...ForTests` hooks on window controllers.
-- Everything a user needs stays in both configurations: capture, Studio, Notch Island, Settings, Playback, and the permission and error messages. Never put a product feature or user-facing error behind `#if DEBUG`.
+- Everything a user needs stays in both configurations: capture, Studio, Notch Island, Settings, and the permission and error messages. Never put a product feature or user-facing error behind `#if DEBUG`.
 - Release types must not reference Debug-only types. Pass an optional closure (as `openDebug` does) instead of a Debug-only type.
 
 ## Localization

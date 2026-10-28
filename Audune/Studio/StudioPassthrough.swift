@@ -266,7 +266,6 @@ struct StudioInteractionRoot: View {
     @Bindable var model: StudioModel
     var savePreferences: () -> Void
     var openSettings: () -> Void
-    var togglePlayback: () -> Void
     var drag: () -> Void
     var summon: () -> Void
     var onContentSize: (CGSize) -> Void
@@ -314,18 +313,6 @@ struct StudioInteractionRoot: View {
                     .lineLimit(2)
                     .frame(width: 160, alignment: .leading)
             }
-            StudioControlButton(
-                title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
-                symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
-                disabled: PlaybackButton.isEnabled(
-                    selection: model.playerID,
-                    availability: model.playbackAvailability,
-                    busy: model.playbackBusy
-                ) == false,
-                accessibilityLabel: String(localized: "Play or pause"),
-                accessibilityValue: model.playbackDetail,
-                action: togglePlayback
-            )
             ForEach(StudioVisualMode.allCases) { mode in
                 StudioControlButton(
                     title: mode.title,

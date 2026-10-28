@@ -9,10 +9,9 @@ Audune is a native, local-first macOS music visualizer. It draws the system audi
 - Menu bar item with a live spectrum icon and a popover for Start/Stop, Studio, Notch Island, Settings, About, and Quit.
 - Studio window with Spectrum, Waveform, and Orbit; On Desktop, On Top, and As Window modes; drag and resize; Visual Presets.
 - Notch Island on displays that have a camera housing. On other displays it is unavailable and says so; the menu bar and Studio still work.
-- Play/Pause for Apple Music or Spotify through Automation (one player at a time).
 - English and Simplified Chinese. The language follows the system language order; there is no in-app switcher.
 
-Not included: Desktop Magnet, other players, volume or mute control, microphone input, and any non-macOS platform.
+Not included: Desktop Magnet, external player Play/Pause or Now Playing metadata, volume or mute control, microphone input, and any non-macOS platform.
 
 ## Requirements
 
@@ -21,8 +20,7 @@ Not included: Desktop Magnet, other players, volume or mute control, microphone 
 
 ## Permissions and first run
 
-- **System audio capture.** Press Start in the menu bar popover. Audune uses a Core Audio process tap on the output device (public API) and never asks for the microphone. If capture fails, the popover and Studio explain what to check, usually System Settings > Privacy & Security > Screen & System Audio Recording.
-- **Automation (optional).** Only needed for Play/Pause. Choose Music or Spotify in Settings > Playback, open that app, then choose Request Access. If it was denied, use Open Automation Settings.
+- **System audio capture.** Press Start in the menu bar popover. Audune uses a Core Audio process tap on the output device (public API) and never asks for the microphone. If capture fails, the popover and Studio explain what to check, usually System Settings > Privacy & Security > Screen & System Audio Recording. Audune does not request Automation / Apple Events.
 - **Menu bar visibility.** If the Audune icon is missing, check that macOS allows Audune in System Settings > Menu Bar.
 
 ## Build and test
@@ -42,7 +40,7 @@ The shared scheme runs tests in English. Real system-audio capture, permission p
 | Developer capture window and its menu item | Yes | No |
 | Raw status codes next to capture errors | Yes | No, plain-language messages only |
 | Drag log and test hooks on window controllers | Yes | No |
-| Capture, Studio, Notch Island, Settings, Playback, error and permission messages | Yes | Yes |
+| Capture, Studio, Notch Island, Settings, error and permission messages | Yes | Yes |
 | App Sandbox | Off (local development) | On |
 
 ## License
@@ -55,7 +53,7 @@ These need the owner's identity, credentials, or decisions and are intentionally
 
 - Real bundle identifier. The project still uses the placeholder `devplaceholder.UFJKN3LA.Audune`.
 - Signing identity, Hardened Runtime, notarization, and a distribution build. The Release build made from this project is signed with an Apple Development identity and carries `get-task-allow`, so it is not distributable.
-- Release App Sandbox entitlements. Release is sandboxed with only the default entitlements. Whether system audio capture and Apple Music/Spotify Automation work under that sandbox has not been verified and probably needs entitlements or a different distribution choice (see the Automation note in `docs/PRODUCT_SPEC.md`).
+- Release App Sandbox entitlements. Release is sandboxed with only the default entitlements. Whether system audio capture works under that sandbox has not been verified and may need entitlements or a different distribution choice (see `docs/PRODUCT_SPEC.md`).
 - App icon. No app icon is configured.
 - `LICENSE`, and copyright text for the About panel.
 - Minimum macOS version decision (27.0 now, 14.2 in the spec).

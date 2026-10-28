@@ -10,7 +10,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case orbit
     case window
     case island
-    case playback
 
     var id: String { rawValue }
 
@@ -23,7 +22,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .orbit: return String(localized: "Orbit")
         case .window: return String(localized: "Window")
         case .island: return String(localized: "Notch Island")
-        case .playback: return String(localized: "Playback")
         }
     }
 
@@ -36,7 +34,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .orbit: return "circle.dotted"
         case .window: return "macwindow"
         case .island: return "rectangle.topthird.inset.filled"
-        case .playback: return "play.circle"
         }
     }
 }
@@ -88,7 +85,6 @@ struct SettingsView: View {
                 case .orbit: orbitPane
                 case .window: windowPane
                 case .island: islandPane
-                case .playback: playbackPane
                 }
             }
             .formStyle(.grouped)
@@ -103,10 +99,7 @@ struct SettingsView: View {
             island.preferencesDidChange()
         }
         .onChange(of: model.settingsCategory) { _, newCategory in
-            studio.updatePlaybackTimer()
-            if newCategory == .playback {
-                studio.refreshPlaybackNow()
-            } else if newCategory == .island {
+            if newCategory == .island {
                 island.evaluateScreensAndApply(animated: false)
             }
         }
@@ -584,50 +577,6 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private var playbackPane: some View {
-        Section("Player") {
-            Picker("Player", selection: Binding(get: { model.playerID }, set: { studio.setPlayerID($0) })) {
-                Text("None").tag("")
-                ForEach(studio.playerChoices) { choice in
-                    Text(choice.title).tag(choice.id)
-                }
-            }
-            if model.playerID.isEmpty == false {
-                LabeledContent("Installed") { Text(installedText) }
-                LabeledContent("Running") { Text(runningText) }
-                LabeledContent("Automation") { Text(automationText) }
-                LabeledContent("Playback") { Text(playbackStateText) }
-                if model.playbackDetail.isEmpty == false {
-                    Text(model.playbackDetail)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Text("Choose Music or Spotify to enable Play/Pause in Studio.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        Section("Control") {
-            Button(model.playbackRequesting ? String(localized: "Waiting for macOS") : String(localized: "Request Access")) {
-                studio.requestPlayerAccess()
-            }
-            .disabled(model.playbackAvailability != .automationNotRequested || model.playbackRequesting)
-            Button("Open Automation Settings") { studio.openAutomationSettings() }
-            Button("Play/Pause") {
-                studio.togglePlayback()
-            }
-            .disabled(PlaybackButton.isEnabled(
-                selection: model.playerID,
-                availability: model.playbackAvailability,
-                busy: model.playbackBusy
-            ) == false)
-        }
-        Section {
-            Text("Audune can only control Music or Spotify, and only after you allow it. It cannot pause browser audio or other system output. Open the player first, then choose Request Access.")
-                .foregroundStyle(.secondary)
-        }
-    }
-
     private func visualPresetSection(_ mode: StudioVisualMode) -> some View {
         VisualPresetSelector(
             mode: mode,
@@ -764,39 +713,6 @@ struct SettingsView: View {
 
     private var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-    }
-
-    private var installedText: LocalizedStringKey {
-        model.playbackAvailability == .notInstalled ? "No" : "Yes"
-    }
-
-    private var runningText: LocalizedStringKey {
-        switch model.playbackAvailability {
-        case .notInstalled, .noSelection: return "Unknown"
-        case .notRunning: return "No"
-        default: return "Yes"
-        }
-    }
-
-    private var automationText: LocalizedStringKey {
-        switch model.playbackAvailability {
-        case .ready: return "Allowed"
-        case .automationNotRequested: return "Not requested yet"
-        case .automationDenied: return "Denied"
-        case .checking: return "Checking\u{2026}"
-        case .notInstalled, .notRunning, .noSelection: return "Unknown until the player is running"
-        case .failed: return "Unavailable"
-        }
-    }
-
-    private var playbackStateText: LocalizedStringKey {
-        guard model.playbackAvailability == .ready else { return "Not available" }
-        switch model.playbackState {
-        case .playing: return "Playing"
-        case .paused: return "Paused"
-        case .stopped: return "Stopped"
-        case .unknown: return "Unknown"
-        }
     }
 }
 

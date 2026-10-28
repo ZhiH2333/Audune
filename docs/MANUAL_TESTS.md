@@ -156,22 +156,9 @@ Geometry tests cover bar gap, waveform display gain, orbit inner ring, and displ
 - [ ] `NOT TESTED` — Waveform follows real playback, including quiet passages. Orbit follows frequency energy and rests on its ring during silence.
 - [ ] `NOT TESTED` — Changing these settings does not create a second Process Tap.
 
-### Studio v1.3 Apple Music playback
+### External player control (removed)
 
-`PlayerControlTests` checks state text, Apple Event status codes, and that the button stays disabled without a ready target. `MusicPlayerController.availability()` only looks up the installed app and running processes. It does not send an Apple Event. These rows stay `NOT TESTED`. Debug macOS builds have the sandbox off. Release sandbox is unchanged and has no Apple Events entitlement, so playback is not expected to succeed there.
-
-- [ ] `NOT TESTED` — With no player selected, Play/Pause is disabled and no player receives a command.
-- [ ] `NOT TESTED` — Selecting Music while it is running requests Automation if needed, then Play/Pause changes Music's actual playback. The button title follows `player state`.
-- [ ] `NOT TESTED` — Denying Automation leaves the button disabled and shows the denial. It does not pretend the command succeeded.
-- [ ] `NOT TESTED` — Quitting Music disables the button until Music is running again.
-- [ ] `NOT TESTED` — A failed command does not flip the button to the opposite playback state.
-
-### Studio v1.3 Spotify playback
-
-Spotify's scripting dictionary on this Mac includes `playpause` and `player state`. `SpotifyPlayerController.availability()` only checks that the app is installed and running. It does not send an Apple Event. These rows stay `NOT TESTED`.
-
-- [ ] `NOT TESTED` — Selecting Spotify does not also control Music. Play/Pause changes Spotify's actual playback when Automation is allowed.
-- [ ] `NOT TESTED` — Denying Automation for Spotify, or quitting Spotify, disables the button and does not report a fake playback state.
+Music/Spotify Play/Pause, Settings → Playback, Automation / Apple Events prompts, and `NSAppleEventsUsageDescription` were removed from the product. Audune only visualizes system audio. Do not re-test player Automation rows; they no longer apply.
 
 ### Studio v1.4 drag and resize
 
@@ -186,11 +173,11 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 
 `SettingsWindowTests` checks the window style mask, level, collection behavior, and sizes only. They do not show the window on a desktop. These rows stay `NOT TESTED`.
 
-- [ ] `NOT TESTED` — The Studio bar shows only the grip, Play/Pause, Spectrum, Waveform, Orbit, and Settings. The window around the graphic stays fully transparent.
+- [ ] `NOT TESTED` — The Studio bar shows only the grip, Spectrum, Waveform, Orbit, and Settings. The window around the graphic stays fully transparent.
 - [ ] `NOT TESTED` — The Settings button and the menu-bar `Settings…` item open one Settings window of about 760x600 that can be resized and keeps its frame after relaunch.
 - [ ] `NOT TESTED` — Settings stays an ordinary window under On Desktop, On Top, and As Window. Record whether an On Top Studio covers it.
 - [ ] `NOT TESTED` — Hiding Studio from Settings or the menu bar leaves Settings open. Show Studio brings Studio back.
-- [ ] `NOT TESTED` — The sidebar lists Appearance, Spectrum, Waveform, Orbit, Window, and Playback; every control changes Studio immediately and survives relaunch.
+- [ ] `NOT TESTED` — The sidebar lists Appearance, Layout, Spectrum, Waveform, Orbit, Window, and Notch Island; every control changes Studio immediately and survives relaunch.
 
 ### Studio v1.4 Appearance and Spectrum
 
@@ -243,31 +230,22 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — Fade on/off and Follow system Reduce Motion change the control fade as described. There is no hide-delay slider; buttons hide 3 seconds after the pointer leaves. Studio never gets a window background.
 - [ ] `NOT TESTED` — The three window modes change the level and Spaces behavior described in the Window pane. Record the real multi-desktop result for On Desktop here; do not infer it from `canJoinAllSpaces`.
 
-### Studio v1.4 Playback and signed-build check
+### Studio signed-build check (permissions)
 
 Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook Pro), Debug build signed by `xcodebuild test` without `CODE_SIGNING_ALLOWED=NO`:
 
 - `codesign -dvv`: signed by `Apple Development`, team `334R786Y6V`, identifier `devplaceholder.UFJKN3LA.Audune` (a placeholder bundle identifier), no hardened runtime flag.
 - `codesign --verify --strict`: `valid on disk`, `satisfies its Designated Requirement`.
-- Entitlements include `get-task-allow` and `files.user-selected.read-only`, plus two Xcode-added `temporary-exception` keys; there is no `app-sandbox` and no Apple Events entitlement. Debug has the sandbox off, so Apple Events are governed by the Automation prompt only.
-- `Info.plist` has non-empty `NSAppleEventsUsageDescription` and `NSAudioCaptureUsageDescription`, and no microphone key. `PlayerControlTests` asserts this on the built app bundle.
-- Finding: `AEDeterminePermissionToAutomateTarget` called on the main thread with `askUserIfNeeded = false` hung the app at launch in the test host (sampled: main thread inside the call). It now runs only off the main thread.
+- `Info.plist` has non-empty `NSAudioCaptureUsageDescription` only among usage descriptions; no `NSAppleEventsUsageDescription`, no microphone key. `ReleaseConfigurationTests` asserts this on the built app bundle.
 
-None of this shows that Automation works. `PlayerControlTests` covers status-code mapping and button gating only; no Apple Event was sent by any test. These rows stay `NOT TESTED` until you run them on a real Mac. To repeat the first-run prompt, `tccutil reset AppleEvents devplaceholder.UFJKN3LA.Audune` clears the saved choice (it changes your TCC data; run it yourself).
-
-- [ ] `NOT TESTED` — With no player selected, Play/Pause is disabled and nothing is sent. Settings > Playback says to choose Music or Spotify.
-- [ ] `NOT TESTED` — Music running, never allowed: Playback shows "Not requested yet" and Play/Pause stays disabled. Request Access shows the macOS Automation prompt; after Allow, Play/Pause changes Music's real playback and the title follows `player state`.
-- [ ] `NOT TESTED` — Choosing Don't Allow shows "Denied", keeps Play/Pause disabled, and Open Automation Settings opens the Automation page.
-- [ ] `NOT TESTED` — Quitting Music shows "Not running" and disables the button; reopening Music restores the state without relaunching Audune.
-- [ ] `NOT TESTED` — Spotify behaves the same and never controls Music.
-- [ ] `NOT TESTED` — With only a browser playing, Audune does not claim it can pause it; the Playback page says only Music and Spotify are supported.
-- [ ] `NOT TESTED` — The first launch with a saved player does not hang, and the Studio window opens normally.
+- [ ] `NOT TESTED` — First launch does not prompt for Automation / Apple Events. Only system audio recording permission appears when capture starts.
+- [ ] `NOT TESTED` — Studio chrome has no Play/Pause control; Settings has no Playback sidebar category.
 
 ### Studio mouse passthrough and auto-hide
 
 `StudioPassthroughTests` checks separate-panel frames, that the visual panel ignores mouse events in On Top, On Desktop, and As Window, and that a canvas point is absent from that panel's window-server hit list. `StudioChromeTests` checks hide timing, cancellation, and summon-region geometry. `StudioPreferencesTests` checks defaults and clamping. None of these is a click in another app. These rows stay `NOT TESTED`.
 
-- [ ] `NOT TESTED` — In On Top, On Desktop, and As Window, a click on the blank visualization reaches the app underneath. Play/Pause, the three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
+- [ ] `NOT TESTED` — In On Top, On Desktop, and As Window, a click on the blank visualization reaches the app underneath. The three visual modes, Settings, the grip, and the resize edges still receive their own clicks.
 - [ ] `NOT TESTED` — Hiding Studio, or switching away, leaves no invisible control or resize overlay. A saved "passthrough off" value does not bring the full-window hit target back.
 - [ ] `NOT TESTED` — Auto-hide on: the canvas stays the full window. After the pointer leaves the controls, they fade out 3 seconds later. Returning before those 3 seconds cancels the hide. Holding the mouse button keeps the controls up.
 - [ ] `NOT TESTED` — The drag handle stays visible and can move the window while the other buttons are hidden. Moving the pointer near that handle shows the icon-and-text buttons. Moving away hides those buttons again. Hidden buttons do not receive clicks.
@@ -335,13 +313,12 @@ None of this shows that Automation works. `PlayerControlTests` covers status-cod
 - [ ] `NOT TESTED` — Debug build still shows the counter window at launch and `Open Debug Window` in the popover.
 - [ ] `NOT TESTED` — Release capture failure shows a plain-language message in the popover and Studio, with no raw status code.
 - [ ] `NOT TESTED` — Release (sandboxed) build can start system audio capture and asks for the expected permission.
-- [ ] `NOT TESTED` — Release (sandboxed) build can request Automation and play/pause Music or Spotify. Expected to need entitlements; record the exact result.
-- [ ] `NOT TESTED` — With the system language set to Simplified Chinese, the popover, Studio controls, Notch Island, every Settings pane, preset dialogs, and Playback messages are Chinese and nothing is clipped at the 640 pt Settings width.
+- [ ] `NOT TESTED` — With the system language set to Simplified Chinese, the popover, Studio controls, Notch Island, every Settings pane, and preset dialogs are Chinese and nothing is clipped at the 640 pt Settings width.
 - [ ] `NOT TESTED` — With the system language set to English, the same surfaces are English and nothing is clipped.
 - [ ] `NOT TESTED` — The macOS permission prompts show the Chinese and English descriptions for the matching system language.
 - [ ] `NOT TESTED` — About Audune opens the standard panel with version, build, and the privacy statement.
 - [ ] `NOT TESTED` — The popover idle hint shows before the first Start and is replaced by the error text if capture fails.
-- [ ] `NOT TESTED` — The disabled Studio play/pause button is visibly dimmed, and Settings > Playback > Play/Pause matches the player state.
+- [ ] `NOT TESTED` — Studio chrome mode buttons and Settings remain reachable; there is no play/pause control to dim.
 - [ ] `NOT TESTED` — Switching the system language and relaunching keeps saved presets, selected modes, and window settings unchanged.
 
 ## Results

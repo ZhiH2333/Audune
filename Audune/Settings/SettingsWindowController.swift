@@ -14,7 +14,6 @@ final class SettingsWindowController: NSObject {
     private let studio: StudioWindowController
     let island: IslandWindowController
     private let ownsIsland: Bool
-    private var closeObserver: NSObjectProtocol?
 
     init(studio: StudioWindowController, island: IslandWindowController? = nil) {
         self.studio = studio
@@ -47,21 +46,6 @@ final class SettingsWindowController: NSObject {
         if window.setFrameAutosaveName(Self.frameAutosaveName) == false {
             window.center()
         }
-        closeObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: .main
-        ) { [weak studio] _ in
-            MainActor.assumeIsolated {
-                studio?.setSettingsWindowVisible(false)
-            }
-        }
-    }
-
-    deinit {
-        if let closeObserver {
-            NotificationCenter.default.removeObserver(closeObserver)
-        }
     }
 
     var isVisible: Bool { window.isVisible }
@@ -72,12 +56,10 @@ final class SettingsWindowController: NSObject {
         }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
-        studio.setSettingsWindowVisible(true)
     }
 
     func shutdown() {
         window.orderOut(nil)
-        studio.setSettingsWindowVisible(false)
         if ownsIsland {
             island.shutdown()
         }

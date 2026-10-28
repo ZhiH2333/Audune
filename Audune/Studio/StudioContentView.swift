@@ -9,12 +9,6 @@ final class StudioModel {
     var studioSpectrum = Array(repeating: Float(0), count: StudioPreferences.standard.spectrum.barCount)
     var spectrumPeaks: [Float] = []
     var displayWaveform = AudioSnapshot.zero.waveform
-    var playerID = ""
-    var playbackAvailability: PlayerAvailability = .noSelection
-    var playbackState: PlayerPlaybackState = .unknown
-    var playbackDetail = "Choose a player"
-    var playbackBusy = false
-    var playbackRequesting = false
     var settingsCategory: SettingsCategory = .appearance
     var pointerInside = false
     var pointerDown = false
@@ -30,7 +24,6 @@ struct StudioContentView: View {
     @Bindable var model: StudioModel
     var savePreferences: () -> Void
     var openSettings: () -> Void
-    var togglePlayback: () -> Void
     var hitMap: StudioHitMap
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var gripHovering = false
@@ -84,14 +77,6 @@ struct StudioContentView: View {
     private var bar: some View {
         HStack(spacing: 4) {
             grip
-            StudioControlButton(
-                title: PlaybackButton.title(availability: model.playbackAvailability, state: model.playbackState),
-                symbol: PlaybackButton.symbol(availability: model.playbackAvailability, state: model.playbackState),
-                disabled: playbackDisabled,
-                accessibilityLabel: String(localized: "Play or pause"),
-                accessibilityValue: model.playbackDetail,
-                action: togglePlayback
-            )
             ForEach(StudioVisualMode.allCases) { mode in
                 StudioControlButton(
                     title: mode.title,
@@ -164,14 +149,6 @@ struct StudioContentView: View {
         #else
         return spike.userFailureSummary
         #endif
-    }
-
-    private var playbackDisabled: Bool {
-        PlaybackButton.isEnabled(
-            selection: model.playerID,
-            availability: model.playbackAvailability,
-            busy: model.playbackBusy
-        ) == false
     }
 
     private var drawsBars: Bool {

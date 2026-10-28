@@ -16,9 +16,11 @@ final class ReleaseConfigurationTests: XCTestCase {
         XCTAssertEqual(info["CFBundleName"] as? String, "Audune")
     }
 
-    func testOnlyTheTwoDocumentedPermissionsAreDescribed() {
+    func testOnlySystemAudioCapturePermissionIsDescribed() {
         let usageKeys = info.keys.filter { $0.hasSuffix("UsageDescription") }.sorted()
-        XCTAssertEqual(usageKeys, ["NSAppleEventsUsageDescription", "NSAudioCaptureUsageDescription"])
+        XCTAssertEqual(usageKeys, ["NSAudioCaptureUsageDescription"])
+        XCTAssertNil(info["NSAppleEventsUsageDescription"])
+        XCTAssertNil(info["NSMicrophoneUsageDescription"])
     }
 
     func testBundleDeclaresEnglishAndSimplifiedChinese() {

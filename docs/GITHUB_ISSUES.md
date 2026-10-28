@@ -515,43 +515,17 @@ AUD-02, AUD-14, AUD-21.
 
 ---
 
-## AUD-23 — [FUTURE] Research Apple Music metadata and controls
+## AUD-23 — [CANCELLED] Apple Music metadata and controls
 
-**Labels:** `P2`, `audio`, `spike`  
-**Milestone:** Future — Music Providers
-
-### Tasks
-- [ ] Research supported public integration path and permission prompts.
-- [ ] Prototype current track, artist, artwork, play/pause/skip where supported.
-- [ ] Ensure lack of metadata does not affect system-audio visualization.
-- [ ] Keep provider integration optional and separate from AudioCaptureService.
-
-### Acceptance criteria
-- [ ] All unsupported/unavailable metadata states are handled without affecting audio visualization.
-- [ ] No unsupported private APIs or credential scraping.
-
-### Dependencies
-Core MVP released.
+**Labels:** `P2`, `audio`  
+**Status:** Cancelled — removed from product path. No public system-wide Now Playing API; per-app Apple Events Play/Pause and Settings → Playback were deleted from Audune.
 
 ---
 
-## AUD-24 — [FUTURE] Research Spotify metadata and controls
+## AUD-24 — [CANCELLED] Spotify metadata and controls
 
-**Labels:** `P2`, `audio`, `spike`  
-**Milestone:** Future — Music Providers
-
-### Tasks
-- [ ] Verify current official/approved integration options, API terms, permissions, and playback-control limitations.
-- [ ] Prototype track metadata and available playback commands.
-- [ ] Keep Spotify provider isolated from the core audio pipeline.
-- [ ] Document limitations before committing to UI expectations.
-
-### Acceptance criteria
-- [ ] Core visualization works even when Spotify is closed, unavailable, or not authorized.
-- [ ] Integration follows current provider requirements.
-
-### Dependencies
-Core MVP released.
+**Labels:** `P2`, `audio`  
+**Status:** Cancelled — same as AUD-23. Audune does not integrate Spotify Automation or metadata.
 
 ---
 
@@ -582,18 +556,18 @@ Core MVP released and profiled. Preset import/export lives in Settings Visual pr
 
 ### Tasks
 - [ ] Fix Studio grip drag hit coordinates (`NSHostingView` is flipped) and record the resize path; keep drag/resize rows `NOT TESTED` until a real Mac session.
-- [ ] Add a separate normal-level, resizable Settings window (about 760x600) with a native sidebar; reduce Studio to play/pause, three modes, Settings, and a grip.
+- [ ] Add a separate normal-level, resizable Settings window (about 760x600) with a native sidebar; reduce Studio to three modes, Settings, and a grip.
 - [ ] Preferences v2, Appearance, and Spectrum settings; bars come from real FFT bins; one Process Tap.
 - [ ] Redraw Waveform from real PCM with style and density settings.
 - [ ] Redraw Orbit with radial settings.
 - [ ] Window settings: mode, drag/resize, position restore, hover delay, animation, Reduce Motion.
-- [ ] Playback status: Apple Events permission preflight, clear errors, signed-build verification record.
+- [x] External player Playback / Apple Events removed from the product (no Music/Spotify control UI or `NSAppleEventsUsageDescription`).
 - [ ] (Conditional) Edge resize handles only if the real-Mac check shows `.resizable` fails.
 
 ### Acceptance criteria
-- [ ] Build and automated tests pass; GUI, Spaces, and Automation checks are recorded as `PASS`/`FAIL`/`NOT TESTED` in `docs/MANUAL_TESTS.md`.
+- [ ] Build and automated tests pass; GUI and Spaces checks are recorded as `PASS`/`FAIL`/`NOT TESTED` in `docs/MANUAL_TESTS.md`.
 - [ ] No second capture session; Studio window stays fully transparent; no private APIs.
-- [ ] Playback never claims to control browser audio or all system output.
+- [x] Audune does not claim to control browser audio, Music, Spotify, or system output playback.
 
 ### Dependencies
 AUD-09, AUD-13.

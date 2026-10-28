@@ -63,8 +63,8 @@ final class LocalizationTests: XCTestCase {
         let keys = [
             "Start", "Stop", "Quit Audune", "Open Studio", "Hide Studio", "Settings…",
             "Capture failed", "Not listening", "Listening", "No audio",
-            "Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window", "Playback",
-            "Request Access", "Open Automation Settings", "Reset Appearance", "Save", "Cancel", "Delete",
+            "Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window",
+            "Reset Appearance", "Save", "Cancel", "Delete",
         ]
         for key in keys {
             let value = try XCTUnwrap(table[key], "\(key) is missing from zh-Hans")
@@ -75,16 +75,17 @@ final class LocalizationTests: XCTestCase {
     func testPermissionDescriptionsAreTranslated() throws {
         let catalog = try Catalog(fileName: "InfoPlist.xcstrings")
         let table = try chineseTable("InfoPlist")
-        for key in ["NSAudioCaptureUsageDescription", "NSAppleEventsUsageDescription"] {
+        for key in ["NSAudioCaptureUsageDescription"] {
             XCTAssertFalse((catalog.chinese(for: key) ?? "").isEmpty, key)
             XCTAssertEqual(table[key], catalog.chinese(for: key), key)
         }
+        XCTAssertNil(catalog.chinese(for: "NSAppleEventsUsageDescription"))
     }
 
     func testStoredIdentifiersDoNotDependOnTheLanguage() {
         XCTAssertEqual(StudioVisualMode.allCases.map(\.rawValue), ["spectrum", "waveform", "orbit"])
         XCTAssertEqual(StudioWindowMode.allCases.map(\.rawValue), ["onDesktop", "onTop", "asWindow"])
-        XCTAssertEqual(SettingsCategory.allCases.map(\.rawValue), ["appearance", "layout", "spectrum", "waveform", "orbit", "window", "island", "playback"])
+        XCTAssertEqual(SettingsCategory.allCases.map(\.rawValue), ["appearance", "layout", "spectrum", "waveform", "orbit", "window", "island"])
         XCTAssertEqual(
             VisualPresetCatalog.all.map(\.id),
             [

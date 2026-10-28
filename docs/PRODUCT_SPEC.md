@@ -134,7 +134,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### v0.4+ — Player Integrations
 
-- Apple Music 与 Spotify 曲目信息、专辑封面和基础播放控制，逐项验证可用 API 与权限。
+- （已取消）外部播放器控制与系统 Now Playing 元数据：公开 API 无法统一读取「系统正在播放」；分源 Apple Events 方案已从产品中移除。
 - 专辑封面取色、更多预设、歌词、录制、动态桌面和高级视觉均不属于 Core MVP。
 
 ### 首版明确不做
@@ -200,17 +200,17 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 屏幕断开、分辨率变化、保存坐标在屏幕之外时，窗口恢复到当前可见屏幕。
 - 画布鼠标穿透在 On Top、On Desktop、As Window 三种模式里始终开启，旧的关闭值不再恢复整窗命中。公开 API 没有按区域挖洞的鼠标遮罩，`NSView.hitTest` 返回 `nil` 只表示这个窗口不接收该事件，并不会把点击交给下层应用。`ignoresMouseEvents` 是整窗开关，所以可视化 `NSPanel` 忽略鼠标；控件放在同级（不是 child window）的交互 `NSPanel` 上，缩放则是四条 6 pt 的边缘 `NSPanel`，且只在允许缩放时存在。不用 `addChildWindow`，以免子窗口被抬到父窗口之上并破坏 On Desktop。不申请 Accessibility 或 Input Monitoring，也不另起高频轮询。交互面板只盖住真实控件或唤出区域，不盖住整块画布，因此按钮仍可点击，画布空白点由窗口服务器交给更下层的窗口。隐藏 Studio 时，交互面板和边缘面板 `orderOut`，不留下点击层。另一进程里更高的窗口仍可能先接到点击，这是窗口服务器的正常叠放，不是穿透失败。
 - Studio 窗口始终透明。不绘制整窗背景、暗色遮罩、大卡片、毛玻璃、整窗矩形描边或窗口阴影。透明来自 `isOpaque = false` 和清除的窗口背景，不是把填充色调成接近桌面。
-- 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、播放/暂停、三个可视化模式按钮和 Settings 按钮。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
-- Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Spectrum、Waveform、Orbit、Window、Playback，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
+- 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、三个可视化模式按钮和 Settings 按钮（无播放/暂停，不控制外部播放器）。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
+- Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Layout、Spectrum、Waveform、Orbit、Window、Notch Island，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
 - 只有把手调用屏幕坐标的 `setFrameOrigin` 拖动。控件隐藏后仍保留把手矩形，隐藏只关闭命中。拖动在 `.eventTracking` 中读取鼠标屏幕位置；同一次按下还会用 local monitor 接住拖动事件。空白区域、按钮和设置滑块不拖动窗口。不使用 `performDrag(with:)` 或 `isMovableByWindowBackground`。`performDrag(with:)` 在这个无边框 nonactivating panel 上会立刻结束，并留下 `Window move completed without beginning`，窗口并不移动。
-- 自动隐藏控件默认开启（`studio.window.autoHidesControls`）。关闭后控件保持显示。开启时，淡入约 200ms，指针离开后固定 3 秒再以约 250ms 淡出。Settings 没有隐藏延迟滑块。拖动把手的图标一直留在画布底部。播放、模式和 Settings 这些按钮默认不显示，并以约 200ms 淡入；图标和文字带一层淡阴影。只有指针靠近把手或这些按钮约 40pt 内才出现；进入窗口的其他区域不会把它们叫出来。按钮已经显示时，指针移出约 120pt 后开始这 3 秒，期间指针回来会重新计时。不能靠悬停已经隐藏的按钮唤出。把手在按钮隐藏时仍然可以拖动窗口。鼠标按下或拖动时不隐藏。隐藏后的按钮不再接收点击；画布仍按原尺寸绘制。窗口隐藏或关闭时清掉指针、按下和菜单跟踪状态。显示定时器只看交互面板。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，3 秒延迟仍保留；也可以单独关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
+- 自动隐藏控件默认开启（`studio.window.autoHidesControls`）。关闭后控件保持显示。开启时，淡入约 200ms，指针离开后固定 3 秒再以约 250ms 淡出。Settings 没有隐藏延迟滑块。拖动把手的图标一直留在画布底部。模式和 Settings 这些按钮默认不显示，并以约 200ms 淡入；图标和文字带一层淡阴影。只有指针靠近把手或这些按钮约 40pt 内才出现；进入窗口的其他区域不会把它们叫出来。按钮已经显示时，指针移出约 120pt 后开始这 3 秒，期间指针回来会重新计时。不能靠悬停已经隐藏的按钮唤出。把手在按钮隐藏时仍然可以拖动窗口。鼠标按下或拖动时不隐藏。隐藏后的按钮不再接收点击；画布仍按原尺寸绘制。窗口隐藏或关闭时清掉指针、按下和菜单跟踪状态。显示定时器只看交互面板。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，3 秒延迟仍保留；也可以单独关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
 - 已保存的 `studio.cleanCanvas` 不再改变外观。保存偏好时清除该键。没有整块背景可恢复。
 - Studio 的 Spectrum 和 Orbit 可选 8、12、16、24、32、48、64 根柱，默认 32。Spectrum 与 Orbit 各自保存柱数。柱数来自同一次 FFT 的 512 个 bin 幅度，按对数或线性分带聚合，不把菜单栏的 16 个值复制或插值成更多柱。宽于一个 bin 的柱对其 bin 取平均；窄于一个 bin 的低端柱读取其中心两侧真实 bin 的线性插值，因此相邻低端柱不会出现重复的值；最低一根柱不低于第一个 FFT bin（bin 0 不是频带）。Spectrum 可设置频率范围（最低 20–500 Hz、最高 2–20 kHz）、灵敏度（移动安静端的 dB 下限，默认下限 -60 dB）、振幅、邻柱平滑、攻击/释放（毫秒，按实际时间差计算，与帧率无关）和峰值保持（默认关闭；可设保持时间与下降速度）。色彩映射可选 Solid（Appearance 填充）、Frequency（按频带色相偏移）或 Amplitude（按柱高明暗）；峰值帽仍用描边色。静音闸门（默认开启）用原始 PCM RMS 噪声地板与滞回写共享 `isSilent`：只影响可视化，不静音系统音频；进入静音后目标置零，柱与峰值沿 Release / peak fall 回落，settled 后再画基线。处理次序为 Sensitivity 切带 → 静音目标置零 → Attack/Release/Peak Hold → Canvas Amplitude / Color。菜单栏保持 16 柱，仍读取分析器平滑后的 `spectrum`。调整这些参数不重建 Process Tap，也不在实时回调里做 FFT。
 - Waveform 使用真实 PCM。Maximum display height（默认 0.70，范围 0.30–1.0）只作为占用高度的增益比例；Visual amplitude 默认 0.55（范围 0.1–2）决定信号在该比例内的填充强度。两者都不改系统音量或共享 PCM，也不制造远离 Canvas 边的内部裁切框。绘制仅按描边半宽内缩 `safeBounds`，路径与控制点钳在该安全区内，Canvas 外缘 `clip` 作最后防线。Fine Line / Soft Fill / Mirror 共用同一套边界。默认 Layout 为 Fixed 时可视化可不等于窗口（见 Layout）；Fill window 可贴窗绘制。Motion smoothing（0–1）按真实时间差做指数跟随，与 Spectrum Attack/Release 语义分离；空间邻点 soften 取平滑值的一小部分。默认形态是居中平滑曲线加淡基线，两端约 12% 渐隐；Fill strength 只影响 Soft Fill / Mirror。样本密度可选 32、64、128，是对快照里 128 个真实点按峰值降采样，绝不插值出更多点。线条颜色默认跟随 Appearance，可单独指定。旧 `"filled"` 样式解码为 Soft Fill；旧预设缺少 `verticalRange` 时回落默认 0.70，不 bump preset schema。
 - Orbit 使用同一份真实频带，画成一圈从内环向外的圆角径向条；默认 48 根、内半径约 0.55、角间距 2.5°，并左右镜像（读取一半数量的真实频带，各画两次，低频在顶部、高频在底部，可关闭）。Layers 可选 Single 或 Dual Band（低频半带内环、高频半带外环）。Pulse strength（0–0.35，默认 0）用平均带能量轻微加长条。显示平滑按真实时间差计算。静音时停在一圈圆点和细环上，不自转。可设置柱数、内外半径、角间距、描边、颜色、线宽、振幅和平滑。
 - `studio.backgroundOpacity` 仍保存在 0.35–1，默认 0.92。它只乘到 Studio 三种可视化的颜色上，不填充窗口，菜单栏频谱也不读取它。
-- 播放器在 Settings 的 Playback 页选择，底栏只有播放/暂停按钮。未选择、未安装、未运行或 Automation 被拒绝时，播放按钮禁用，不向任何应用发送命令。Apple Music 和 Spotify 各有一个适配器，都使用公开 Apple Event `playpause` 和 `player state`。一次只选中一个。这不是 `MPRemoteCommandCenter`，Audune 也不注册远程命令。不控制浏览器，也不能暂停全部系统输出音频。授权状态用公开的 `AEDeterminePermissionToAutomateTarget` 在后台线程查询（`askUserIfNeeded` 为 false 时不弹窗、不发事件）：已授权、尚未请求、已拒绝、播放器未运行互相区分。授权弹窗只由 Settings > Playback 里的 Request Access 触发，状态轮询绝不弹窗。该 API 在测试中会让主线程挂起，所以不得在主线程调用。只有预检为已授权时才发送 Apple Event，脚本带 2 秒超时。轮询只在 Studio 可见，或 Settings 打开在 Playback 页时进行。Release 沙盒没有 Apple Events entitlement，本项只在 macOS Debug（沙盒关闭、未启用 Hardened Runtime）下能弹出授权；以后若启用 Hardened Runtime 发行，需要加入 `com.apple.security.automation.apple-events`，这不属于 v1.4。
-- 拖动、缩放、多桌面、全屏、窗口是否真正透明，以及播放控制是否真的生效，必须在真实 Mac 上看到后才算通过。单元测试里的坐标计算、窗口标志、状态解析和合成鼠标事件不能代替这些验收。
+- Audune **不**控制外部播放器（无 Music/Spotify 分源、无 Play/Pause、无 Now Playing 元数据）。不请求 Automation / Apple Events 权限；`Info.plist` 仅保留系统音频捕获用途说明。可视化只跟随系统输出音频。
+- 拖动、缩放、多桌面、全屏、窗口是否真正透明，必须在真实 Mac 上看到后才算通过。单元测试里的坐标计算、窗口标志和合成鼠标事件不能代替这些验收。
 
 #### 验收
 
@@ -736,7 +736,7 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 4. **Phase 3 — Island**：先做窗口/屏幕几何 spike，再交付交互。
 5. **Phase 4 — Desktop Magnet**：普通层级的桌面磁贴和位置恢复。
 6. **Phase 5 — Release Readiness**：隐私说明、文档、CI、人工回归与测试包。
-7. **Future — Music Providers**：Apple Music / Spotify 曲目信息和控制，单独排期。
+7. **Future — Music Providers**：已从当前产品路径移除；若 Apple 提供公开的系统 Now Playing API，再重新评估。
 
 ### Definition of Done（每个 Issue）
 
