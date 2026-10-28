@@ -3150,6 +3150,146 @@
           }
         }
       }
+    },
+    "Import…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入…"
+          }
+        }
+      }
+    },
+    "Review the presets in this file before adding them to your library.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入前请先预览此文件中的预设。"
+          }
+        }
+      }
+    },
+    "If a name is already used": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若名称已被使用"
+          }
+        }
+      }
+    },
+    "Import as copies": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入为副本"
+          }
+        }
+      }
+    },
+    "Skip conflicts": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跳过冲突项"
+          }
+        }
+      }
+    },
+    "Ready to import %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备导入 %lld 个预设。"
+          }
+        }
+      }
+    },
+    "Ready to import %lld presets. %lld will be skipped.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备导入 %lld 个预设，将跳过 %lld 个。"
+          }
+        }
+      }
+    },
+    "New custom preset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新的自定义预设"
+          }
+        }
+      }
+    },
+    "Name conflict — will import as \"%@\"": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称冲突 — 将导入为“%@”"
+          }
+        }
+      }
+    },
+    "Name conflict — skipped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称冲突 — 已跳过"
+          }
+        }
+      }
+    },
+    "Imported %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 个预设。"
+          }
+        }
+      }
+    },
+    "Imported %lld presets. Skipped %lld.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 个预设，跳过 %lld 个。"
+          }
+        }
+      }
+    },
+    "That preset file could not be read.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取该预设文件。"
+          }
+        }
+      }
+    },
+    "Import": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

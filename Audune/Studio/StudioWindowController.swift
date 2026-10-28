@@ -313,6 +313,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         return VisualPresetExchange.encode(snapshots)
     }
 
+    /// Commits a previously planned import. Does not auto-apply presets or change other preferences.
+    func commitVisualPresetImport(_ plan: VisualPresetImportPlan) -> Result<[VisualPreset], VisualPresetEditError> {
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        return library.commitImport(plan, to: defaults)
+    }
+
     func setChromeVisible(_ visible: Bool) {
         panel.hasShadow = false
         model.chromeVisible = visible

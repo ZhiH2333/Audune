@@ -229,6 +229,7 @@ nonisolated enum VisualPresetExchangeError: Error, Equatable {
     case invalidPayload(String)
     case duplicateNameInFile(String)
     case invalidPreset(index: Int, reason: String)
+    case unreadableFile
 
     var message: String {
         switch self {
@@ -254,6 +255,8 @@ nonisolated enum VisualPresetExchangeError: Error, Equatable {
             return String(localized: "That preset file lists \"\(name)\" more than once for the same mode.")
         case .invalidPreset(_, let reason):
             return reason
+        case .unreadableFile:
+            return String(localized: "That preset file could not be read.")
         }
     }
 }

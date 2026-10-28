@@ -675,6 +675,20 @@ struct SettingsView: View {
                     )
                     return writeError
                 }
+            },
+            loadImportEntries: {
+                guard let url = VisualPresetFilePanel.runOpenPanel() else { return nil }
+                do {
+                    let data = try Data(contentsOf: url)
+                    return VisualPresetExchange.decode(data)
+                } catch {
+                    return .failure(.unreadableFile)
+                }
+            },
+            commitImport: { plan in
+                let result = studio.commitVisualPresetImport(plan)
+                reloadPresetLibrary()
+                return result
             }
         )
     }

@@ -12,12 +12,17 @@ struct VisualPresetSelector: View {
     var delete: (VisualPreset) -> Result<Void, VisualPresetEditError>
     var resetLibrary: () -> Bool
     var exportPresets: ([VisualPreset]) -> String?
+    /// `nil` means the user cancelled the open panel.
+    var loadImportEntries: () -> Result<[VisualPresetExchange.Entry], VisualPresetExchangeError>?
+    var commitImport: (VisualPresetImportPlan) -> Result<[VisualPreset], VisualPresetEditError>
 
     @State private var draftName = ""
     @State private var isSaving = false
     @State private var isRenaming = false
     @State private var isDeleting = false
     @State private var isExporting = false
+    @State private var isImporting = false
+    @State private var importEntries: [VisualPresetExchange.Entry] = []
     @State private var notice: String?
 
     var body: some View {
@@ -73,6 +78,18 @@ struct VisualPresetSelector: View {
                     isExporting = true
                 }
                 .disabled(exportablePresets.isEmpty)
+                Button("Import…") {
+                    notice = nil
+                    guard let result = loadImportEntries() else { return }
+                    switch result {
+                    case .failure(let error):
+                        notice = error.message
+                    case .success(let entries):
+                        importEntries = entries
+                        isImporting = true
+                    }
+                }
+                .disabled(library.canPersist == false)
             }
             if let notice {
                 Text(notice)
@@ -124,6 +141,29 @@ struct VisualPresetSelector: View {
                     }
                 },
                 onCancel: { isExporting = false }
+            )
+        }
+        .sheet(isPresented: $isImporting) {
+            VisualPresetImportSheet(
+                library: library,
+                entries: importEntries,
+                onConfirm: { plan in
+                    isImporting = false
+                    switch commitImport(plan) {
+                    case .success(let created):
+                        if plan.skippedCount > 0 {
+                            notice = String(localized: "Imported \(created.count) presets. Skipped \(plan.skippedCount).")
+                        } else {
+                            notice = String(localized: "Imported \(created.count) presets.")
+                        }
+                    case .failure(let error):
+                        notice = error.message
+                    }
+                },
+                onCancel: {
+                    isImporting = false
+                    importEntries = []
+                }
             )
         }
     }
