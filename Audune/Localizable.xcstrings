@@ -3410,6 +3410,56 @@
           }
         }
       }
+    },
+    "Show at launch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时显示"
+          }
+        }
+      }
+    },
+    "Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Studio"
+          }
+        }
+      }
+    },
+    "These checkboxes can be combined. With none selected, Audune stays in the menu bar only.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些复选框可以同时勾选。全部不选时，Audune 只保留菜单栏入口。"
+          }
+        }
+      }
+    },
+    "Notch Island is disabled. Enable it under Notch Island, or it will not appear at launch.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 当前已禁用。请在「Notch Island」中启用，否则启动时不会显示。"
+          }
+        }
+      }
+    },
+    "Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 仅在受支持的显示器上显示。关闭「启动时显示 Notch Island」不会更改 Island 的启用开关。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
