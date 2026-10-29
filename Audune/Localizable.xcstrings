@@ -3460,6 +3460,86 @@
           }
         }
       }
+    },
+    "Login": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录"
+          }
+        }
+      }
+    },
+    "Launch Audune at login": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录时启动 Audune"
+          }
+        }
+      }
+    },
+    "This registers Audune with macOS Login Items. It is separate from which windows open after launch.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这会将 Audune 注册到 macOS「登录项」。它与启动后显示哪些窗口是分开的设置。"
+          }
+        }
+      }
+    },
+    "Audune is waiting for approval in System Settings > General > Login Items.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 正在等待系统设置 > 通用 > 登录项中的批准。"
+          }
+        }
+      }
+    },
+    "macOS could not find Audune’s login item. Try turning the option on again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 找不到 Audune 的登录项。请尝试重新打开此选项。"
+          }
+        }
+      }
+    },
+    "Launch at login is unavailable in this build. Use a normally installed Audune app.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此构建无法使用登录时启动。请使用正常安装的 Audune。"
+          }
+        }
+      }
+    },
+    "Open Login Items…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开登录项…"
+          }
+        }
+      }
+    },
+    "Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窗口与可视化选项将在下次启动 Audune 时生效。登录时启动会在下次登录 macOS 时生效。在此修改不会改变当前会话已打开的窗口。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

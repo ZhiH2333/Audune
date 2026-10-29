@@ -48,6 +48,7 @@ struct SettingsView: View {
     @Bindable var islandModel: IslandModel
     @State private var presetLibrary = VisualPresetCatalog.restoring()
     @State private var startupPrefs = StartupPreferences.load()
+    @State private var launchAtLogin = SystemLaunchAtLoginService()
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -110,10 +111,15 @@ struct SettingsView: View {
             if newCategory == .startup {
                 startupPrefs = StartupPreferences.load()
                 reloadPresetLibrary()
+                launchAtLogin.refresh()
             }
         }
         .onChange(of: startupPrefs) { _, newValue in
             newValue.save()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            guard model.settingsCategory == .startup else { return }
+            launchAtLogin.refresh()
         }
     }
 
@@ -136,6 +142,30 @@ struct SettingsView: View {
             Text("Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.")
                 .foregroundStyle(.secondary)
         }
+        Section("Login") {
+            Toggle(
+                "Launch Audune at login",
+                isOn: Binding(
+                    get: { launchAtLogin.status.isEnabled },
+                    set: { launchAtLogin.setEnabled($0) }
+                )
+            )
+            Text("This registers Audune with macOS Login Items. It is separate from which windows open after launch.")
+                .foregroundStyle(.secondary)
+            if let message = launchAtLogin.status.statusMessage {
+                Text(message)
+                    .foregroundStyle(.secondary)
+            }
+            if let error = launchAtLogin.lastErrorDescription, launchAtLogin.status.isEnabled == false {
+                Text(error)
+                    .foregroundStyle(.secondary)
+            }
+            if launchAtLogin.status.needsApproval || launchAtLogin.status == .notFound || launchAtLogin.status == .unavailable {
+                Button("Open Login Items…") {
+                    launchAtLogin.openLoginItemsSettings()
+                }
+            }
+        }
         Section("Visualization") {
             Picker("Mode", selection: modeBinding) {
                 ForEach(StartupVisualMode.allCases) { mode in
@@ -156,7 +186,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
         }
         Section {
-            Text("These options apply the next time Audune launches. Changing them here does not alter the current session.")
+            Text("Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.")
                 .foregroundStyle(.secondary)
         }
     }
