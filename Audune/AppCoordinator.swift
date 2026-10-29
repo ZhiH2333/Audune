@@ -52,9 +52,7 @@ final class AppCoordinator {
             spike: spike,
             defaults: defaults
         )
-        #if DEBUG
-        debugWindow.show()
-        #endif
+        // Debug window stays closed until the menu bar "Open Debug Window" action.
     }
 
     func shutdown() {

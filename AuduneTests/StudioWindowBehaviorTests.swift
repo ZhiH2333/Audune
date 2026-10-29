@@ -422,4 +422,36 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(controller.model.prefs.spectrum.barCount, 32)
         XCTAssertEqual(spike.phase, .idle)
     }
+
+    @MainActor
+    func testPersistedFrameRestoresInsteadOfCentering() {
+        let name = StudioWindowStorage.frameAutosaveName
+        NSWindow.removeFrame(usingName: name)
+        defer { NSWindow.removeFrame(usingName: name) }
+
+        let suite = "AuduneStudioFramePersistTests"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        var prefs = StudioPreferences.standard
+        prefs.window.restorePosition = true
+        prefs.window.width = 520
+        prefs.window.height = 340
+        prefs.save(to: defaults)
+
+        let target = CGRect(x: 148, y: 112, width: 520, height: 340)
+        let first = StudioWindowController(spike: ProcessTapSpike(), defaults: defaults)
+        first.placeForTests(target)
+        first.persistWindowFrameForTests()
+        first.shutdown()
+
+        let second = StudioWindowController(spike: ProcessTapSpike(), defaults: defaults)
+        defer { second.shutdown() }
+        let restored = second.frameForTests
+        XCTAssertEqual(restored.origin.x, target.origin.x, accuracy: 1)
+        XCTAssertEqual(restored.origin.y, target.origin.y, accuracy: 1)
+        XCTAssertEqual(restored.size.width, target.size.width, accuracy: 1)
+        XCTAssertEqual(restored.size.height, target.size.height, accuracy: 1)
+    }
 }

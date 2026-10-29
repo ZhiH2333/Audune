@@ -329,7 +329,8 @@ Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook P
 > Added with P1. These rows were not run by the agent that wrote them; mark them on a real Release build.
 
 - [ ] `NOT TESTED` — Release build with default Startup settings launches without a counter window, Dock icon, or `Open Debug Window` item; Studio stays hidden unless the Show Studio checkbox is on.
-- [ ] `NOT TESTED` — Debug build still shows the counter window at launch and `Open Debug Window` in the popover.
+- [ ] `NOT TESTED` — Debug build does not show the counter window at launch; `Open Debug Window` in the popover still opens it on demand.
+- [ ] `NOT TESTED` — With Restore position enabled, move/resize Studio, quit, and relaunch: Studio returns near the previous frame instead of centering.
 - [ ] `NOT TESTED` — Release capture failure shows a plain-language message in the popover and Studio, with no raw status code.
 - [ ] `NOT TESTED` — Release (sandboxed) build can start system audio capture and asks for the expected permission.
 - [ ] `NOT TESTED` — With the system language set to Simplified Chinese, the popover, Studio controls, Notch Island, every Settings pane, and preset dialogs are Chinese and nothing is clipped at the 640 pt Settings width.

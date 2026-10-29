@@ -57,6 +57,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide() {
+        persistWindowFrame()
         stopDisplayTimer()
         orderOutPassthroughWindows()
         panel.orderOut(nil)
@@ -75,6 +76,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     func shutdown() {
         guard didShutdown == false else { return }
         didShutdown = true
+        persistWindowFrame()
         stopDisplayTimer()
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
@@ -336,6 +338,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         if model.prefs.window.restorePosition == false {
             NSWindow.removeFrame(usingName: StudioWindowStorage.frameAutosaveName)
         }
+        // Custom grip drag uses setFrameOrigin, so AppKit will not autosave unless we call
+        // saveFrame(usingName:) after moves. Restore any previously persisted frame here.
         let restoredAutosave = panel.setFrameAutosaveName(StudioWindowStorage.frameAutosaveName)
         if restoredAutosave == false || model.prefs.window.restorePosition == false {
             panel.center()
@@ -635,6 +639,12 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         syncPassthroughWindows()
     }
 
+    var frameForTests: CGRect { panel.frame }
+
+    func persistWindowFrameForTests() {
+        persistWindowFrame()
+    }
+
     /// Seeds live spectrum dynamics so preset-apply peak reset can be asserted in tests.
     func seedSpectrumDynamicsForTests(levels: [Float], peaks: [Float]) {
         let count = max(levels.count, peaks.count)
@@ -811,6 +821,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
                 self?.syncPassthroughWindows()
             }
             self.syncSizeFromPanelToPrefs()
+            self.persistWindowFrame()
             self.model.pointerDown = false
         }
         edgePanel.contentView = view
@@ -854,6 +865,14 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             self?.syncPassthroughWindows()
         }
         model.pointerDown = false
+        persistWindowFrame()
+    }
+
+    /// Studio moves via custom grip dragging, so AppKit will not write the autosave frame by itself.
+    private func persistWindowFrame() {
+        guard didShutdown == false else { return }
+        guard model.prefs.window.restorePosition else { return }
+        panel.saveFrame(usingName: StudioWindowStorage.frameAutosaveName)
     }
 
     private func orderOutPassthroughWindows() {
