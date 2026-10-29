@@ -201,7 +201,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 画布鼠标穿透在 On Top、On Desktop、As Window 三种模式里始终开启，旧的关闭值不再恢复整窗命中。公开 API 没有按区域挖洞的鼠标遮罩，`NSView.hitTest` 返回 `nil` 只表示这个窗口不接收该事件，并不会把点击交给下层应用。`ignoresMouseEvents` 是整窗开关，所以可视化 `NSPanel` 忽略鼠标；控件放在同级（不是 child window）的交互 `NSPanel` 上，缩放则是四条 6 pt 的边缘 `NSPanel`，且只在允许缩放时存在。不用 `addChildWindow`，以免子窗口被抬到父窗口之上并破坏 On Desktop。不申请 Accessibility 或 Input Monitoring，也不另起高频轮询。交互面板只盖住真实控件或唤出区域，不盖住整块画布，因此按钮仍可点击，画布空白点由窗口服务器交给更下层的窗口。隐藏 Studio 时，交互面板和边缘面板 `orderOut`，不留下点击层。另一进程里更高的窗口仍可能先接到点击，这是窗口服务器的正常叠放，不是穿透失败。
 - Studio 窗口始终透明。不绘制整窗背景、暗色遮罩、大卡片、毛玻璃、整窗矩形描边或窗口阴影。透明来自 `isOpaque = false` 和清除的窗口背景，不是把填充色调成接近桌面。
 - 窗口里只保留当前可视化、底部一条按内容宽度排列的控件，以及一个约 28×22 pt 的拖动把手。底栏只有把手、三个可视化模式按钮和 Settings 按钮（无播放/暂停，不控制外部播放器）。底栏没有整条底板。按钮默认没有底色，只在悬停、按下时使用局部圆角底。所有详细参数都在单独的 Settings 窗口里（见下），Start/Stop 捕获在菜单栏弹窗，Hide Studio 在 Settings 的 Window 页和菜单栏弹窗。这些值立即保存，Reset 恢复默认。不铺窗口大小的底板。
-- Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Appearance、Layout、Spectrum、Waveform、Orbit、Window、Notch Island，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
+- Settings 是独立的普通 `NSWindow`：titled、closable、miniaturizable、resizable，初始约 760×600 pt，最小约 640×480，层级 `.normal`，`collectionBehavior` 为空，`hidesOnDeactivate = false`。它不继承 Studio 的 On Desktop / On Top / As Window，也不随 Studio 隐藏。左侧是原生侧边栏，分类为 Startup、Appearance、Layout、Spectrum、Waveform、Orbit、Window、Notch Island，右侧是参数面板。入口是 Studio 底栏的 Settings 和菜单栏弹窗的 Settings…。设置窗口不嵌入第二个预览：Studio 本身就是即时预览，Studio 隐藏时设置页提供 Show Studio。
 - 只有把手调用屏幕坐标的 `setFrameOrigin` 拖动。控件隐藏后仍保留把手矩形，隐藏只关闭命中。拖动在 `.eventTracking` 中读取鼠标屏幕位置；同一次按下还会用 local monitor 接住拖动事件。空白区域、按钮和设置滑块不拖动窗口。不使用 `performDrag(with:)` 或 `isMovableByWindowBackground`。`performDrag(with:)` 在这个无边框 nonactivating panel 上会立刻结束，并留下 `Window move completed without beginning`，窗口并不移动。
 - 自动隐藏控件默认开启（`studio.window.autoHidesControls`）。关闭后控件保持显示。开启时，淡入约 200ms，指针离开后固定 3 秒再以约 250ms 淡出。Settings 没有隐藏延迟滑块。拖动把手的图标一直留在画布底部。模式和 Settings 这些按钮默认不显示，并以约 200ms 淡入；图标和文字带一层淡阴影。只有指针靠近把手或这些按钮约 40pt 内才出现；进入窗口的其他区域不会把它们叫出来。按钮已经显示时，指针移出约 120pt 后开始这 3 秒，期间指针回来会重新计时。不能靠悬停已经隐藏的按钮唤出。把手在按钮隐藏时仍然可以拖动窗口。鼠标按下或拖动时不隐藏。隐藏后的按钮不再接收点击；画布仍按原尺寸绘制。窗口隐藏或关闭时清掉指针、按下和菜单跟踪状态。显示定时器只看交互面板。系统开启 Reduce Motion 且“Follow system Reduce Motion”打开（默认）时，淡入淡出改为即时，3 秒延迟仍保留；也可以单独关闭淡入淡出。控件显隐不移动可视化，也不停止音频分析。
 - 已保存的 `studio.cleanCanvas` 不再改变外观。保存偏好时清除该键。没有整块背景可恢复。
@@ -365,6 +365,14 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 给所有数值参数设置安全的 min/max；加载旧值或无效值时归一化到合法范围。
 - 存储键集中定义，避免到处使用字符串字面值。
 - 首版不需要数据库、网络同步或复杂状态管理框架。
+
+### Startup Behavior v1
+
+- Settings → Startup 配置进程启动时的行为。这与 “登录时自动启动 Audune”（Launch at Login）无关，也不包含 Now Playing。
+- **Destination（`startup.destination`）**：`followExisting`（默认，保持现有启动：Studio 隐藏，Island 跟随已保存的 `island.isEnabled` 与刘海支持）、`menuBarOnly`（启动时关闭 Island）、`openStudio`、`showIsland`、`openStudioAndIsland`。不支持的 Island 目标安全降级；不提供 “恢复上次会话”（Studio 可见性未持久化）。
+- **Visualization mode（`startup.visualMode`）**：`keepCurrent`（默认）或 Spectrum / Waveform / Orbit。覆盖时写入 `studio.mode` 与 `island.mode`，避免首帧闪烁。
+- **Optional Visual preset（`startup.presetID`）**：稳定引用内置或自定义预设 ID；缺省不覆盖。选中预设时推断模式；缺失/已删除 ID 跳过预设且不另选替代；应用路径复用 `applyVisualPreset`（只改该模式视觉参数与 `appliedIDByMode`）。
+- 配置只在**每次进程冷启动**由 `StartupApplicator` 应用一次；激活应用、重新打开 Studio/Island、或仅在 Settings 中改选项都不会重放。Settings 中的修改在下次启动生效，不预览到当前会话。
 
 ### 可视化预设 v1
 

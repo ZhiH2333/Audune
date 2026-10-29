@@ -177,7 +177,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — The Settings button and the menu-bar `Settings…` item open one Settings window of about 760x600 that can be resized and keeps its frame after relaunch.
 - [ ] `NOT TESTED` — Settings stays an ordinary window under On Desktop, On Top, and As Window. Record whether an On Top Studio covers it.
 - [ ] `NOT TESTED` — Hiding Studio from Settings or the menu bar leaves Settings open. Show Studio brings Studio back.
-- [ ] `NOT TESTED` — The sidebar lists Appearance, Layout, Spectrum, Waveform, Orbit, Window, and Notch Island; every control changes Studio immediately and survives relaunch.
+- [ ] `NOT TESTED` — The sidebar lists Startup, Appearance, Layout, Spectrum, Waveform, Orbit, Window, and Notch Island; every non-Startup control changes Studio immediately and survives relaunch.
 
 ### Studio v1.4 Appearance and Spectrum
 
@@ -305,11 +305,27 @@ Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook P
 - [ ] `PASS` — Every completed and validated TODO has its own commit using `:gitmoji: short-git-message`. Spectrum path is `75cef7e`; menu bar is `400e264`.
 - [ ] `PASS` — No automatic push occurred and no pre-existing user changes were included in commits. `dev` has no upstream.
 
+## H2. Startup Behavior v1
+
+`StartupPreferencesTests` and `StartupApplicatorTests` cover defaults, destination policies, mode/preset resolution, missing presets, one-shot apply, and unrelated-preference preservation. They do not replace a real cold launch. All rows below stay `NOT TESTED` until a real macOS GUI session.
+
+- [ ] `NOT TESTED` — With default Startup settings (missing keys), a Release cold launch matches prior behavior: menu bar present, Studio hidden, Island only if `island.isEnabled` and the display supports a notch. No Dock icon.
+- [ ] `NOT TESTED` — Destination **Menu Bar only**: Studio stays closed; Island does not appear at launch even if it was enabled before; enabling Island from the menu bar during the session still works; the next cold launch with Menu Bar only hides Island again.
+- [ ] `NOT TESTED` — Destination **Open Studio**: Studio appears once at launch; no duplicate Studio windows; hiding and reopening Studio mid-session does not re-run startup.
+- [ ] `NOT TESTED` — Destination **Show Notch Island** on a notched Mac enables and shows Island; on a non-notched layout Island stays unavailable and the app still launches.
+- [ ] `NOT TESTED` — Destination **Open Studio and Notch Island** opens Studio and presents Island when supported.
+- [ ] `NOT TESTED` — Startup mode Spectrum / Waveform / Orbit is visible on the first Studio frame and on expanded Island without a visible mode flash; **Keep current selection** leaves prior modes alone.
+- [ ] `NOT TESTED` — Choosing a built-in or custom startup Visual preset applies that mode’s look at launch (same as Settings apply); Appearance, Window size controls, and Island compact/hover settings stay as they were.
+- [ ] `NOT TESTED` — Deleting the custom preset referenced by Startup leaves Settings showing that the preset is unavailable; the next launch still succeeds and does not apply a different preset.
+- [ ] `NOT TESTED` — Changing Startup options in Settings does not alter the current session’s open windows, mode, or applied look until the next cold launch.
+- [ ] `NOT TESTED` — Switching away from Audune and back, or reopening Studio / expanding Island, does not reapply Startup configuration.
+- [ ] `NOT TESTED` — Startup Chinese and English copy in Settings → Startup is complete and fits the Settings window.
+
 ## I. Production polish (P1)
 
 > Added with P1. These rows were not run by the agent that wrote them; mark them on a real Release build.
 
-- [ ] `NOT TESTED` — Release build launches with only the menu bar item: no counter window, no Dock icon, and no `Open Debug Window` item.
+- [ ] `NOT TESTED` — Release build with default Startup settings launches without a counter window, Dock icon, or `Open Debug Window` item; Studio stays hidden unless Startup destination opens it.
 - [ ] `NOT TESTED` — Debug build still shows the counter window at launch and `Open Debug Window` in the popover.
 - [ ] `NOT TESTED` — Release capture failure shows a plain-language message in the popover and Studio, with no raw status code.
 - [ ] `NOT TESTED` — Release (sandboxed) build can start system audio capture and asks for the expected permission.

@@ -428,6 +428,24 @@ AUD-09, AUD-13, AUD-15.
 
 ---
 
+## AUD-18B — Startup Behavior v1 (shipped on `dev`)
+
+**Labels:** `P1`, `settings`, `ui`
+**Milestone:** Phase 2 — Core Surfaces
+
+### Goal
+Let users choose what Audune presents on process launch (destination, visualization mode, optional Visual Preset) without Launch at Login or Now Playing.
+
+### Notes
+- Defaults preserve prior launch behavior (`followExisting` / `keepCurrent` / no preset).
+- Applied once per process by `StartupApplicator`; not on activation or window reopen.
+- “Restore last session” was intentionally omitted (Studio visibility is not persisted). AUD-19 remains the place for broader per-surface restore.
+
+### Dependencies
+AUD-09, AUD-13, AUD-17 (Island enable APIs).
+
+---
+
 ## AUD-19 — Implement SurfaceManager and per-surface preferences
 
 **Labels:** `P1`, `settings`, `ui`
@@ -438,7 +456,7 @@ AUD-09, AUD-13, AUD-15.
 - [ ] Keep one central audio capture service regardless of enabled surface count.
 - [ ] Store each surface's mode, size, opacity, location and window behavior separately.
 - [ ] Share global sensitivity/smoothing/accent color unless a clear user need justifies per-surface override.
-- [ ] Restore only surfaces the user had enabled.
+- [ ] Restore only surfaces the user had enabled (broader than Startup Behavior v1 destination).
 
 ### Acceptance criteria
 - [ ] Enabling/disabling surfaces does not create duplicate capture services.
