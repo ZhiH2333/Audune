@@ -98,6 +98,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
+    /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
+    private(set) var allowsLaunchPresentation = true
 
     var openStudio: (() -> Void)?
     var openSettings: (() -> Void)?
@@ -121,7 +123,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
         allowsOrderFront: Bool = true,
         /// When false, load prefs and configure the panel but defer screen evaluation until
-        /// `activatePresentation()` so startup destination can run before the first orderFront.
+        /// `activatePresentation()` so startup surfaces can run before the first orderFront.
         activateOnInit: Bool = true,
         haptics: any IslandHapticPerforming = SystemIslandHaptics()
     ) {
@@ -149,6 +151,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     /// Runs geometry evaluation and presents or hides the Island according to current prefs.
     func activatePresentation() {
         evaluateScreensAndApply(animated: false)
+    }
+
+    /// Startup-only presentation gate. Does not write `island.isEnabled`.
+    func setAllowsLaunchPresentation(_ allowed: Bool) {
+        allowsLaunchPresentation = allowed
+    }
+
+    /// True when the Island enable preference and the launch presentation gate both allow showing.
+    var isEffectivelyEnabled: Bool {
+        model.prefs.isEnabled && allowsLaunchPresentation
     }
 
     var isVisible: Bool {
@@ -202,12 +214,21 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     func setEnabled(_ enabled: Bool) {
+        if enabled {
+            allowsLaunchPresentation = true
+        }
         model.prefs.isEnabled = enabled
         savePreferences()
         evaluateScreensAndApply(animated: true)
     }
 
     func toggleEnabled() {
+        // Launch checkbox may suppress presentation without clearing the saved enable switch.
+        if allowsLaunchPresentation == false && model.prefs.isEnabled {
+            allowsLaunchPresentation = true
+            evaluateScreensAndApply(animated: true)
+            return
+        }
         setEnabled(model.prefs.isEnabled == false)
     }
 
@@ -300,7 +321,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             applyEvent(.hoverTimingCancelled, animated: false)
         }
         applyEvent(
-            .availabilityChanged(isEnabled: model.prefs.isEnabled, isSupported: model.isSupported),
+            .availabilityChanged(isEnabled: isEffectivelyEnabled, isSupported: model.isSupported),
             animated: animated
         )
         rearmHoverIfPointerStillInside()

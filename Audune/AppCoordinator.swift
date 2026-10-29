@@ -2,8 +2,8 @@
 import AppKit
 
 /// Owns the single capture pipeline and every surface that reads it.
-/// Release builds always create the menu bar item. Studio and Island presentation follow
-/// `StartupPreferences` (default: Studio hidden; Island follows saved enablement).
+/// Release builds always create the menu bar item. Studio, Island, and Settings presentation follow
+/// `StartupPreferences` (default: Studio/Settings hidden; Island follows saved enablement).
 @MainActor
 final class AppCoordinator {
     private let spike = ProcessTapSpike()
@@ -41,13 +41,14 @@ final class AppCoordinator {
             toggleIsland: { island.toggleEnabled() },
             openSettings: { settings.show() },
             studioVisible: { studio.isVisible },
-            islandEnabled: { island.model.prefs.isEnabled },
+            islandEnabled: { island.isEffectivelyEnabled },
             islandSupported: { island.model.isSupported }
         )
         startupApplicator.applyOnce(
             preferences: StartupPreferences.load(from: defaults),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
         #if DEBUG

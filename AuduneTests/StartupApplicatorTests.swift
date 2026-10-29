@@ -56,7 +56,7 @@ final class StartupApplicatorTests: XCTestCase {
 
     private func makeControllers(
         screens: [IslandScreenDescriptor]
-    ) -> (ProcessTapSpike, StudioWindowController, IslandWindowController) {
+    ) -> (ProcessTapSpike, StudioWindowController, IslandWindowController, SettingsWindowController) {
         let spike = ProcessTapSpike()
         let studio = StudioWindowController(spike: spike, defaults: defaults)
         let island = IslandWindowController(
@@ -66,7 +66,8 @@ final class StartupApplicatorTests: XCTestCase {
             allowsOrderFront: false,
             activateOnInit: false
         )
-        return (spike, studio, island)
+        let settings = SettingsWindowController(studio: studio, island: island)
+        return (spike, studio, island, settings)
     }
 
     private func prefs(
@@ -89,10 +90,11 @@ final class StartupApplicatorTests: XCTestCase {
     func testDefaultPreferencesMatchLegacyLaunchSurfaces() {
         IslandPreferences.standard.save(to: defaults)
         let screen = notchedScreen()
-        let (spike, studio, island) = makeControllers(screens: [screen])
+        let (spike, studio, island, settings) = makeControllers(screens: [screen])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         let applicator = StartupApplicator()
@@ -100,54 +102,87 @@ final class StartupApplicatorTests: XCTestCase {
             preferences: .standard,
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
         XCTAssertEqual(resolution?.openStudioAtLaunch, false)
         XCTAssertEqual(resolution?.showIslandAtLaunch, true)
         XCTAssertFalse(studio.isVisible)
+        XCTAssertFalse(settings.isVisible)
         XCTAssertTrue(island.isVisible)
         XCTAssertTrue(island.model.prefs.isEnabled)
+        XCTAssertTrue(island.allowsLaunchPresentation)
         XCTAssertEqual(spike.phase, .idle)
         XCTAssertTrue(applicator.didApply)
     }
 
     func testAllSurfacesUncheckedLeavesMenuBarOnlyWithoutDisablingIsland() {
         IslandPreferences.standard.save(to: defaults)
-        let (spike, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         let resolution = StartupApplicator().applyOnce(
             preferences: prefs(studio: false, island: false, settings: false),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
         XCTAssertEqual(resolution?.islandShouldPresent, false)
         XCTAssertFalse(studio.isVisible)
+        XCTAssertFalse(settings.isVisible)
         XCTAssertFalse(island.isVisible)
         XCTAssertTrue(island.model.prefs.isEnabled)
+        XCTAssertFalse(island.allowsLaunchPresentation)
+        XCTAssertFalse(island.isEffectivelyEnabled)
         XCTAssertEqual(spike.phase, .idle)
+    }
+
+    func testOpenSettingsAtLaunchShowsSettingsWindow() {
+        IslandPreferences.standard.save(to: defaults)
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+            settings.shutdown()
+        }
+
+        _ = StartupApplicator().applyOnce(
+            preferences: prefs(studio: false, island: false, settings: true),
+            studio: studio,
+            island: island,
+            settings: settings,
+            defaults: defaults
+        )
+
+        XCTAssertFalse(studio.isVisible)
+        XCTAssertTrue(settings.isVisible)
+        XCTAssertFalse(island.isVisible)
+        settings.shutdown()
     }
 
     func testOpenStudioShowsStudioAndLeavesIslandEnablement() {
         var islandPrefs = IslandPreferences.standard
         islandPrefs.isEnabled = false
         islandPrefs.save(to: defaults)
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: true, island: true, settings: false),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -161,36 +196,41 @@ final class StartupApplicatorTests: XCTestCase {
         var islandPrefs = IslandPreferences.standard
         islandPrefs.isEnabled = false
         islandPrefs.save(to: defaults)
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: false, island: true, settings: false),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
         XCTAssertFalse(studio.isVisible)
         XCTAssertFalse(island.model.prefs.isEnabled)
+        XCTAssertTrue(island.allowsLaunchPresentation)
         XCTAssertFalse(island.isVisible)
     }
 
     func testShowIslandPresentsWhenEnabledOnSupportedScreen() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: false, island: true, settings: false),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -199,18 +239,45 @@ final class StartupApplicatorTests: XCTestCase {
         XCTAssertTrue(island.isVisible)
     }
 
-    func testOpenStudioAndIslandOnUnsupportedScreenStillOpensStudio() {
+    func testLaunchSuppressToggleRestoresIslandWithoutWritingDisable() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island) = makeControllers(screens: [nonNotchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
+        }
+
+        _ = StartupApplicator().applyOnce(
+            preferences: prefs(studio: false, island: false, settings: false),
+            studio: studio,
+            island: island,
+            settings: settings,
+            defaults: defaults
+        )
+        XCTAssertFalse(island.isVisible)
+        XCTAssertTrue(island.model.prefs.isEnabled)
+
+        island.toggleEnabled()
+        XCTAssertTrue(island.allowsLaunchPresentation)
+        XCTAssertTrue(island.model.prefs.isEnabled)
+        XCTAssertTrue(island.isVisible)
+    }
+
+    func testOpenStudioAndIslandOnUnsupportedScreenStillOpensStudio() {
+        IslandPreferences.standard.save(to: defaults)
+        let (_, studio, island, settings) = makeControllers(screens: [nonNotchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: true, island: true, settings: false),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -229,16 +296,18 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.mode = .spectrum
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: true, island: true, mode: .orbit),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -252,16 +321,18 @@ final class StartupApplicatorTests: XCTestCase {
     func testPresetApplyUsesExistingPathAndSetsMode() throws {
         StudioPreferences.standard.save(to: defaults)
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(presetID: VisualPresetCatalog.dense.id),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -283,16 +354,18 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.compactBarCountPerSide = 4
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(studio: true, island: true, mode: .orbit, presetID: "missing-custom-id"),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -305,10 +378,11 @@ final class StartupApplicatorTests: XCTestCase {
     }
 
     func testApplyOnceIsIdempotentAgainstLaterActivation() {
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         let applicator = StartupApplicator()
@@ -316,6 +390,7 @@ final class StartupApplicatorTests: XCTestCase {
             preferences: prefs(studio: true, island: true, mode: .waveform),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
         XCTAssertNotNil(first)
@@ -336,6 +411,7 @@ final class StartupApplicatorTests: XCTestCase {
             ),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 
@@ -377,16 +453,18 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.hoverToExpand = false
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
+            settings.shutdown()
         }
 
         _ = StartupApplicator().applyOnce(
             preferences: prefs(presetID: VisualPresetCatalog.halo.id),
             studio: studio,
             island: island,
+            settings: settings,
             defaults: defaults
         )
 

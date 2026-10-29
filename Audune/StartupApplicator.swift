@@ -13,6 +13,7 @@ final class StartupApplicator {
         preferences: StartupPreferences,
         studio: StudioWindowController,
         island: IslandWindowController,
+        settings: SettingsWindowController,
         defaults: UserDefaults,
         builtIns: [VisualPreset] = VisualPresetCatalog.all
     ) -> StartupResolution? {
@@ -33,13 +34,16 @@ final class StartupApplicator {
             island.updateSharedVisuals(studio.currentPreferences())
         }
 
-        // Do not rewrite `island.isEnabled`. Present only when the launch checkbox allows it.
-        if resolution.islandShouldPresent {
-            island.activatePresentation()
-        }
+        // Do not rewrite `island.isEnabled`. Gate presentation for this process only.
+        island.setAllowsLaunchPresentation(resolution.islandShouldPresent)
+        island.activatePresentation()
 
         if resolution.studioShouldShow {
             studio.show()
+        }
+
+        if resolution.settingsShouldShow {
+            settings.show()
         }
 
         return resolution
