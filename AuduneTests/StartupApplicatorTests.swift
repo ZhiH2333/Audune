@@ -75,7 +75,8 @@ final class StartupApplicatorTests: XCTestCase {
         island: Bool = true,
         settings: Bool = false,
         mode: StartupVisualMode = .keepCurrent,
-        presetID: String? = nil
+        presetID: String? = nil,
+        autoStartCapture: Bool = false
     ) -> StartupPreferences {
         StartupPreferences(
             openStudioAtLaunch: studio,
@@ -83,7 +84,7 @@ final class StartupApplicatorTests: XCTestCase {
             openSettingsAtLaunch: settings,
             visualMode: mode,
             presetID: presetID,
-            autoStartCapture: false
+            autoStartCapture: autoStartCapture
         )
     }
 
@@ -103,7 +104,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(resolution?.openStudioAtLaunch, false)
@@ -131,7 +134,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(resolution?.islandShouldPresent, false)
@@ -146,7 +151,7 @@ final class StartupApplicatorTests: XCTestCase {
 
     func testOpenSettingsAtLaunchShowsSettingsWindow() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -158,7 +163,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertFalse(studio.isVisible)
@@ -171,7 +178,7 @@ final class StartupApplicatorTests: XCTestCase {
         var islandPrefs = IslandPreferences.standard
         islandPrefs.isEnabled = false
         islandPrefs.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -183,7 +190,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertTrue(studio.isVisible)
@@ -196,7 +205,7 @@ final class StartupApplicatorTests: XCTestCase {
         var islandPrefs = IslandPreferences.standard
         islandPrefs.isEnabled = false
         islandPrefs.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -208,7 +217,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertFalse(studio.isVisible)
@@ -219,7 +230,7 @@ final class StartupApplicatorTests: XCTestCase {
 
     func testShowIslandPresentsWhenEnabledOnSupportedScreen() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -231,7 +242,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertFalse(studio.isVisible)
@@ -241,7 +254,7 @@ final class StartupApplicatorTests: XCTestCase {
 
     func testLaunchSuppressToggleRestoresIslandWithoutWritingDisable() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -253,7 +266,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
         XCTAssertFalse(island.isVisible)
         XCTAssertTrue(island.model.prefs.isEnabled)
@@ -266,7 +281,7 @@ final class StartupApplicatorTests: XCTestCase {
 
     func testOpenStudioAndIslandOnUnsupportedScreenStillOpensStudio() {
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [nonNotchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [nonNotchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -278,7 +293,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertTrue(studio.isVisible)
@@ -296,7 +313,7 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.mode = .spectrum
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -308,7 +325,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(studio.model.prefs.mode, .orbit)
@@ -321,7 +340,7 @@ final class StartupApplicatorTests: XCTestCase {
     func testPresetApplyUsesExistingPathAndSetsMode() throws {
         StudioPreferences.standard.save(to: defaults)
         IslandPreferences.standard.save(to: defaults)
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -333,7 +352,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(studio.model.prefs.mode, .spectrum)
@@ -354,7 +375,7 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.compactBarCountPerSide = 4
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -366,7 +387,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(studio.model.prefs.mode, .orbit)
@@ -378,7 +401,7 @@ final class StartupApplicatorTests: XCTestCase {
     }
 
     func testApplyOnceIsIdempotentAgainstLaterActivation() {
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -391,7 +414,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
         XCTAssertNotNil(first)
         XCTAssertTrue(studio.isVisible)
@@ -412,7 +437,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertNil(second)
@@ -453,7 +480,7 @@ final class StartupApplicatorTests: XCTestCase {
         islandPrefs.hoverToExpand = false
         islandPrefs.save(to: defaults)
 
-        let (_, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
@@ -465,7 +492,9 @@ final class StartupApplicatorTests: XCTestCase {
             studio: studio,
             island: island,
             settings: settings,
-            defaults: defaults
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
         XCTAssertEqual(studio.model.prefs.appearance.opacity, 0.66, accuracy: 0.000_1)
@@ -475,5 +504,86 @@ final class StartupApplicatorTests: XCTestCase {
         XCTAssertEqual(island.model.prefs.compactBarCountPerSide, 6)
         XCTAssertFalse(island.model.prefs.hoverToExpand)
         XCTAssertEqual(studio.model.prefs.mode, .orbit)
+    }
+
+    func testAutoStartCaptureSkippedWhenUnauthorized() {
+        IslandPreferences.standard.save(to: defaults)
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+            settings.shutdown()
+        }
+
+        let applicator = StartupApplicator()
+        _ = applicator.applyOnce(
+            preferences: prefs(autoStartCapture: true),
+            studio: studio,
+            island: island,
+            settings: settings,
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: false)
+        )
+
+        XCTAssertFalse(applicator.didRequestAutoStartCapture)
+        XCTAssertEqual(spike.phase, .idle)
+    }
+
+    func testAutoStartCaptureRequestsStartWhenAuthorized() async {
+        IslandPreferences.standard.save(to: defaults)
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+            settings.shutdown()
+            spike.stop()
+        }
+
+        let applicator = StartupApplicator()
+        _ = applicator.applyOnce(
+            preferences: prefs(autoStartCapture: true),
+            studio: studio,
+            island: island,
+            settings: settings,
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: true)
+        )
+
+        XCTAssertTrue(applicator.didRequestAutoStartCapture)
+        // Allow the detached start task to begin; do not require running hardware capture.
+        let deadline = ContinuousClock.now + .seconds(1)
+        while spike.phase == .idle, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertNotEqual(spike.phase, .idle)
+        spike.stop()
+    }
+
+    func testOpeningSurfacesDoesNotAutoStartCapture() {
+        IslandPreferences.standard.save(to: defaults)
+        let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+            settings.shutdown()
+        }
+
+        let applicator = StartupApplicator()
+        _ = applicator.applyOnce(
+            preferences: prefs(studio: true, island: true, settings: true, autoStartCapture: false),
+            studio: studio,
+            island: island,
+            settings: settings,
+            spike: spike,
+            defaults: defaults,
+            captureAuthorization: FixedCaptureAuthorization(authorized: true)
+        )
+
+        XCTAssertFalse(applicator.didRequestAutoStartCapture)
+        XCTAssertEqual(spike.phase, .idle)
+        studio.hide()
+        settings.shutdown()
     }
 }

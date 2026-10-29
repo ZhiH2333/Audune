@@ -184,6 +184,9 @@ struct SettingsView: View {
             }
             Text("A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.")
                 .foregroundStyle(.secondary)
+            Toggle("Start system audio capture automatically", isOn: $startupPrefs.autoStartCapture)
+            Text("Off by default. Capture starts only if Audune already has Screen & System Audio Recording permission. Showing Studio or Notch Island never starts capture by itself.")
+                .foregroundStyle(.secondary)
         }
         Section {
             Text("Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.")

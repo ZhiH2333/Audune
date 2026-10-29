@@ -3540,6 +3540,26 @@
           }
         }
       }
+    },
+    "Start system audio capture automatically": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时自动开始系统音频捕获"
+          }
+        }
+      }
+    },
+    "Off by default. Capture starts only if Audune already has Screen & System Audio Recording permission. Showing Studio or Notch Island never starts capture by itself.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认关闭。仅当 Audune 已获得“屏幕与系统音频录制”权限时才会自动开始捕获。显示 Studio 或 Notch Island 本身不会开始捕获。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

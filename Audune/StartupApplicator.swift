@@ -6,6 +6,7 @@ import Foundation
 final class StartupApplicator {
     private(set) var didApply = false
     private(set) var lastResolution: StartupResolution?
+    private(set) var didRequestAutoStartCapture = false
 
     /// Resolves prefs, applies mode/preset, then independent launch surfaces. Subsequent calls are no-ops.
     @discardableResult
@@ -14,8 +15,10 @@ final class StartupApplicator {
         studio: StudioWindowController,
         island: IslandWindowController,
         settings: SettingsWindowController,
+        spike: ProcessTapSpike,
         defaults: UserDefaults,
-        builtIns: [VisualPreset] = VisualPresetCatalog.all
+        builtIns: [VisualPreset] = VisualPresetCatalog.all,
+        captureAuthorization: any CaptureAuthorizationChecking = ScreenCaptureAuthorizationProbe()
     ) -> StartupResolution? {
         guard didApply == false else { return nil }
         didApply = true
@@ -44,6 +47,12 @@ final class StartupApplicator {
 
         if resolution.settingsShouldShow {
             settings.show()
+        }
+
+        // Optional capture is independent of window checkboxes and never prompts for permission.
+        if resolution.autoStartCapture, captureAuthorization.isCaptureAlreadyAuthorized() {
+            didRequestAutoStartCapture = true
+            Task { await spike.start() }
         }
 
         return resolution

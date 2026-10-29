@@ -49,6 +49,7 @@ final class AppCoordinator {
             studio: studio,
             island: island,
             settings: settings,
+            spike: spike,
             defaults: defaults
         )
         #if DEBUG
