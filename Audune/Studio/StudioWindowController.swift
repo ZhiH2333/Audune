@@ -98,6 +98,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         applyWindowMode()
     }
 
+    func selectMode(_ mode: StudioVisualMode) {
+        model.prefs.mode = mode
+        savePreferences()
+    }
+
     func savePreferences() {
         saveTask?.cancel()
         saveTask = nil

@@ -2,7 +2,8 @@
 import AppKit
 
 /// Owns the single capture pipeline and every surface that reads it.
-/// Release builds start with only the menu bar item; no window is created until the user opens one.
+/// Release builds always create the menu bar item. Studio and Island presentation follow
+/// `StartupPreferences` (default: Studio hidden; Island follows saved enablement).
 @MainActor
 final class AppCoordinator {
     private let spike = ProcessTapSpike()
@@ -10,13 +11,15 @@ final class AppCoordinator {
     private let island: IslandWindowController
     private let settings: SettingsWindowController
     private let menuBar: MenuBarController
+    private let startupApplicator = StartupApplicator()
     #if DEBUG
     private let debugWindow: DebugWindowController
     #endif
 
     init() {
-        let studio = StudioWindowController(spike: spike)
-        let island = IslandWindowController(spike: spike)
+        let defaults = UserDefaults.standard
+        let studio = StudioWindowController(spike: spike, defaults: defaults)
+        let island = IslandWindowController(spike: spike, defaults: defaults, activateOnInit: false)
         let settings = SettingsWindowController(studio: studio, island: island)
         studio.openSettings = { settings.show() }
         island.openStudio = { studio.show() }
@@ -40,6 +43,12 @@ final class AppCoordinator {
             studioVisible: { studio.isVisible },
             islandEnabled: { island.model.prefs.isEnabled },
             islandSupported: { island.model.isSupported }
+        )
+        startupApplicator.applyOnce(
+            preferences: StartupPreferences.load(from: defaults),
+            studio: studio,
+            island: island,
+            defaults: defaults
         )
         #if DEBUG
         debugWindow.show()

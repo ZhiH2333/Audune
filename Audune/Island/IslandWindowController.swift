@@ -120,6 +120,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         defaults: UserDefaults = .standard,
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
         allowsOrderFront: Bool = true,
+        /// When false, load prefs and configure the panel but defer screen evaluation until
+        /// `activatePresentation()` so startup destination can run before the first orderFront.
+        activateOnInit: Bool = true,
         haptics: any IslandHapticPerforming = SystemIslandHaptics()
     ) {
         self.spike = spike
@@ -138,6 +141,13 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         updateSharedVisuals(StudioPreferences.load(from: defaults))
         model.compactLevels = Array(repeating: 0, count: model.prefs.compactBarCountPerSide)
         configurePanel()
+        if activateOnInit {
+            evaluateScreensAndApply(animated: false)
+        }
+    }
+
+    /// Runs geometry evaluation and presents or hides the Island according to current prefs.
+    func activatePresentation() {
         evaluateScreensAndApply(animated: false)
     }
 
