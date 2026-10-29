@@ -3,6 +3,7 @@ import AppKit
 import SwiftUI
 
 enum SettingsCategory: String, CaseIterable, Identifiable {
+    case startup
     case appearance
     case layout
     case spectrum
@@ -15,6 +16,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .startup: return String(localized: "Startup")
         case .appearance: return String(localized: "Appearance")
         case .layout: return String(localized: "Layout")
         case .spectrum: return String(localized: "Spectrum")
@@ -27,6 +29,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .startup: return "power"
         case .appearance: return "paintpalette"
         case .layout: return "rectangle.dashed"
         case .spectrum: return "chart.bar.fill"
@@ -44,6 +47,7 @@ struct SettingsView: View {
     @Bindable var model: StudioModel
     @Bindable var islandModel: IslandModel
     @State private var presetLibrary = VisualPresetCatalog.restoring()
+    @State private var startupPrefs = StartupPreferences.load()
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -78,6 +82,7 @@ struct SettingsView: View {
                     }
                 }
                 switch model.settingsCategory {
+                case .startup: startupPane
                 case .appearance: appearancePane
                 case .layout: layoutPane
                 case .spectrum: spectrumPane
@@ -102,7 +107,90 @@ struct SettingsView: View {
             if newCategory == .island {
                 island.evaluateScreensAndApply(animated: false)
             }
+            if newCategory == .startup {
+                startupPrefs = StartupPreferences.load()
+                reloadPresetLibrary()
+            }
         }
+        .onChange(of: startupPrefs) { _, newValue in
+            newValue.save()
+        }
+    }
+
+    @ViewBuilder
+    private var startupPane: some View {
+        Section("At launch") {
+            Picker("Destination", selection: $startupPrefs.destination) {
+                ForEach(StartupDestination.allCases) { destination in
+                    Text(destination.title).tag(destination)
+                }
+            }
+            Text("Notch Island appears only on supported displays. Menu Bar only turns Island off at launch.")
+                .foregroundStyle(.secondary)
+        }
+        Section("Visualization") {
+            Picker("Mode", selection: modeBinding) {
+                ForEach(StartupVisualMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            Picker("Visual preset", selection: startupPresetBinding) {
+                Text("None").tag(Optional<String>.none)
+                if startupPresetMissing {
+                    Text("Selected preset is no longer available")
+                        .tag(Optional(startupPrefs.presetID))
+                }
+                ForEach(compatibleStartupPresets) { preset in
+                    Text(preset.displayName).tag(Optional(preset.id))
+                }
+            }
+            Text("A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.")
+                .foregroundStyle(.secondary)
+        }
+        Section {
+            Text("These options apply the next time Audune launches. Changing them here does not alter the current session.")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var modeBinding: Binding<StartupVisualMode> {
+        Binding(
+            get: { startupPrefs.visualMode },
+            set: { newMode in
+                startupPrefs.visualMode = newMode
+                if let id = startupPrefs.presetID,
+                   let preset = presetLibrary.preset(id: id),
+                   let required = newMode.studioMode,
+                   preset.mode != required {
+                    startupPrefs.presetID = nil
+                }
+            }
+        )
+    }
+
+    private var startupPresetBinding: Binding<String?> {
+        Binding(
+            get: { startupPrefs.presetID },
+            set: { newID in
+                startupPrefs.presetID = newID
+                guard let newID, let preset = presetLibrary.preset(id: newID) else { return }
+                switch preset.mode {
+                case .spectrum: startupPrefs.visualMode = .spectrum
+                case .waveform: startupPrefs.visualMode = .waveform
+                case .orbit: startupPrefs.visualMode = .orbit
+                }
+            }
+        )
+    }
+
+    private var compatibleStartupPresets: [VisualPreset] {
+        let mode = startupPrefs.visualMode.studioMode ?? model.prefs.mode
+        return presetLibrary.presets(for: mode)
+    }
+
+    private var startupPresetMissing: Bool {
+        guard let id = startupPrefs.presetID, id.isEmpty == false else { return false }
+        return presetLibrary.preset(id: id) == nil
     }
 
     private var studioPreviewRow: some View {

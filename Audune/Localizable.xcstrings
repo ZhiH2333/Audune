@@ -3290,6 +3290,126 @@
           }
         }
       }
+    },
+    "Startup": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动"
+          }
+        }
+      }
+    },
+    "Follow current behavior": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沿用当前行为"
+          }
+        }
+      }
+    },
+    "Menu Bar only": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅菜单栏"
+          }
+        }
+      }
+    },
+    "Open Studio and Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Studio 并显示 Notch Island"
+          }
+        }
+      }
+    },
+    "Keep current selection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持当前选择"
+          }
+        }
+      }
+    },
+    "At launch": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标"
+          }
+        }
+      }
+    },
+    "Visualization": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化"
+          }
+        }
+      }
+    },
+    "These options apply the next time Audune launches. Changing them here does not alter the current session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些选项在下次启动 Audune 时生效。在此修改不会改变当前会话。"
+          }
+        }
+      }
+    },
+    "Notch Island appears only on supported displays. Menu Bar only turns Island off at launch.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 仅在受支持的显示器上显示。“仅菜单栏”会在启动时关闭 Island。"
+          }
+        }
+      }
+    },
+    "A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视觉预设会更新该模式已保存的外观，效果与在设置中应用预设相同。外观、窗口和 Island 外观控件保持不变。"
+          }
+        }
+      }
+    },
+    "Selected preset is no longer available": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选预设已不可用"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

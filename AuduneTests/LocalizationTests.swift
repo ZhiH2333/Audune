@@ -63,7 +63,7 @@ final class LocalizationTests: XCTestCase {
         let keys = [
             "Start", "Stop", "Quit Audune", "Open Studio", "Hide Studio", "Settings…",
             "Capture failed", "Not listening", "Listening", "No audio",
-            "Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window",
+            "Appearance", "Layout", "Spectrum", "Waveform", "Orbit", "Window", "Startup",
             "Reset Appearance", "Save", "Cancel", "Delete",
         ]
         for key in keys {
@@ -85,7 +85,7 @@ final class LocalizationTests: XCTestCase {
     func testStoredIdentifiersDoNotDependOnTheLanguage() {
         XCTAssertEqual(StudioVisualMode.allCases.map(\.rawValue), ["spectrum", "waveform", "orbit"])
         XCTAssertEqual(StudioWindowMode.allCases.map(\.rawValue), ["onDesktop", "onTop", "asWindow"])
-        XCTAssertEqual(SettingsCategory.allCases.map(\.rawValue), ["appearance", "layout", "spectrum", "waveform", "orbit", "window", "island"])
+        XCTAssertEqual(SettingsCategory.allCases.map(\.rawValue), ["startup", "appearance", "layout", "spectrum", "waveform", "orbit", "window", "island"])
         XCTAssertEqual(
             VisualPresetCatalog.all.map(\.id),
             [
