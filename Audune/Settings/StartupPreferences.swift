@@ -1,36 +1,15 @@
 import Foundation
 
-/// UserDefaults keys for process-launch behavior. Absent keys preserve today's launch defaults.
+/// UserDefaults keys for process-launch behavior. Absent surface keys preserve today's launch defaults.
 nonisolated enum StartupPreferenceKey {
-    static let destination = "startup.destination"
+    static let openStudioAtLaunch = "startup.openStudioAtLaunch"
+    static let showIslandAtLaunch = "startup.showIslandAtLaunch"
+    static let openSettingsAtLaunch = "startup.openSettingsAtLaunch"
     static let visualMode = "startup.visualMode"
     static let presetID = "startup.presetID"
-}
-
-/// Which surfaces Audune presents when the process starts.
-nonisolated enum StartupDestination: String, CaseIterable, Identifiable, Sendable {
-    /// Menu bar always; Island follows saved `island.isEnabled` + support; Studio stays hidden.
-    case followExisting
-    /// Studio hidden; Island forced off for this launch.
-    case menuBarOnly
-    /// Open Studio; Island still follows saved enablement.
-    case openStudio
-    /// Enable and present Notch Island when supported; Studio stays hidden.
-    case showIsland
-    /// Open Studio and present Notch Island when supported.
-    case openStudioAndIsland
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .followExisting: return String(localized: "Follow current behavior")
-        case .menuBarOnly: return String(localized: "Menu Bar only")
-        case .openStudio: return String(localized: "Open Studio")
-        case .showIsland: return String(localized: "Show Notch Island")
-        case .openStudioAndIsland: return String(localized: "Open Studio and Notch Island")
-        }
-    }
+    static let autoStartCapture = "startup.autoStartCapture"
+    /// Legacy mutually exclusive destination; migrated once into independent surface booleans.
+    static let legacyDestination = "startup.destination"
 }
 
 /// Optional visualization mode override applied once at process launch.
@@ -62,30 +41,24 @@ nonisolated enum StartupVisualMode: String, CaseIterable, Identifiable, Sendable
     }
 }
 
-/// How Island enablement is adjusted for one launch. Does not invent a second preference store.
-nonisolated enum StartupIslandPolicy: Equatable, Sendable {
-    /// Leave `island.isEnabled` alone (after deferred activation).
-    case followExisting
-    /// Force Island off for this launch via the existing enable API.
-    case forceDisabled
-    /// Force Island on for this launch when geometry allows.
-    case forceEnabled
-}
-
 /// Pure outcome of validating startup prefs against the current preset library.
 nonisolated struct StartupResolution: Equatable, Sendable {
-    var destination: StartupDestination
+    var openStudioAtLaunch: Bool
+    var showIslandAtLaunch: Bool
+    var openSettingsAtLaunch: Bool
+    var autoStartCapture: Bool
     var effectiveMode: StudioVisualMode?
     var presetToApply: VisualPreset?
     var presetIDWasInvalid: Bool
-    var studioShouldShow: Bool
-    var islandPolicy: StartupIslandPolicy
+
+    var studioShouldShow: Bool { openStudioAtLaunch }
+    var settingsShouldShow: Bool { openSettingsAtLaunch }
+    var islandShouldPresent: Bool { showIslandAtLaunch }
 
     static func resolve(
         _ preferences: StartupPreferences,
         library: VisualPresetLibrary
     ) -> StartupResolution {
-        let destination = preferences.destination
         let resolvedPreset: VisualPreset?
         let presetInvalid: Bool
         if let id = preferences.presetID, id.isEmpty == false {
@@ -122,72 +95,141 @@ nonisolated struct StartupResolution: Equatable, Sendable {
             presetToApply = nil
         }
 
-        let studioShouldShow: Bool
-        let islandPolicy: StartupIslandPolicy
-        switch destination {
-        case .followExisting:
-            studioShouldShow = false
-            islandPolicy = .followExisting
-        case .menuBarOnly:
-            studioShouldShow = false
-            islandPolicy = .forceDisabled
-        case .openStudio:
-            studioShouldShow = true
-            islandPolicy = .followExisting
-        case .showIsland:
-            studioShouldShow = false
-            islandPolicy = .forceEnabled
-        case .openStudioAndIsland:
-            studioShouldShow = true
-            islandPolicy = .forceEnabled
-        }
-
         return StartupResolution(
-            destination: destination,
+            openStudioAtLaunch: preferences.openStudioAtLaunch,
+            showIslandAtLaunch: preferences.showIslandAtLaunch,
+            openSettingsAtLaunch: preferences.openSettingsAtLaunch,
+            autoStartCapture: preferences.autoStartCapture,
             effectiveMode: effectiveMode,
             presetToApply: presetToApply,
-            presetIDWasInvalid: presetInvalid,
-            studioShouldShow: studioShouldShow,
-            islandPolicy: islandPolicy
+            presetIDWasInvalid: presetInvalid
         )
     }
 }
 
-/// Launch-only configuration. Missing keys keep Audune's current process-start behavior.
+/// Launch-only configuration. Missing surface keys keep Audune's current process-start behavior.
 nonisolated struct StartupPreferences: Equatable, Sendable {
-    var destination: StartupDestination
+    var openStudioAtLaunch: Bool
+    var showIslandAtLaunch: Bool
+    var openSettingsAtLaunch: Bool
     var visualMode: StartupVisualMode
     /// Stable Visual Preset id (`builtin.*` or custom UUID). Nil means no override.
     var presetID: String?
+    /// Optional; default false. Wired by startup capture TODO; never implies window visibility.
+    var autoStartCapture: Bool
 
+    /// Matches pre-checkbox launch: Studio/Settings hidden; Island follows saved enablement.
     static let standard = StartupPreferences(
-        destination: .followExisting,
+        openStudioAtLaunch: false,
+        showIslandAtLaunch: true,
+        openSettingsAtLaunch: false,
         visualMode: .keepCurrent,
-        presetID: nil
+        presetID: nil,
+        autoStartCapture: false
     )
 
     static func load(from defaults: UserDefaults = .standard) -> StartupPreferences {
-        let destination = defaults.string(forKey: StartupPreferenceKey.destination)
-            .flatMap(StartupDestination.init(rawValue:)) ?? standard.destination
         let visualMode = defaults.string(forKey: StartupPreferenceKey.visualMode)
             .flatMap(StartupVisualMode.init(rawValue:)) ?? standard.visualMode
         let rawPreset = defaults.string(forKey: StartupPreferenceKey.presetID)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let presetID = (rawPreset?.isEmpty == false) ? rawPreset : nil
-        return StartupPreferences(destination: destination, visualMode: visualMode, presetID: presetID)
+        let autoStartCapture = defaults.object(forKey: StartupPreferenceKey.autoStartCapture) == nil
+            ? standard.autoStartCapture
+            : defaults.bool(forKey: StartupPreferenceKey.autoStartCapture)
+
+        if hasSurfaceKeys(in: defaults) {
+            return StartupPreferences(
+                openStudioAtLaunch: bool(
+                    forKey: StartupPreferenceKey.openStudioAtLaunch,
+                    in: defaults,
+                    fallback: standard.openStudioAtLaunch
+                ),
+                showIslandAtLaunch: bool(
+                    forKey: StartupPreferenceKey.showIslandAtLaunch,
+                    in: defaults,
+                    fallback: standard.showIslandAtLaunch
+                ),
+                openSettingsAtLaunch: bool(
+                    forKey: StartupPreferenceKey.openSettingsAtLaunch,
+                    in: defaults,
+                    fallback: standard.openSettingsAtLaunch
+                ),
+                visualMode: visualMode,
+                presetID: presetID,
+                autoStartCapture: autoStartCapture
+            )
+        }
+
+        if let legacy = defaults.string(forKey: StartupPreferenceKey.legacyDestination),
+           let migrated = migrateLegacyDestination(legacy) {
+            let prefs = StartupPreferences(
+                openStudioAtLaunch: migrated.openStudioAtLaunch,
+                showIslandAtLaunch: migrated.showIslandAtLaunch,
+                openSettingsAtLaunch: migrated.openSettingsAtLaunch,
+                visualMode: visualMode,
+                presetID: presetID,
+                autoStartCapture: autoStartCapture
+            )
+            prefs.save(to: defaults)
+            return prefs
+        }
+
+        return StartupPreferences(
+            openStudioAtLaunch: standard.openStudioAtLaunch,
+            showIslandAtLaunch: standard.showIslandAtLaunch,
+            openSettingsAtLaunch: standard.openSettingsAtLaunch,
+            visualMode: visualMode,
+            presetID: presetID,
+            autoStartCapture: autoStartCapture
+        )
     }
 
     func save(to defaults: UserDefaults = .standard) {
-        defaults.set(destination.rawValue, forKey: StartupPreferenceKey.destination)
+        defaults.set(openStudioAtLaunch, forKey: StartupPreferenceKey.openStudioAtLaunch)
+        defaults.set(showIslandAtLaunch, forKey: StartupPreferenceKey.showIslandAtLaunch)
+        defaults.set(openSettingsAtLaunch, forKey: StartupPreferenceKey.openSettingsAtLaunch)
         defaults.set(visualMode.rawValue, forKey: StartupPreferenceKey.visualMode)
+        defaults.set(autoStartCapture, forKey: StartupPreferenceKey.autoStartCapture)
         if let presetID, presetID.isEmpty == false {
             defaults.set(presetID, forKey: StartupPreferenceKey.presetID)
         } else {
             defaults.removeObject(forKey: StartupPreferenceKey.presetID)
         }
+        defaults.removeObject(forKey: StartupPreferenceKey.legacyDestination)
     }
 
     static func reset(in defaults: UserDefaults = .standard) {
         standard.save(to: defaults)
+    }
+
+    private static func hasSurfaceKeys(in defaults: UserDefaults) -> Bool {
+        defaults.object(forKey: StartupPreferenceKey.openStudioAtLaunch) != nil
+            || defaults.object(forKey: StartupPreferenceKey.showIslandAtLaunch) != nil
+            || defaults.object(forKey: StartupPreferenceKey.openSettingsAtLaunch) != nil
+    }
+
+    private static func bool(forKey key: String, in defaults: UserDefaults, fallback: Bool) -> Bool {
+        defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key)
+    }
+
+    /// Maps AUD-18B mutually exclusive destinations into independent surface checkboxes.
+    private static func migrateLegacyDestination(
+        _ raw: String
+    ) -> (openStudioAtLaunch: Bool, showIslandAtLaunch: Bool, openSettingsAtLaunch: Bool)? {
+        switch raw {
+        case "followExisting":
+            return (false, true, false)
+        case "menuBarOnly":
+            return (false, false, false)
+        case "openStudio":
+            return (true, true, false)
+        case "showIsland":
+            return (false, true, false)
+        case "openStudioAndIsland":
+            return (true, true, false)
+        default:
+            return nil
+        }
     }
 }

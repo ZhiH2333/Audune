@@ -69,6 +69,23 @@ final class StartupApplicatorTests: XCTestCase {
         return (spike, studio, island)
     }
 
+    private func prefs(
+        studio: Bool = false,
+        island: Bool = true,
+        settings: Bool = false,
+        mode: StartupVisualMode = .keepCurrent,
+        presetID: String? = nil
+    ) -> StartupPreferences {
+        StartupPreferences(
+            openStudioAtLaunch: studio,
+            showIslandAtLaunch: island,
+            openSettingsAtLaunch: settings,
+            visualMode: mode,
+            presetID: presetID,
+            autoStartCapture: false
+        )
+    }
+
     func testDefaultPreferencesMatchLegacyLaunchSurfaces() {
         IslandPreferences.standard.save(to: defaults)
         let screen = notchedScreen()
@@ -86,7 +103,8 @@ final class StartupApplicatorTests: XCTestCase {
             defaults: defaults
         )
 
-        XCTAssertEqual(resolution?.destination, .followExisting)
+        XCTAssertEqual(resolution?.openStudioAtLaunch, false)
+        XCTAssertEqual(resolution?.showIslandAtLaunch, true)
         XCTAssertFalse(studio.isVisible)
         XCTAssertTrue(island.isVisible)
         XCTAssertTrue(island.model.prefs.isEnabled)
@@ -94,7 +112,7 @@ final class StartupApplicatorTests: XCTestCase {
         XCTAssertTrue(applicator.didApply)
     }
 
-    func testMenuBarOnlyDisablesIslandWithoutOpeningStudio() {
+    func testAllSurfacesUncheckedLeavesMenuBarOnlyWithoutDisablingIsland() {
         IslandPreferences.standard.save(to: defaults)
         let (spike, studio, island) = makeControllers(screens: [notchedScreen()])
         defer {
@@ -102,18 +120,17 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(destination: .menuBarOnly, visualMode: .keepCurrent, presetID: nil)
         let resolution = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: false, island: false, settings: false),
             studio: studio,
             island: island,
             defaults: defaults
         )
 
-        XCTAssertEqual(resolution?.islandPolicy, .forceDisabled)
+        XCTAssertEqual(resolution?.islandShouldPresent, false)
         XCTAssertFalse(studio.isVisible)
         XCTAssertFalse(island.isVisible)
-        XCTAssertFalse(island.model.prefs.isEnabled)
+        XCTAssertTrue(island.model.prefs.isEnabled)
         XCTAssertEqual(spike.phase, .idle)
     }
 
@@ -127,9 +144,8 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(destination: .openStudio, visualMode: .keepCurrent, presetID: nil)
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: true, island: true, settings: false),
             studio: studio,
             island: island,
             defaults: defaults
@@ -141,7 +157,7 @@ final class StartupApplicatorTests: XCTestCase {
         studio.hide()
     }
 
-    func testShowIslandEnablesIslandOnSupportedScreen() {
+    func testShowIslandDoesNotForceEnableWhenIslandDisabled() {
         var islandPrefs = IslandPreferences.standard
         islandPrefs.isEnabled = false
         islandPrefs.save(to: defaults)
@@ -151,9 +167,28 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(destination: .showIsland, visualMode: .keepCurrent, presetID: nil)
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: false, island: true, settings: false),
+            studio: studio,
+            island: island,
+            defaults: defaults
+        )
+
+        XCTAssertFalse(studio.isVisible)
+        XCTAssertFalse(island.model.prefs.isEnabled)
+        XCTAssertFalse(island.isVisible)
+    }
+
+    func testShowIslandPresentsWhenEnabledOnSupportedScreen() {
+        IslandPreferences.standard.save(to: defaults)
+        let (_, studio, island) = makeControllers(screens: [notchedScreen()])
+        defer {
+            studio.shutdown()
+            island.shutdown()
+        }
+
+        _ = StartupApplicator().applyOnce(
+            preferences: prefs(studio: false, island: true, settings: false),
             studio: studio,
             island: island,
             defaults: defaults
@@ -165,19 +200,15 @@ final class StartupApplicatorTests: XCTestCase {
     }
 
     func testOpenStudioAndIslandOnUnsupportedScreenStillOpensStudio() {
+        IslandPreferences.standard.save(to: defaults)
         let (_, studio, island) = makeControllers(screens: [nonNotchedScreen()])
         defer {
             studio.shutdown()
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(
-            destination: .openStudioAndIsland,
-            visualMode: .keepCurrent,
-            presetID: nil
-        )
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: true, island: true, settings: false),
             studio: studio,
             island: island,
             defaults: defaults
@@ -204,9 +235,8 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(destination: .openStudio, visualMode: .orbit, presetID: nil)
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: true, island: true, mode: .orbit),
             studio: studio,
             island: island,
             defaults: defaults
@@ -228,13 +258,8 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(
-            destination: .followExisting,
-            visualMode: .keepCurrent,
-            presetID: VisualPresetCatalog.dense.id
-        )
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(presetID: VisualPresetCatalog.dense.id),
             studio: studio,
             island: island,
             defaults: defaults
@@ -264,13 +289,8 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(
-            destination: .openStudio,
-            visualMode: .orbit,
-            presetID: "missing-custom-id"
-        )
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(studio: true, island: true, mode: .orbit, presetID: "missing-custom-id"),
             studio: studio,
             island: island,
             defaults: defaults
@@ -293,7 +313,7 @@ final class StartupApplicatorTests: XCTestCase {
 
         let applicator = StartupApplicator()
         let first = applicator.applyOnce(
-            preferences: StartupPreferences(destination: .openStudio, visualMode: .waveform, presetID: nil),
+            preferences: prefs(studio: true, island: true, mode: .waveform),
             studio: studio,
             island: island,
             defaults: defaults
@@ -308,9 +328,10 @@ final class StartupApplicatorTests: XCTestCase {
         island.setEnabled(false)
 
         let second = applicator.applyOnce(
-            preferences: StartupPreferences(
-                destination: .openStudioAndIsland,
-                visualMode: .spectrum,
+            preferences: prefs(
+                studio: true,
+                island: true,
+                mode: .spectrum,
                 presetID: VisualPresetCatalog.dense.id
             ),
             studio: studio,
@@ -362,13 +383,8 @@ final class StartupApplicatorTests: XCTestCase {
             island.shutdown()
         }
 
-        let prefs = StartupPreferences(
-            destination: .followExisting,
-            visualMode: .keepCurrent,
-            presetID: VisualPresetCatalog.halo.id
-        )
         _ = StartupApplicator().applyOnce(
-            preferences: prefs,
+            preferences: prefs(presetID: VisualPresetCatalog.halo.id),
             studio: studio,
             island: island,
             defaults: defaults

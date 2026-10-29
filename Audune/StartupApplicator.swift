@@ -7,7 +7,7 @@ final class StartupApplicator {
     private(set) var didApply = false
     private(set) var lastResolution: StartupResolution?
 
-    /// Resolves prefs, applies mode/preset, then destination. Subsequent calls are no-ops.
+    /// Resolves prefs, applies mode/preset, then independent launch surfaces. Subsequent calls are no-ops.
     @discardableResult
     func applyOnce(
         preferences: StartupPreferences,
@@ -33,16 +33,10 @@ final class StartupApplicator {
             island.updateSharedVisuals(studio.currentPreferences())
         }
 
-        switch resolution.islandPolicy {
-        case .followExisting:
-            break
-        case .forceDisabled:
-            island.setEnabled(false)
-        case .forceEnabled:
-            island.setEnabled(true)
+        // Do not rewrite `island.isEnabled`. Present only when the launch checkbox allows it.
+        if resolution.islandShouldPresent {
+            island.activatePresentation()
         }
-
-        island.activatePresentation()
 
         if resolution.studioShouldShow {
             studio.show()

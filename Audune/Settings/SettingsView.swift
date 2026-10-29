@@ -119,13 +119,21 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var startupPane: some View {
-        Section("At launch") {
-            Picker("Destination", selection: $startupPrefs.destination) {
-                ForEach(StartupDestination.allCases) { destination in
-                    Text(destination.title).tag(destination)
+        Section("Show at launch") {
+            Toggle("Studio", isOn: $startupPrefs.openStudioAtLaunch)
+            Toggle("Notch Island", isOn: $startupPrefs.showIslandAtLaunch)
+            Toggle("Settings", isOn: $startupPrefs.openSettingsAtLaunch)
+            Text("These checkboxes can be combined. With none selected, Audune stays in the menu bar only.")
+                .foregroundStyle(.secondary)
+            if startupPrefs.showIslandAtLaunch && islandModel.prefs.isEnabled == false {
+                Text("Notch Island is disabled. Enable it under Notch Island, or it will not appear at launch.")
+                    .foregroundStyle(.secondary)
+                Button("Enable Notch Island") {
+                    island.setEnabled(true)
+                    model.settingsCategory = .island
                 }
             }
-            Text("Notch Island appears only on supported displays. Menu Bar only turns Island off at launch.")
+            Text("Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.")
                 .foregroundStyle(.secondary)
         }
         Section("Visualization") {

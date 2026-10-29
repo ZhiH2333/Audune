@@ -18,32 +18,74 @@ final class StartupPreferencesTests: XCTestCase {
     func testMissingKeysUseBackwardCompatibleDefaults() {
         let loaded = StartupPreferences.load(from: defaults)
         XCTAssertEqual(loaded, .standard)
-        XCTAssertEqual(loaded.destination, .followExisting)
+        XCTAssertFalse(loaded.openStudioAtLaunch)
+        XCTAssertTrue(loaded.showIslandAtLaunch)
+        XCTAssertFalse(loaded.openSettingsAtLaunch)
         XCTAssertEqual(loaded.visualMode, .keepCurrent)
         XCTAssertNil(loaded.presetID)
+        XCTAssertFalse(loaded.autoStartCapture)
     }
 
     func testSaveAndLoadRoundTrip() {
         let stored = StartupPreferences(
-            destination: .openStudioAndIsland,
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: true,
             visualMode: .orbit,
-            presetID: "builtin.orbit.halo"
+            presetID: "builtin.orbit.halo",
+            autoStartCapture: true
         )
         stored.save(to: defaults)
 
         XCTAssertEqual(StartupPreferences.load(from: defaults), stored)
-        XCTAssertEqual(defaults.string(forKey: StartupPreferenceKey.destination), "openStudioAndIsland")
+        XCTAssertTrue(defaults.bool(forKey: StartupPreferenceKey.openStudioAtLaunch))
+        XCTAssertTrue(defaults.bool(forKey: StartupPreferenceKey.showIslandAtLaunch))
+        XCTAssertTrue(defaults.bool(forKey: StartupPreferenceKey.openSettingsAtLaunch))
         XCTAssertEqual(defaults.string(forKey: StartupPreferenceKey.visualMode), "orbit")
         XCTAssertEqual(defaults.string(forKey: StartupPreferenceKey.presetID), "builtin.orbit.halo")
+        XCTAssertTrue(defaults.bool(forKey: StartupPreferenceKey.autoStartCapture))
+        XCTAssertNil(defaults.object(forKey: StartupPreferenceKey.legacyDestination))
     }
 
-    func testUnknownRawValuesFallBackToDefaults() {
-        defaults.set("restoreLastSession", forKey: StartupPreferenceKey.destination)
+    func testIndependentSurfaceBooleansPersistSeparately() {
+        let stored = StartupPreferences(
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: false,
+            openSettingsAtLaunch: true,
+            visualMode: .keepCurrent,
+            presetID: nil,
+            autoStartCapture: false
+        )
+        stored.save(to: defaults)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertTrue(loaded.openStudioAtLaunch)
+        XCTAssertFalse(loaded.showIslandAtLaunch)
+        XCTAssertTrue(loaded.openSettingsAtLaunch)
+    }
+
+    func testAllSurfacesUncheckedPersists() {
+        let stored = StartupPreferences(
+            openStudioAtLaunch: false,
+            showIslandAtLaunch: false,
+            openSettingsAtLaunch: false,
+            visualMode: .keepCurrent,
+            presetID: nil,
+            autoStartCapture: false
+        )
+        stored.save(to: defaults)
+        XCTAssertEqual(StartupPreferences.load(from: defaults), stored)
+    }
+
+    func testUnknownVisualModeFallsBackToDefault() {
+        defaults.set(true, forKey: StartupPreferenceKey.openStudioAtLaunch)
+        defaults.set(false, forKey: StartupPreferenceKey.showIslandAtLaunch)
+        defaults.set(false, forKey: StartupPreferenceKey.openSettingsAtLaunch)
         defaults.set("magnet", forKey: StartupPreferenceKey.visualMode)
         defaults.set("  ", forKey: StartupPreferenceKey.presetID)
 
         let loaded = StartupPreferences.load(from: defaults)
-        XCTAssertEqual(loaded.destination, .followExisting)
+        XCTAssertTrue(loaded.openStudioAtLaunch)
+        XCTAssertFalse(loaded.showIslandAtLaunch)
         XCTAssertEqual(loaded.visualMode, .keepCurrent)
         XCTAssertNil(loaded.presetID)
     }
@@ -61,57 +103,144 @@ final class StartupPreferencesTests: XCTestCase {
 
     func testResetWritesStandardValues() {
         StartupPreferences(
-            destination: .menuBarOnly,
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: false,
+            openSettingsAtLaunch: true,
             visualMode: .waveform,
-            presetID: "gone"
+            presetID: "gone",
+            autoStartCapture: true
         ).save(to: defaults)
         StartupPreferences.reset(in: defaults)
         XCTAssertEqual(StartupPreferences.load(from: defaults), .standard)
     }
 
-    func testResolveFollowExistingKeepsSurfacesUnchanged() {
+    func testLegacyDestinationFollowExistingMigrates() {
+        defaults.set("followExisting", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertEqual(loaded, .standard)
+        XCTAssertTrue(defaults.bool(forKey: StartupPreferenceKey.showIslandAtLaunch))
+        XCTAssertNil(defaults.object(forKey: StartupPreferenceKey.legacyDestination))
+    }
+
+    func testLegacyDestinationMenuBarOnlyMigrates() {
+        defaults.set("menuBarOnly", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertFalse(loaded.openStudioAtLaunch)
+        XCTAssertFalse(loaded.showIslandAtLaunch)
+        XCTAssertFalse(loaded.openSettingsAtLaunch)
+        XCTAssertNil(defaults.object(forKey: StartupPreferenceKey.legacyDestination))
+    }
+
+    func testLegacyDestinationOpenStudioMigrates() {
+        defaults.set("openStudio", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertTrue(loaded.openStudioAtLaunch)
+        XCTAssertTrue(loaded.showIslandAtLaunch)
+        XCTAssertFalse(loaded.openSettingsAtLaunch)
+    }
+
+    func testLegacyDestinationShowIslandMigrates() {
+        defaults.set("showIsland", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertFalse(loaded.openStudioAtLaunch)
+        XCTAssertTrue(loaded.showIslandAtLaunch)
+        XCTAssertFalse(loaded.openSettingsAtLaunch)
+    }
+
+    func testLegacyDestinationOpenStudioAndIslandMigrates() {
+        defaults.set("openStudioAndIsland", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertTrue(loaded.openStudioAtLaunch)
+        XCTAssertTrue(loaded.showIslandAtLaunch)
+        XCTAssertFalse(loaded.openSettingsAtLaunch)
+    }
+
+    func testUnknownLegacyDestinationFallsBackWithoutMigratingKeys() {
+        defaults.set("restoreLastSession", forKey: StartupPreferenceKey.legacyDestination)
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertEqual(loaded, .standard)
+        XCTAssertEqual(defaults.string(forKey: StartupPreferenceKey.legacyDestination), "restoreLastSession")
+        XCTAssertNil(defaults.object(forKey: StartupPreferenceKey.openStudioAtLaunch))
+    }
+
+    func testSurfaceKeysTakePrecedenceOverLegacyDestination() {
+        defaults.set(true, forKey: StartupPreferenceKey.openStudioAtLaunch)
+        defaults.set(false, forKey: StartupPreferenceKey.showIslandAtLaunch)
+        defaults.set(true, forKey: StartupPreferenceKey.openSettingsAtLaunch)
+        defaults.set("menuBarOnly", forKey: StartupPreferenceKey.legacyDestination)
+
+        let loaded = StartupPreferences.load(from: defaults)
+        XCTAssertTrue(loaded.openStudioAtLaunch)
+        XCTAssertFalse(loaded.showIslandAtLaunch)
+        XCTAssertTrue(loaded.openSettingsAtLaunch)
+    }
+
+    func testResolveStandardKeepsSurfacesUnchanged() {
         let resolution = StartupResolution.resolve(.standard, library: emptyLibrary())
-        XCTAssertEqual(resolution.destination, .followExisting)
+        XCTAssertFalse(resolution.studioShouldShow)
+        XCTAssertTrue(resolution.islandShouldPresent)
+        XCTAssertFalse(resolution.settingsShouldShow)
         XCTAssertNil(resolution.effectiveMode)
         XCTAssertNil(resolution.presetToApply)
         XCTAssertFalse(resolution.presetIDWasInvalid)
-        XCTAssertFalse(resolution.studioShouldShow)
-        XCTAssertEqual(resolution.islandPolicy, .followExisting)
+        XCTAssertFalse(resolution.autoStartCapture)
     }
 
-    func testResolveMenuBarOnlyForcesIslandOff() {
-        let prefs = StartupPreferences(destination: .menuBarOnly, visualMode: .keepCurrent, presetID: nil)
+    func testResolveAllSurfacesUnchecked() {
+        let prefs = StartupPreferences(
+            openStudioAtLaunch: false,
+            showIslandAtLaunch: false,
+            openSettingsAtLaunch: false,
+            visualMode: .keepCurrent,
+            presetID: nil,
+            autoStartCapture: false
+        )
         let resolution = StartupResolution.resolve(prefs, library: emptyLibrary())
         XCTAssertFalse(resolution.studioShouldShow)
-        XCTAssertEqual(resolution.islandPolicy, .forceDisabled)
+        XCTAssertFalse(resolution.islandShouldPresent)
+        XCTAssertFalse(resolution.settingsShouldShow)
     }
 
-    func testResolveOpenStudioAndIsland() {
+    func testResolveIndependentSurfaceCombination() {
         let prefs = StartupPreferences(
-            destination: .openStudioAndIsland,
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: false,
+            openSettingsAtLaunch: true,
             visualMode: .keepCurrent,
-            presetID: nil
+            presetID: nil,
+            autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: emptyLibrary())
         XCTAssertTrue(resolution.studioShouldShow)
-        XCTAssertEqual(resolution.islandPolicy, .forceEnabled)
+        XCTAssertFalse(resolution.islandShouldPresent)
+        XCTAssertTrue(resolution.settingsShouldShow)
     }
 
     func testResolveExplicitModeWithoutPreset() {
-        let prefs = StartupPreferences(destination: .openStudio, visualMode: .waveform, presetID: nil)
+        let prefs = StartupPreferences(
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
+            visualMode: .waveform,
+            presetID: nil,
+            autoStartCapture: false
+        )
         let resolution = StartupResolution.resolve(prefs, library: emptyLibrary())
         XCTAssertEqual(resolution.effectiveMode, .waveform)
         XCTAssertNil(resolution.presetToApply)
         XCTAssertTrue(resolution.studioShouldShow)
-        XCTAssertEqual(resolution.islandPolicy, .followExisting)
+        XCTAssertTrue(resolution.islandShouldPresent)
     }
 
     func testResolvePresetInfersModeWhenKeepingCurrent() {
         let library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
         let prefs = StartupPreferences(
-            destination: .followExisting,
+            openStudioAtLaunch: false,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
             visualMode: .keepCurrent,
-            presetID: VisualPresetCatalog.dense.id
+            presetID: VisualPresetCatalog.dense.id,
+            autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: library)
         XCTAssertEqual(resolution.effectiveMode, .spectrum)
@@ -122,9 +251,12 @@ final class StartupPreferencesTests: XCTestCase {
     func testResolveMissingPresetSkipsWithoutChoosingAnother() {
         let library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
         let prefs = StartupPreferences(
-            destination: .openStudio,
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
             visualMode: .orbit,
-            presetID: "custom-deleted-uuid"
+            presetID: "custom-deleted-uuid",
+            autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: library)
         XCTAssertEqual(resolution.effectiveMode, .orbit)
@@ -135,9 +267,12 @@ final class StartupPreferencesTests: XCTestCase {
     func testResolveMismatchedPresetAndModeSkipsPreset() {
         let library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
         let prefs = StartupPreferences(
-            destination: .followExisting,
+            openStudioAtLaunch: false,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
             visualMode: .orbit,
-            presetID: VisualPresetCatalog.dense.id
+            presetID: VisualPresetCatalog.dense.id,
+            autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: library)
         XCTAssertEqual(resolution.effectiveMode, .orbit)
@@ -148,15 +283,18 @@ final class StartupPreferencesTests: XCTestCase {
     func testResolveMatchingExplicitModeAppliesPreset() {
         let library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
         let prefs = StartupPreferences(
-            destination: .showIsland,
+            openStudioAtLaunch: false,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
             visualMode: .spectrum,
-            presetID: VisualPresetCatalog.clean.id
+            presetID: VisualPresetCatalog.clean.id,
+            autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: library)
         XCTAssertEqual(resolution.effectiveMode, .spectrum)
         XCTAssertEqual(resolution.presetToApply?.id, VisualPresetCatalog.clean.id)
         XCTAssertFalse(resolution.studioShouldShow)
-        XCTAssertEqual(resolution.islandPolicy, .forceEnabled)
+        XCTAssertTrue(resolution.islandShouldPresent)
     }
 
     func testResolveDoesNotMutateUnrelatedDefaults() {
@@ -170,9 +308,12 @@ final class StartupPreferencesTests: XCTestCase {
         island.save(to: defaults)
 
         let prefs = StartupPreferences(
-            destination: .openStudio,
+            openStudioAtLaunch: true,
+            showIslandAtLaunch: true,
+            openSettingsAtLaunch: false,
             visualMode: .waveform,
-            presetID: VisualPresetCatalog.mirror.id
+            presetID: VisualPresetCatalog.mirror.id,
+            autoStartCapture: false
         )
         prefs.save(to: defaults)
         _ = StartupResolution.resolve(
