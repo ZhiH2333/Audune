@@ -428,21 +428,38 @@ AUD-09, AUD-13, AUD-15.
 
 ---
 
-## AUD-18B — Startup Behavior v1 (shipped on `dev`)
+## AUD-18B — Startup Behavior v1 (superseded on `dev` by AUD-18C)
 
 **Labels:** `P1`, `settings`, `ui`
 **Milestone:** Phase 2 — Core Surfaces
 
 ### Goal
-Let users choose what Audune presents on process launch (destination, visualization mode, optional Visual Preset) without Launch at Login or Now Playing.
-
-### Notes
-- Defaults preserve prior launch behavior (`followExisting` / `keepCurrent` / no preset).
-- Applied once per process by `StartupApplicator`; not on activation or window reopen.
-- “Restore last session” was intentionally omitted (Studio visibility is not persisted). AUD-19 remains the place for broader per-surface restore.
+Original mutually exclusive destination picker plus mode/preset. Replaced by AUD-18C independent surface checkboxes.
 
 ### Dependencies
 AUD-09, AUD-13, AUD-17 (Island enable APIs).
+
+---
+
+## AUD-18C — Startup Behavior & Launch at Login v1 (shipped on `dev`)
+
+**Labels:** `P1`, `settings`, `ui`
+**Milestone:** Phase 2 — Core Surfaces
+
+### Goal
+Let users choose independent launch surfaces (Studio / Notch Island / Settings), visualization mode, optional Visual Preset, optional auto-capture, and Launch at Login via `SMAppService.mainApp`.
+
+### Notes
+- Defaults preserve prior launch behavior (Studio/Settings off, Island follows `island.isEnabled`, `keepCurrent`, no preset, auto-capture off).
+- Legacy `startup.destination` migrates once into surface booleans.
+- Island launch checkbox uses a session presentation gate; it does not silently rewrite `island.isEnabled`.
+- Launch at Login reads real `SMAppService` status; no UserDefaults mirror; no helper/LaunchAgents.
+- Auto-capture starts only when already authorized (`CGPreflightScreenCaptureAccess`); never prompted at login for permission.
+- Applied once per process by `StartupApplicator`; not on activation or window reopen.
+- “Restore last session” remains out of scope (AUD-19).
+
+### Dependencies
+AUD-09, AUD-13, AUD-17, AUD-18B.
 
 ---
 
@@ -456,7 +473,7 @@ AUD-09, AUD-13, AUD-17 (Island enable APIs).
 - [ ] Keep one central audio capture service regardless of enabled surface count.
 - [ ] Store each surface's mode, size, opacity, location and window behavior separately.
 - [ ] Share global sensitivity/smoothing/accent color unless a clear user need justifies per-surface override.
-- [ ] Restore only surfaces the user had enabled (broader than Startup Behavior v1 destination).
+- [ ] Restore only surfaces the user had enabled (broader than Startup Behavior launch checkboxes).
 
 ### Acceptance criteria
 - [ ] Enabling/disabling surfaces does not create duplicate capture services.

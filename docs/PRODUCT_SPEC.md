@@ -366,13 +366,16 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 存储键集中定义，避免到处使用字符串字面值。
 - 首版不需要数据库、网络同步或复杂状态管理框架。
 
-### Startup Behavior v1
+### Startup Behavior & Launch at Login v1
 
-- Settings → Startup 配置进程启动时的行为。这与 “登录时自动启动 Audune”（Launch at Login）无关，也不包含 Now Playing。
-- **Destination（`startup.destination`）**：`followExisting`（默认，保持现有启动：Studio 隐藏，Island 跟随已保存的 `island.isEnabled` 与刘海支持）、`menuBarOnly`（启动时关闭 Island）、`openStudio`、`showIsland`、`openStudioAndIsland`。不支持的 Island 目标安全降级；不提供 “恢复上次会话”（Studio 可见性未持久化）。
+- Settings → Startup 配置进程启动时的行为，以及是否随 macOS 登录自动启动。不包含 Now Playing。
+- **Show at launch（独立复选框）**：`startup.openStudioAtLaunch`（默认 `false`）、`startup.showIslandAtLaunch`（默认 `true`）、`startup.openSettingsAtLaunch`（默认 `false`）。可同时勾选；全部不勾选时只保留菜单栏入口。缺省值与升级前一致：Studio/Settings 不自动打开，Island 跟随已保存的 `island.isEnabled` 与刘海支持。旧键 `startup.destination` 在首次加载时迁移为上述布尔组合后删除。不提供 “恢复上次会话”（Studio 可见性未持久化）。
+- **Notch Island 边界**：启动复选框不静默改写 `island.isEnabled`；用进程内 `allowsLaunchPresentation` 门控本次是否呈现。Island 总开关关闭时，即使勾选启动显示也不会强制开启，Settings 提供启用入口。无刘海时安全降级，不创建错位窗口。
+- **Launch at Login**：Settings → Startup 的独立开关，通过公开 API `SMAppService.mainApp` 注册/取消注册；UI 只读系统 `status`（`.enabled` / `.notRegistered` / `.requiresApproval` / `.notFound`），不在 UserDefaults 伪造注册状态。登录启动与手动启动共用同一套窗口复选框；不创建 helper、不写 LaunchAgents。
 - **Visualization mode（`startup.visualMode`）**：`keepCurrent`（默认）或 Spectrum / Waveform / Orbit。覆盖时写入 `studio.mode` 与 `island.mode`，避免首帧闪烁。
-- **Optional Visual preset（`startup.presetID`）**：稳定引用内置或自定义预设 ID；缺省不覆盖。选中预设时推断模式；缺失/已删除 ID 跳过预设且不另选替代；应用路径复用 `applyVisualPreset`（只改该模式视觉参数与 `appliedIDByMode`）。
-- 配置只在**每次进程冷启动**由 `StartupApplicator` 应用一次；激活应用、重新打开 Studio/Island、或仅在 Settings 中改选项都不会重放。Settings 中的修改在下次启动生效，不预览到当前会话。
+- **Optional Visual preset（`startup.presetID`）**：稳定引用内置或自定义预设 ID；缺省不覆盖。选中预设时推断模式；显式模式与预设冲突则跳过预设；缺失/已删除 ID 跳过且不另选替代；应用路径复用 `applyVisualPreset`（只改该模式视觉参数与 `appliedIDByMode`）。
+- **Optional auto-capture（`startup.autoStartCapture`）**：默认 `false`。仅当已通过非弹窗探针确认授权时，才在冷启动调用现有 `ProcessTapSpike.start()`；未授权不弹 TCC。打开 Studio/Island/Settings 不会自动开始捕获。
+- 窗口、模式、预设与可选捕获只在**每次进程冷启动**由 `StartupApplicator` 应用一次；激活应用、重新打开窗口、或仅在 Settings 中改选项都不会重放。窗口/可视化修改在下次启动生效；Launch at Login 在下次 macOS 登录生效。
 
 ### 可视化预设 v1
 
