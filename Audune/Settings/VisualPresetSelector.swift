@@ -104,8 +104,6 @@ struct VisualPresetSelector: View {
                     }
                 }
             }
-            Text(footnote)
-                .foregroundStyle(.secondary)
         }
         .alert("Save Current", isPresented: $isSaving) {
             TextField("Name", text: $draftName)
@@ -240,14 +238,6 @@ struct VisualPresetSelector: View {
             return String(localized: "\(selectedPreset.displayName) will be removed. The current \(mode.title) settings stay as they are.")
         }
         return String(localized: "This preset will be removed. The current \(mode.title) settings stay as they are.")
-    }
-
-    private var footnote: String {
-        var text = String(localized: "Applies \(mode.title) settings only. Appearance, Window, and the other visual modes stay as they are.")
-        if mode != .spectrum {
-            text += String(localized: " A custom color on this mode is replaced when the preset is applied.")
-        }
-        return text
     }
 }
 #endif

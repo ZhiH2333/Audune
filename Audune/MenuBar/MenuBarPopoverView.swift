@@ -8,7 +8,6 @@ final class MenuBarModel {
     var detail = ""
     var statusText = ""
     var showDetail = false
-    var showIdleHint = false
     var startDisabled = false
     var stopDisabled = true
     var studioVisible = false
@@ -42,10 +41,6 @@ struct MenuBarPopoverView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
-            } else if model.showIdleHint {
-                Text("Press Start to visualize your Mac's system audio. macOS asks for permission the first time. Audio is never recorded or uploaded.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
                 PopoverButton(title: "Start", symbol: "play.fill", action: start)

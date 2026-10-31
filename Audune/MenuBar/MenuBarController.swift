@@ -161,8 +161,6 @@ final class MenuBarController: NSObject {
         if model.detail != presentation.detail { model.detail = presentation.detail }
         if model.statusText != presentation.statusText { model.statusText = presentation.statusText }
         if model.showDetail != presentation.showDetail { model.showDetail = presentation.showDetail }
-        let showsIdleHint = presentation.state == .idle
-        if model.showIdleHint != showsIdleHint { model.showIdleHint = showsIdleHint }
         if model.startDisabled != presentation.startDisabled { model.startDisabled = presentation.startDisabled }
         if model.stopDisabled != presentation.stopDisabled { model.stopDisabled = presentation.stopDisabled }
         let studioOpen = studioVisible()

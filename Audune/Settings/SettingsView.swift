@@ -129,8 +129,6 @@ struct SettingsView: View {
             Toggle("Studio", isOn: $startupPrefs.openStudioAtLaunch)
             Toggle("Notch Island", isOn: $startupPrefs.showIslandAtLaunch)
             Toggle("Settings", isOn: $startupPrefs.openSettingsAtLaunch)
-            Text("These checkboxes can be combined. With none selected, Audune stays in the menu bar only.")
-                .foregroundStyle(.secondary)
             if startupPrefs.showIslandAtLaunch && islandModel.prefs.isEnabled == false {
                 Text("Notch Island is disabled. Enable it under Notch Island, or it will not appear at launch.")
                     .foregroundStyle(.secondary)
@@ -139,8 +137,6 @@ struct SettingsView: View {
                     model.settingsCategory = .island
                 }
             }
-            Text("Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.")
-                .foregroundStyle(.secondary)
         }
         Section("Login") {
             Toggle(
@@ -150,8 +146,6 @@ struct SettingsView: View {
                     set: { launchAtLogin.setEnabled($0) }
                 )
             )
-            Text("This registers Audune with macOS Login Items. It is separate from which windows open after launch.")
-                .foregroundStyle(.secondary)
             if let message = launchAtLogin.status.statusMessage {
                 Text(message)
                     .foregroundStyle(.secondary)
@@ -182,15 +176,7 @@ struct SettingsView: View {
                     Text(preset.displayName).tag(Optional(preset.id))
                 }
             }
-            Text("A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.")
-                .foregroundStyle(.secondary)
             Toggle("Start system audio capture automatically", isOn: $startupPrefs.autoStartCapture)
-            Text("Off by default. Capture starts only if Audune already has Screen & System Audio Recording permission. Showing Studio or Notch Island never starts capture by itself.")
-                .foregroundStyle(.secondary)
-        }
-        Section {
-            Text("Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.")
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -289,8 +275,6 @@ struct SettingsView: View {
             SettingsSlider(title: "Stroke width", value: $model.prefs.appearance.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
         }
         Section {
-            Text("The Studio window background is always fully transparent. Opacity only changes the graphic.")
-                .foregroundStyle(.secondary)
             Button("Reset Appearance") { model.prefs.appearance = .standard }
         }
     }
@@ -299,8 +283,6 @@ struct SettingsView: View {
     private var layoutPane: some View {
         Section("Preview") {
             LayoutPreview(model: model)
-            Text("The outer frame is the Studio window; the inner frame is the visualization. In Fixed size mode the visualization keeps its own size when the window grows, which can look like an empty border around the graphic. Use Fill window to draw edge to edge.")
-                .foregroundStyle(.secondary)
         }
         Section("Visualization size") {
             Picker("Mode", selection: $model.prefs.layout.mode) {
@@ -327,8 +309,6 @@ struct SettingsView: View {
                 }
             }
             .disabled(model.prefs.layout.mode == .fill)
-            Text("Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size.")
-                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Layout") { model.prefs.layout = .standard }
@@ -352,8 +332,6 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
             SettingsSlider(title: "Low frequency (Hz)", value: $model.prefs.spectrum.minHz, range: StudioPreferences.minHzRange, step: 5, fractionDigits: 0)
             SettingsSlider(title: "High frequency (Hz)", value: $model.prefs.spectrum.maxHz, range: StudioPreferences.maxHzRange, step: 100, fractionDigits: 0)
-            Text("Each bar shows the strength of one real frequency range from the captured audio.")
-                .foregroundStyle(.secondary)
         }
         Section("Shape") {
             SettingsSlider(title: "Gap", value: $model.prefs.spectrum.barGap, range: StudioPreferences.barGapRange, step: 0.5)
@@ -365,8 +343,6 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text("Solid uses Appearance fill. Frequency shifts hue across the band. Amplitude brightens taller bars. Peak caps keep the stroke color.")
-                .foregroundStyle(.secondary)
         }
         Section("Response") {
             SettingsSlider(title: "Sensitivity", value: $model.prefs.spectrum.sensitivity, range: StudioPreferences.sensitivityRange, step: 0.05)
@@ -374,8 +350,6 @@ struct SettingsView: View {
             SettingsSlider(title: "Smoothing", value: $model.prefs.spectrum.smoothing, range: StudioPreferences.smoothingRange, step: 0.05)
             SettingsSlider(title: "Attack (ms)", value: $model.prefs.spectrum.attackMs, range: StudioPreferences.attackMsRange, step: 5, fractionDigits: 0)
             SettingsSlider(title: "Release (ms)", value: $model.prefs.spectrum.releaseMs, range: StudioPreferences.releaseMsRange, step: 10, fractionDigits: 0)
-            Text("Sensitivity sets how quiet a sound can be and still show. Amplitude scales the bar height. Smoothing blends neighboring bars. Attack and Release set how fast bars rise and fall, in milliseconds.")
-                .foregroundStyle(.secondary)
         }
         Section("Peaks") {
             Toggle("Peak hold", isOn: $model.prefs.spectrum.peakHold)
@@ -383,8 +357,6 @@ struct SettingsView: View {
                 .disabled(model.prefs.spectrum.peakHold == false)
             SettingsSlider(title: "Fall speed", value: $model.prefs.spectrum.peakFallPerSecond, range: StudioPreferences.peakFallPerSecondRange, step: 0.05)
                 .disabled(model.prefs.spectrum.peakHold == false)
-            Text("Hold time keeps each cap at its peak. Fall speed sets how fast it drops afterwards.")
-                .foregroundStyle(.secondary)
         }
         Section("Silence") {
             Toggle("Silence gate", isOn: $model.prefs.spectrum.silenceGateEnabled)
@@ -396,8 +368,6 @@ struct SettingsView: View {
                 fractionDigits: 4
             )
             .disabled(model.prefs.spectrum.silenceGateEnabled == false)
-            Text("Audio below the noise floor counts as silence. Bars then settle to the baseline instead of switching off. This only affects the visualization, not system audio.")
-                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Spectrum") {
@@ -413,8 +383,6 @@ struct SettingsView: View {
     private var waveformPane: some View {
         visualPresetSection(.waveform)
         Section("Shape") {
-            Text("Draws the real captured audio signal. Density sets how many points are drawn.")
-                .foregroundStyle(.secondary)
             Picker("Style", selection: $model.prefs.waveform.style) {
                 ForEach(WaveformStyle.allCases) { style in
                     Text(style.title).tag(style)
@@ -446,8 +414,6 @@ struct SettingsView: View {
                 range: StudioPreferences.fillStrengthRange,
                 step: 0.05
             )
-            Text("Fill strength applies to Soft Fill and Mirror. Fine Line stays a stroke only.")
-                .foregroundStyle(.secondary)
         }
         Section("Motion") {
             SettingsSlider(
@@ -456,24 +422,18 @@ struct SettingsView: View {
                 range: StudioPreferences.waveformVerticalRangeRange,
                 step: 0.05
             )
-            Text("How much of the stroke-safe canvas height the waveform may occupy. This is not a clip box and does not change the Studio window size (see Layout and Window).")
-                .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Visual amplitude",
                 value: $model.prefs.waveform.amplitude,
                 range: StudioPreferences.waveformAmplitudeRange,
                 step: 0.05
             )
-            Text("How strongly the signal fills that height. It does not change system volume, captured audio, or the window size.")
-                .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Motion smoothing",
                 value: $model.prefs.waveform.smoothing,
                 range: StudioPreferences.smoothingRange,
                 step: 0.05
             )
-            Text("Stabilizes motion over real time. Separate from Spectrum Attack / Release.")
-                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Waveform") {
@@ -494,8 +454,6 @@ struct SettingsView: View {
                 }
             }
             Toggle("Mirror left and right", isOn: $model.prefs.orbit.mirrored)
-            Text(orbitRingDescription)
-                .foregroundStyle(.secondary)
             SettingsSlider(title: "Inner radius", value: $model.prefs.orbit.inner, range: StudioPreferences.orbitInnerRange, step: 0.05)
             SettingsSlider(title: "Outer radius", value: $model.prefs.orbit.outerScale, range: StudioPreferences.orbitOuterRange, step: 0.02)
             SettingsSlider(title: "Angular gap (deg)", value: $model.prefs.orbit.gapDegrees, range: StudioPreferences.orbitGapRange, step: 0.5, fractionDigits: 1)
@@ -505,8 +463,6 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text("Dual Band maps the lower half of the bands to an inner ring and the upper half to an outer ring.")
-                .foregroundStyle(.secondary)
         }
         Section("Style") {
             Toggle("Custom color", isOn: Binding(
@@ -531,8 +487,6 @@ struct SettingsView: View {
                 range: StudioPreferences.orbitPulseRange,
                 step: 0.05
             )
-            Text("Pulse gently lengthens bars from mean band energy. Set to 0 to disable.")
-                .foregroundStyle(.secondary)
         }
         Section {
             Button("Reset Orbit") {
@@ -553,10 +507,6 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text(windowModeDescription)
-                .foregroundStyle(.secondary)
-            Text(windowSpacesDescription)
-                .foregroundStyle(.secondary)
         }
         Section("Move and resize") {
             Toggle("Allow dragging by the grip", isOn: $model.prefs.window.allowsDrag)
@@ -565,8 +515,6 @@ struct SettingsView: View {
             Button("Reset Position and Size") { studio.resetWindowFrame() }
         }
         Section("Size") {
-            Text("Width and height set the Studio window frame in points (not Retina pixels). Dragging the window edges updates these values. Layout controls the visualization inside the window. Notch Island is unchanged.")
-                .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Width (pt)",
                 value: $model.prefs.window.width,
@@ -583,11 +531,7 @@ struct SettingsView: View {
             )
         }
         Section("Controls") {
-            Text("Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear when the pointer is near and hide after 3 seconds without it.")
-                .foregroundStyle(.secondary)
             Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
-            Text("Hidden buttons do not receive clicks. Reduce Motion removes the fade.")
-                .foregroundStyle(.secondary)
             Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
             Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
             Text(reduceMotionStatus)
@@ -627,10 +571,6 @@ struct SettingsView: View {
                 Text(islandStateDescription)
                     .foregroundStyle(.secondary)
             }
-            if islandModel.isSupported == false {
-                Text("Notch Island requires a Mac display with a camera housing and valid top auxiliary areas. Menu Bar and Studio remain available on non-notched displays.")
-                    .foregroundStyle(.secondary)
-            }
         }
         Section("Visuals") {
             Picker("Expanded mode", selection: Binding(
@@ -651,8 +591,6 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text("Compact mode draws a symmetric live spectrum on both sides of the notch. Colors follow Appearance.")
-                .foregroundStyle(.secondary)
         }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
@@ -667,8 +605,6 @@ struct SettingsView: View {
                     Text(strength.title).tag(strength)
                 }
             }
-            Text("Light, Medium, and Strong use different trackpad feedback patterns. A Mac without a Force Touch trackpad does not vibrate.")
-                .foregroundStyle(.secondary)
             SettingsSlider(
                 title: "Collapse delay (s)",
                 value: $islandModel.prefs.collapseDelaySeconds,
@@ -793,34 +729,12 @@ struct SettingsView: View {
         )
     }
 
-    private var orbitRingDescription: LocalizedStringKey {
-        model.prefs.orbit.mirrored
-            ? "Mirrored rings read \(model.prefs.orbit.bandCount) real bands and show each twice, low at the top."
-            : "Each bar reads its own real band."
-    }
-
     private var islandExpandTitle: LocalizedStringKey {
         islandModel.state.isExpandedOrPinned ? "Collapse Now" : "Expand Now"
     }
 
     private var islandPinTitle: LocalizedStringKey {
         islandModel.isPinned ? "Unpin Expanded" : "Pin Expanded"
-    }
-
-    private var windowModeDescription: LocalizedStringKey {
-        switch model.prefs.windowMode {
-        case .onDesktop: return "On Desktop sits above the wallpaper and below ordinary windows."
-        case .onTop: return "On Top stays above ordinary windows and can sit beside a full-screen app."
-        case .asWindow: return "As Window behaves like an ordinary window and can be covered by others."
-        }
-    }
-
-    private var windowSpacesDescription: LocalizedStringKey {
-        switch model.prefs.windowMode {
-        case .onDesktop: return "On Desktop is set to appear on all desktops."
-        case .onTop: return "On Top joins all desktops and is allowed beside full-screen apps."
-        case .asWindow: return "As Window stays on its own desktop and full-screen apps can cover it."
-        }
     }
 
     private var islandStateDescription: LocalizedStringKey {

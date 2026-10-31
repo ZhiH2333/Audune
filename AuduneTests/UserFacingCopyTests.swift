@@ -23,18 +23,16 @@ final class UserFacingCopyTests: XCTestCase {
         }
     }
 
-    func testCatalogCoversAboutAndFirstRunText() throws {
+    func testCatalogCoversAboutText() throws {
         let keys = try catalogKeys()
         XCTAssertTrue(keys.contains("About Audune"))
-        XCTAssertTrue(keys.contains { $0.hasPrefix("Press Start to visualize") })
         XCTAssertTrue(keys.contains { $0.hasPrefix("Free and open source.") })
     }
 
     @MainActor
-    func testPopoverModelStartsWithoutDetailOrIdleHint() {
+    func testPopoverModelStartsWithoutDetail() {
         let model = MenuBarModel()
         XCTAssertFalse(model.showDetail)
-        XCTAssertFalse(model.showIdleHint)
         XCTAssertTrue(model.statusText.isEmpty)
     }
 }
