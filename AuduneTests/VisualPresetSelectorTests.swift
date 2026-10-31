@@ -21,19 +21,19 @@ final class VisualPresetSelectorTests: XCTestCase {
         XCTAssertEqual(library.match(in: .standard, mode: .spectrum).statusText, "Unsaved settings")
 
         var prefs = try library.apply(VisualPresetCatalog.clean, to: .standard, in: defaults).get()
-        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean · Built-in")
+        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean")
         prefs.appearance.opacity = 0.5
-        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean · Built-in")
+        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean")
         prefs.spectrum.barGap = 0
-        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean · Modified")
+        XCTAssertEqual(library.match(in: prefs, mode: .spectrum).statusText, "Clean (Modified)")
 
         var waveform = WaveformPreferences.standard
         waveform.density = 32
         waveform.style = .softFill
         let custom = try library.addCustom(name: "Night", mode: .waveform, waveform: waveform, to: defaults).get()
         let restored = try library.apply(custom, to: prefs, in: defaults).get()
-        XCTAssertEqual(library.match(in: restored, mode: .waveform).statusText, "Night · Custom")
-        XCTAssertEqual(library.match(in: restored, mode: .spectrum).statusText, "Clean · Modified")
+        XCTAssertEqual(library.match(in: restored, mode: .waveform).statusText, "Night")
+        XCTAssertEqual(library.match(in: restored, mode: .spectrum).statusText, "Clean (Modified)")
     }
 
     @MainActor

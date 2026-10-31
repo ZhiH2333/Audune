@@ -38,7 +38,7 @@ final class VisualPresetCustomTests: XCTestCase {
         var stored = VisualPresetCatalog.restoring(from: defaults)
         XCTAssertEqual(stored.customPresets.first?.waveform, waveform.clamped())
         XCTAssertEqual(stored.appliedID(for: .waveform), saved.id)
-        XCTAssertEqual(stored.match(in: studio.currentPreferences(), mode: .waveform).statusText, "Glow · Custom")
+        XCTAssertEqual(stored.match(in: studio.currentPreferences(), mode: .waveform).statusText, "Glow")
         XCTAssertEqual(studio.currentPreferences().spectrum.barCount, 48)
 
         try studio.renameVisualPreset(id: saved.id, to: "Glow 2").get()
@@ -48,7 +48,7 @@ final class VisualPresetCustomTests: XCTestCase {
         XCTAssertEqual(stored.appliedID(for: .waveform), saved.id)
 
         studio.model.prefs.waveform.amplitude = 2.4
-        XCTAssertEqual(stored.match(in: studio.currentPreferences(), mode: .waveform).statusText, "Glow 2 · Modified")
+        XCTAssertEqual(stored.match(in: studio.currentPreferences(), mode: .waveform).statusText, "Glow 2 (Modified)")
 
         let beforeDelete = studio.currentPreferences()
         try studio.deleteVisualPreset(id: saved.id).get()
