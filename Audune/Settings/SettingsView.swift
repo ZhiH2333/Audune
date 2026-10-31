@@ -49,6 +49,7 @@ struct SettingsView: View {
     @State private var presetLibrary = VisualPresetCatalog.restoring()
     @State private var startupPrefs = StartupPreferences.load()
     @State private var launchAtLogin = SystemLaunchAtLoginService()
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -58,13 +59,14 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsCategory.allCases, selection: $model.settingsCategory) { category in
                 Label(category.title, systemImage: category.symbol)
                     .tag(category)
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             VStack(spacing: 0) {
                 Text(model.settingsCategory.title)
@@ -74,29 +76,35 @@ struct SettingsView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
                     .accessibilityAddTraits(.isHeader)
-            Form {
-                Section {
-                    if model.settingsCategory == .island {
-                        islandStatusRow
-                    } else {
-                        studioPreviewRow
+                Form {
+                    Section {
+                        if model.settingsCategory == .island {
+                            islandStatusRow
+                        } else {
+                            studioPreviewRow
+                        }
+                    }
+                    switch model.settingsCategory {
+                    case .startup: startupPane
+                    case .appearance: appearancePane
+                    case .layout: layoutPane
+                    case .spectrum: spectrumPane
+                    case .waveform: waveformPane
+                    case .orbit: orbitPane
+                    case .window: windowPane
+                    case .island: islandPane
                     }
                 }
-                switch model.settingsCategory {
-                case .startup: startupPane
-                case .appearance: appearancePane
-                case .layout: layoutPane
-                case .spectrum: spectrumPane
-                case .waveform: waveformPane
-                case .orbit: orbitPane
-                case .window: windowPane
-                case .island: islandPane
-                }
+                .formStyle(.grouped)
             }
-            .formStyle(.grouped)
+            .toolbar(removing: .sidebarToggle)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .onChange(of: columnVisibility) { _, visibility in
+            if visibility != .all {
+                columnVisibility = .all
             }
         }
-        .toolbar(removing: .sidebarToggle)
         .onChange(of: model.prefs) { _, newValue in
             studio.preferencesDidChange()
             island.updateSharedVisuals(newValue)
