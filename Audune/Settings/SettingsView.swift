@@ -50,6 +50,7 @@ struct SettingsView: View {
     @State private var startupPrefs = StartupPreferences.load()
     @State private var launchAtLogin = SystemLaunchAtLoginService()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var layoutPreviewEnergy = LayoutPreviewEnergyState()
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -112,7 +113,10 @@ struct SettingsView: View {
         .onChange(of: islandModel.prefs) { _, _ in
             island.preferencesDidChange()
         }
-        .onChange(of: model.settingsCategory) { _, newCategory in
+        .onChange(of: model.settingsCategory) { oldCategory, newCategory in
+            if oldCategory == .layout && newCategory != .layout {
+                pauseLayoutPreview()
+            }
             if newCategory == .island {
                 island.evaluateScreensAndApply(animated: false)
             }
@@ -128,6 +132,10 @@ struct SettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             guard model.settingsCategory == .startup else { return }
             launchAtLogin.refresh()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            guard model.settingsCategory == .layout else { return }
+            pauseLayoutPreview()
         }
     }
 
@@ -290,7 +298,13 @@ struct SettingsView: View {
     @ViewBuilder
     private var layoutPane: some View {
         Section("Preview") {
-            LayoutPreview(model: model)
+            LayoutPreview(
+                model: model,
+                energySaving: layoutPreviewEnergy.isEnergySaving,
+                frozen: layoutPreviewEnergy.snapshot,
+                onPause: pauseLayoutPreview,
+                onResume: { layoutPreviewEnergy.resume() }
+            )
         }
         Section("Visualization size") {
             Picker("Mode", selection: $model.prefs.layout.mode) {
@@ -719,6 +733,10 @@ struct SettingsView: View {
         presetLibrary = VisualPresetCatalog.restoring()
     }
 
+    private func pauseLayoutPreview() {
+        layoutPreviewEnergy.enterEnergySaving(capturing: .live(from: model))
+    }
+
     private var presetBinding: Binding<StudioAccent?> {
         Binding(
             get: {
@@ -767,9 +785,14 @@ struct SettingsView: View {
     }
 }
 
-/// Mini Studio: outer frame is the window, inner frame is the visualization, drawn with live data.
+/// Mini Studio: outer frame is the window, inner frame is the visualization.
+/// Live while active; frozen while energy-saving after leaving Layout or pausing.
 private struct LayoutPreview: View {
     @Bindable var model: StudioModel
+    var energySaving: Bool
+    var frozen: LayoutPreviewSnapshot?
+    var onPause: () -> Void
+    var onResume: () -> Void
 
     var body: some View {
         let window = model.windowSize.width > 0 && model.windowSize.height > 0 ? model.windowSize : StudioFrame.defaultSize
@@ -778,6 +801,7 @@ private struct LayoutPreview: View {
         let fit = min(boxWidth / window.width, boxHeight / window.height)
         let shown = CGSize(width: window.width * fit, height: window.height * fit)
         let inner = VisualLayout.frame(in: shown, layout: model.prefs.layout)
+        let frame = displayFrame
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(Color.black.opacity(0.55))
@@ -787,19 +811,61 @@ private struct LayoutPreview: View {
                 .frame(width: shown.width, height: shown.height)
             StudioVisualizationView(
                 prefs: model.prefs,
-                spectrum: model.studioSpectrum,
-                peaks: model.spectrumPeaks,
-                waveform: model.displayWaveform,
-                drawsBars: model.snapshot.isSilent == false
+                spectrum: frame.spectrum,
+                peaks: frame.peaks,
+                waveform: frame.waveform,
+                drawsBars: frame.drawsBars
             )
+            .blur(radius: energySaving ? 8 : 0)
             .frame(width: inner.width, height: inner.height)
             .overlay(Rectangle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 1))
             .offset(x: inner.minX, y: inner.minY)
+            if energySaving {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.black.opacity(0.32))
+                    }
+                    .frame(width: shown.width, height: shown.height)
+                VStack(spacing: 12) {
+                    Text("Preview is in energy-saving mode")
+                        .font(.title3.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                    Button("Resume Preview", action: onResume)
+                        .buttonStyle(.glass)
+                }
+                .padding(16)
+                .frame(width: shown.width, height: shown.height)
+            } else {
+                Button(action: onPause) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .controlSize(.small)
+                .help("Pause Preview")
+                .accessibilityLabel("Pause Preview")
+                .padding(8)
+                .frame(width: shown.width, height: shown.height, alignment: .topTrailing)
+            }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .frame(width: shown.width, height: shown.height)
         .frame(maxWidth: .infinity)
         .accessibilityLabel("Layout preview")
-        .accessibilityValue("Window \(Int(window.width)) by \(Int(window.height)) points")
+        .accessibilityValue(energySaving
+            ? String(localized: "Preview is in energy-saving mode")
+            : "Window \(Int(window.width)) by \(Int(window.height)) points")
+    }
+
+    private var displayFrame: LayoutPreviewSnapshot {
+        if energySaving, let frozen {
+            return frozen
+        }
+        return .live(from: model)
     }
 }
 
