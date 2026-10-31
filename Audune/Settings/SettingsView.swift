@@ -5,11 +5,8 @@ import SwiftUI
 enum SettingsCategory: String, CaseIterable, Identifiable {
     case startup
     case appearance
-    case layout
-    case spectrum
-    case waveform
-    case orbit
-    case window
+    case visualization
+    case studio
     case island
 
     var id: String { rawValue }
@@ -18,11 +15,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .startup: return String(localized: "Startup")
         case .appearance: return String(localized: "Appearance")
-        case .layout: return String(localized: "Layout")
-        case .spectrum: return String(localized: "Spectrum")
-        case .waveform: return String(localized: "Waveform")
-        case .orbit: return String(localized: "Orbit")
-        case .window: return String(localized: "Window")
+        case .visualization: return String(localized: "Visualization")
+        case .studio: return String(localized: "Studio")
         case .island: return String(localized: "Notch Island")
         }
     }
@@ -31,11 +25,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .startup: return "power"
         case .appearance: return "paintpalette"
-        case .layout: return "rectangle.dashed"
-        case .spectrum: return "chart.bar.fill"
-        case .waveform: return "waveform"
-        case .orbit: return "circle.dotted"
-        case .window: return "macwindow"
+        case .visualization: return "waveform.path.ecg"
+        case .studio: return "macwindow"
         case .island: return "rectangle.topthird.inset.filled"
         }
     }
@@ -78,21 +69,11 @@ struct SettingsView: View {
                     .padding(.bottom, 4)
                     .accessibilityAddTraits(.isHeader)
                 Form {
-                    Section {
-                        if model.settingsCategory == .island {
-                            islandStatusRow
-                        } else {
-                            studioPreviewRow
-                        }
-                    }
                     switch model.settingsCategory {
                     case .startup: startupPane
                     case .appearance: appearancePane
-                    case .layout: layoutPane
-                    case .spectrum: spectrumPane
-                    case .waveform: waveformPane
-                    case .orbit: orbitPane
-                    case .window: windowPane
+                    case .visualization: visualizationPane
+                    case .studio: studioPane
                     case .island: islandPane
                     }
                 }
@@ -114,7 +95,7 @@ struct SettingsView: View {
             island.preferencesDidChange()
         }
         .onChange(of: model.settingsCategory) { oldCategory, newCategory in
-            if oldCategory == .layout && newCategory != .layout {
+            if oldCategory == .studio && newCategory != .studio {
                 pauseLayoutPreview()
             }
             if newCategory == .island {
@@ -134,7 +115,7 @@ struct SettingsView: View {
             launchAtLogin.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            guard model.settingsCategory == .layout else { return }
+            guard model.settingsCategory == .studio else { return }
             pauseLayoutPreview()
         }
     }
@@ -236,42 +217,6 @@ struct SettingsView: View {
         return presetLibrary.preset(id: id) == nil
     }
 
-    private var studioPreviewRow: some View {
-        HStack {
-            Text(studioPreviewText)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button(studioToggleTitle) {
-                studio.toggle()
-            }
-        }
-    }
-
-    private var islandToggleTitle: LocalizedStringKey {
-        islandModel.prefs.isEnabled ? "Hide Notch Island" : "Show Notch Island"
-    }
-
-    private var studioPreviewText: LocalizedStringKey {
-        model.isShown ? "Changes show in Studio immediately." : "Studio is hidden. Show it to preview changes."
-    }
-
-    private var studioToggleTitle: LocalizedStringKey {
-        model.isShown ? "Hide Studio" : "Show Studio"
-    }
-
-    private var islandStatusRow: some View {
-        HStack {
-            Text(islandModel.statusSummary)
-                .foregroundStyle(.secondary)
-            Spacer()
-            if islandModel.isSupported {
-                Button(islandToggleTitle) {
-                    island.toggleEnabled()
-                }
-            }
-        }
-    }
-
     // MARK: Panes
 
     @ViewBuilder
@@ -296,7 +241,27 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private var layoutPane: some View {
+    private var visualizationPane: some View {
+        Section {
+            Picker("Mode", selection: Binding(
+                get: { model.prefs.mode },
+                set: { studio.selectMode($0) }
+            )) {
+                ForEach(StudioVisualMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        switch model.prefs.mode {
+        case .spectrum: spectrumPane
+        case .waveform: waveformPane
+        case .orbit: orbitPane
+        }
+    }
+
+    @ViewBuilder
+    private var studioPane: some View {
         Section("Preview") {
             LayoutPreview(
                 model: model,
@@ -332,8 +297,55 @@ struct SettingsView: View {
             }
             .disabled(model.prefs.layout.mode == .fill)
         }
+        Section("Window mode") {
+            Picker("Mode", selection: Binding(get: { model.prefs.windowMode }, set: { studio.setWindowMode($0) })) {
+                ForEach(StudioWindowMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        Section("Move and resize") {
+            Toggle("Allow dragging by the grip", isOn: $model.prefs.window.allowsDrag)
+            Toggle("Allow resizing from the edges", isOn: $model.prefs.window.allowsResize)
+            Toggle("Restore position and size at launch", isOn: $model.prefs.window.restorePosition)
+            Button("Reset Position and Size") { studio.resetWindowFrame() }
+        }
+        Section("Size") {
+            SettingsSlider(
+                title: "Width (pt)",
+                value: $model.prefs.window.width,
+                range: StudioPreferences.windowWidthRange,
+                step: 10,
+                fractionDigits: 0
+            )
+            SettingsSlider(
+                title: "Height (pt)",
+                value: $model.prefs.window.height,
+                range: StudioPreferences.windowHeightRange,
+                step: 10,
+                fractionDigits: 0
+            )
+        }
+        Section("Controls") {
+            Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
+            Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
+            Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
+            Text(reduceMotionStatus)
+                .foregroundStyle(.secondary)
+        }
         Section {
             Button("Reset Layout") { model.prefs.layout = .standard }
+            Button("Reset Window Settings") {
+                model.prefs.window = .standard
+                studio.setWindowMode(StudioPreferences.standard.windowMode)
+            }
+            Button("Reset All Studio Settings") {
+                studio.resetPreferences()
+                studio.clearAppliedVisualPresets()
+                island.updateSharedVisuals(StudioPreferences.standard)
+                reloadPresetLibrary()
+            }
         }
     }
 
@@ -515,59 +527,6 @@ struct SettingsView: View {
                 model.prefs.orbit = .standard
                 studio.setOrbitBarCount(OrbitPreferences.standard.barCount)
                 studio.clearAppliedVisualPreset(for: .orbit)
-                reloadPresetLibrary()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var windowPane: some View {
-        Section("Window mode") {
-            Picker("Mode", selection: Binding(get: { model.prefs.windowMode }, set: { studio.setWindowMode($0) })) {
-                ForEach(StudioWindowMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        Section("Move and resize") {
-            Toggle("Allow dragging by the grip", isOn: $model.prefs.window.allowsDrag)
-            Toggle("Allow resizing from the edges", isOn: $model.prefs.window.allowsResize)
-            Toggle("Restore position and size at launch", isOn: $model.prefs.window.restorePosition)
-            Button("Reset Position and Size") { studio.resetWindowFrame() }
-        }
-        Section("Size") {
-            SettingsSlider(
-                title: "Width (pt)",
-                value: $model.prefs.window.width,
-                range: StudioPreferences.windowWidthRange,
-                step: 10,
-                fractionDigits: 0
-            )
-            SettingsSlider(
-                title: "Height (pt)",
-                value: $model.prefs.window.height,
-                range: StudioPreferences.windowHeightRange,
-                step: 10,
-                fractionDigits: 0
-            )
-        }
-        Section("Controls") {
-            Toggle("Automatically hide controls", isOn: $model.prefs.window.autoHidesControls)
-            Toggle("Fade controls in and out", isOn: $model.prefs.window.animatesChrome)
-            Toggle("Follow system Reduce Motion", isOn: $model.prefs.window.followsReduceMotion)
-            Text(reduceMotionStatus)
-                .foregroundStyle(.secondary)
-        }
-        Section {
-            Button("Reset Window Settings") {
-                model.prefs.window = .standard
-                studio.setWindowMode(StudioPreferences.standard.windowMode)
-            }
-            Button("Reset All Studio Settings") {
-                studio.resetPreferences()
-                studio.clearAppliedVisualPresets()
-                island.updateSharedVisuals(StudioPreferences.standard)
                 reloadPresetLibrary()
             }
         }

@@ -177,7 +177,7 @@ Root cause evidence is from code and a probe, not from a GUI pass: `NSHostingVie
 - [ ] `NOT TESTED` — The Settings button and the menu-bar `Settings…` item open one Settings window of about 760x600 that can be resized and keeps its frame after relaunch.
 - [ ] `NOT TESTED` — Settings stays an ordinary window under On Desktop, On Top, and As Window. Record whether an On Top Studio covers it.
 - [ ] `NOT TESTED` — Hiding Studio from Settings or the menu bar leaves Settings open. Show Studio brings Studio back.
-- [ ] `NOT TESTED` — The sidebar lists Startup, Appearance, Layout, Spectrum, Waveform, Orbit, Window, and Notch Island; every non-Startup control changes Studio immediately and survives relaunch.
+- [ ] `NOT TESTED` — The sidebar lists Startup, Appearance, Visualization, Studio, and Notch Island; Visualization switches Spectrum / Waveform / Orbit in-page; Studio holds layout preview plus window controls; every non-Startup control changes Studio immediately and survives relaunch.
 
 ### Studio v1.4 Appearance and Spectrum
 
