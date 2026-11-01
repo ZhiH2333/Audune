@@ -42,14 +42,24 @@ struct NowPlayingSnapshot: Equatable {
         title.isEmpty == false || artist.isEmpty == false || artwork != nil
     }
 
-    /// Display elapsed time, advancing locally while playing.
+    var trackIdentity: String {
+        "\(bundleIdentifier)|\(title)|\(artist)|\(album)"
+    }
+
+    /// Display elapsed time, advancing locally while playing from the MediaRemote anchor.
     func displayElapsed(at date: Date = Date()) -> Double {
-        guard durationSeconds > 0 else { return max(0, elapsedSeconds) }
+        let base = max(0, elapsedSeconds)
         guard isPlaying, playbackRate > 0, lastUpdated != .distantPast else {
-            return min(max(0, elapsedSeconds), durationSeconds)
+            if durationSeconds > 0 {
+                return min(base, durationSeconds)
+            }
+            return base
         }
-        let advanced = elapsedSeconds + date.timeIntervalSince(lastUpdated) * playbackRate
-        return min(max(0, advanced), durationSeconds)
+        let advanced = base + date.timeIntervalSince(lastUpdated) * playbackRate
+        if durationSeconds > 0 {
+            return min(max(0, advanced), durationSeconds)
+        }
+        return max(0, advanced)
     }
 }
 
@@ -72,10 +82,28 @@ struct NowPlayingTrackPayload: Equatable {
     var artist: String
     var album: String
     var isPlaying: Bool
+    /// MediaRemote elapsed at `timestamp` (not already advanced to wall-clock now).
     var elapsedSeconds: Double
     var durationSeconds: Double
     var playbackRate: Double
     var bundleIdentifier: String
     var artwork: NSImage?
     var timestamp: Date
+
+    var trackIdentity: String {
+        "\(bundleIdentifier)|\(title)|\(artist)|\(album)"
+    }
+
+    func displayElapsed(at date: Date = Date()) -> Double {
+        let base = max(0, elapsedSeconds)
+        guard isPlaying, playbackRate > 0 else {
+            if durationSeconds > 0 { return min(base, durationSeconds) }
+            return base
+        }
+        let advanced = base + date.timeIntervalSince(timestamp) * playbackRate
+        if durationSeconds > 0 {
+            return min(max(0, advanced), durationSeconds)
+        }
+        return max(0, advanced)
+    }
 }

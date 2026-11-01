@@ -14,6 +14,9 @@ final class NowPlayingService {
     private var pendingSeek: (bundleID: String, expectedElapsed: Double, issuedAt: Date)?
     private let makeController: () -> any NowPlayingControlling
 
+    /// Ignore MediaRemote elapsed corrections smaller than this (seconds) to stop scrubber twitch.
+    static let elapsedSmoothingTolerance: TimeInterval = 1.75
+
     init(controllerFactory: (@MainActor () -> any NowPlayingControlling)? = nil) {
         self.makeController = controllerFactory ?? { MediaRemoteNowPlayingController() }
     }
@@ -30,7 +33,6 @@ final class NowPlayingService {
     func startIfNeeded() {
         if isListening { return }
         let controller = ensureController()
-        snapshot.availability = .listening
         snapshot = NowPlayingSnapshot(
             availability: .listening,
             title: snapshot.title,
@@ -84,6 +86,10 @@ final class NowPlayingService {
         pendingSeek = (bundleID: bundleID, expectedElapsed: clamped, issuedAt: Date())
         snapshot.elapsedSeconds = clamped
         snapshot.lastUpdated = Date()
+        snapshot.isPlaying = true
+        if snapshot.playbackRate <= 0 {
+            snapshot.playbackRate = 1
+        }
         controller?.setTime(seconds: clamped)
     }
 
@@ -148,20 +154,57 @@ final class NowPlayingService {
         let hasContent = payload.title.isEmpty == false
             || payload.artist.isEmpty == false
             || payload.artwork != nil
+        let mergedClock = mergePlaybackClock(with: payload)
+
         snapshot = NowPlayingSnapshot(
             availability: hasContent ? .listening : .empty,
             title: payload.title,
             artist: payload.artist,
             album: payload.album,
             isPlaying: payload.isPlaying,
-            elapsedSeconds: payload.elapsedSeconds,
+            elapsedSeconds: mergedClock.elapsed,
             durationSeconds: payload.durationSeconds,
             playbackRate: payload.playbackRate,
             bundleIdentifier: payload.bundleIdentifier,
-            artwork: payload.artwork,
+            artwork: payload.artwork ?? snapshot.artwork,
             seekSupported: seekOK,
-            lastUpdated: payload.timestamp
+            lastUpdated: mergedClock.anchor
         )
+    }
+
+    /// Keep a stable local clock when MediaRemote sends noisy/out-of-order elapsed samples.
+    private func mergePlaybackClock(with payload: NowPlayingTrackPayload) -> (elapsed: Double, anchor: Date) {
+        let incomingElapsed = payload.elapsedSeconds
+        let incomingAnchor = payload.timestamp
+        let trackChanged = snapshot.trackIdentity != payload.trackIdentity
+        let hasPendingSeek = pendingSeek != nil
+
+        if trackChanged || snapshot.availability != .listening {
+            return (incomingElapsed, incomingAnchor)
+        }
+
+        // Keep optimistic seek position until MediaRemote settles (or seek-unsupported fires).
+        if hasPendingSeek {
+            return (snapshot.elapsedSeconds, snapshot.lastUpdated)
+        }
+
+        let now = Date()
+        let local = snapshot.displayElapsed(at: now)
+        let remote = payload.displayElapsed(at: now)
+        let delta = remote - local
+
+        // Same track, small disagreement → keep local anchor (stops 2:23 → 0:41 style jumps).
+        if abs(delta) <= Self.elapsedSmoothingTolerance {
+            return (snapshot.elapsedSeconds, snapshot.lastUpdated)
+        }
+
+        // Large forward jump (external seek / skip) → trust MediaRemote.
+        if delta > Self.elapsedSmoothingTolerance {
+            return (incomingElapsed, incomingAnchor)
+        }
+
+        // Large backward jump without track change → ignore elapsed, keep local.
+        return (snapshot.elapsedSeconds, snapshot.lastUpdated)
     }
 
     /// If MediaRemote ignores seek, the reported elapsed stays far from the requested value.
@@ -172,7 +215,8 @@ final class NowPlayingService {
         guard pending.bundleID.isEmpty == false,
               pending.bundleID == payload.bundleIdentifier
         else { return }
-        if abs(payload.elapsedSeconds - pending.expectedElapsed) > 2.5 {
+        let remoteNow = payload.displayElapsed(at: Date())
+        if abs(remoteNow - pending.expectedElapsed) > 2.5 {
             seekUnsupportedBundles.insert(pending.bundleID)
         }
     }

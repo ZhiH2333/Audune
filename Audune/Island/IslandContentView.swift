@@ -238,12 +238,12 @@ struct IslandContentView: View {
                         onNext: nextTrack,
                         onSeek: seekNowPlaying
                     )
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 72)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 96)
 
                     expandedVisualization
                         .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 52)
+                        .frame(maxHeight: 44)
                         .padding(.horizontal, 14)
                         .allowsHitTesting(false)
                 } else {

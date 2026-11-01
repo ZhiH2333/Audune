@@ -161,7 +161,7 @@ nonisolated enum IslandGeometry {
     static let maxExpandedWidth: CGFloat = 420
     static let defaultExpandedHeight: CGFloat = 132
     /// Extra Expanded/Pinned height when Experimental Now Playing is enabled.
-    static let nowPlayingExpandedExtraHeight: CGFloat = 88
+    static let nowPlayingExpandedExtraHeight: CGFloat = 118
     static let compactBarCounts = [4, 5, 6]
 
     static func analyze(screen: IslandScreenDescriptor) -> Result<IslandNotchGeometry, IslandUnsupportedReason> {

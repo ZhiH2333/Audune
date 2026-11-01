@@ -55,30 +55,37 @@ final class MediaRemoteNowPlayingController: NowPlayingControlling {
         }
     }
 
+    /// Use MediaRemote's raw elapsed + media timestamp as the clock anchor.
+    /// Do **not** use `currentElapsedTime` here — that already interpolates to "now",
+    /// and pairing it with a fresh `Date()` makes the next stale update jump backward.
     private static func map(_ info: TrackInfo?) -> NowPlayingTrackPayload? {
         guard let info else { return nil }
         let payload = info.payload
-        let duration = (payload.durationMicros ?? 0) / 1_000_000
-        let elapsed: Double
-        if let live = payload.currentElapsedTime {
-            elapsed = live
-        } else if let micros = payload.elapsedTimeMicros {
-            elapsed = micros / 1_000_000
+        let duration = max(0, (payload.durationMicros ?? 0) / 1_000_000)
+        let elapsed = max(0, (payload.elapsedTimeMicros ?? 0) / 1_000_000)
+        let anchor: Date
+        if let micros = payload.timestampEpochMicros, micros > 0 {
+            anchor = Date(timeIntervalSince1970: micros / 1_000_000)
         } else {
-            elapsed = 0
+            anchor = Date()
         }
-        let rate = payload.playbackRate ?? ((payload.isPlaying == true) ? 1 : 0)
+        let rate: Double
+        if let playbackRate = payload.playbackRate {
+            rate = max(0, playbackRate)
+        } else {
+            rate = (payload.isPlaying == true) ? 1 : 0
+        }
         return NowPlayingTrackPayload(
             title: payload.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             artist: payload.artist?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             album: payload.album?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             isPlaying: payload.isPlaying == true,
-            elapsedSeconds: max(0, elapsed),
-            durationSeconds: max(0, duration),
-            playbackRate: max(0, rate),
+            elapsedSeconds: elapsed,
+            durationSeconds: duration,
+            playbackRate: rate,
             bundleIdentifier: payload.bundleIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             artwork: payload.artwork,
-            timestamp: Date()
+            timestamp: anchor
         )
     }
 }

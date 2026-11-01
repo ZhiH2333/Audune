@@ -150,4 +150,48 @@ final class NowPlayingServiceTests: XCTestCase {
         let displayed = snapshot.displayElapsed(at: Date())
         XCTAssertEqual(displayed, 12, accuracy: 0.25)
     }
+
+    func testRejectsNoisyBackwardElapsedJumpOnSameTrack() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+
+        let t0 = Date()
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "天気の子",
+                artist: "STRlighT",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 140,
+                durationSeconds: 231,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0
+            )
+        )
+        let before = service.snapshot.displayElapsed(at: t0.addingTimeInterval(3))
+        XCTAssertEqual(before, 143, accuracy: 0.2)
+
+        // Stale MediaRemote sample reporting ~0:41 while local clock is ~2:23.
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "天気の子",
+                artist: "STRlighT",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 41,
+                durationSeconds: 231,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0.addingTimeInterval(3)
+            )
+        )
+
+        let after = service.snapshot.displayElapsed(at: t0.addingTimeInterval(3))
+        XCTAssertEqual(after, before, accuracy: 0.35)
+        XCTAssertGreaterThan(after, 100)
+    }
 }
