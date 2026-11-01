@@ -44,15 +44,8 @@ struct IslandLayoutPreviewSnapshot: Equatable {
 
     @MainActor
     static func live(from island: IslandModel, studio: StudioModel) -> IslandLayoutPreviewSnapshot {
-        let np: NowPlayingSnapshot
-        if island.prefs.nowPlayingEnabled,
-           island.nowPlaying.availability == .listening,
-           island.nowPlaying.hasTrack
-        {
-            np = island.nowPlaying
-        } else {
-            np = .previewDemo
-        }
+        // Match live Island: no fake track. Empty / unavailable shows bold status text only.
+        let np = island.prefs.nowPlayingEnabled ? island.nowPlaying : .idle
         return IslandLayoutPreviewSnapshot(
             spectrum: island.expandedSpectrum.isEmpty ? studio.studioSpectrum : island.expandedSpectrum,
             peaks: island.expandedPeaks.isEmpty ? studio.spectrumPeaks : island.expandedPeaks,

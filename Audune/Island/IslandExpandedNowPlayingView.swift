@@ -189,9 +189,11 @@ struct IslandExpandedNowPlayingView: View {
 
     private func statusMessage(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(Color.white.opacity(0.55))
-            .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .foregroundStyle(Color.white.opacity(0.72))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .accessibilityAddTraits(.isStaticText)
     }
 
     private var accessibilitySummary: String {
