@@ -387,7 +387,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - **Notch Island 边界**：启动复选框不静默改写 `island.isEnabled`；用进程内 `allowsLaunchPresentation` 门控本次是否呈现。Island 总开关关闭时，即使勾选启动显示也不会强制开启，Settings 提供启用入口。无刘海时安全降级，不创建错位窗口。
 - **Launch at Login**：Settings → Startup 的独立开关，通过公开 API `SMAppService.mainApp` 注册/取消注册；UI 只读系统 `status`（`.enabled` / `.notRegistered` / `.requiresApproval` / `.notFound`），不在 UserDefaults 伪造注册状态。登录启动与手动启动共用同一套窗口复选框；不创建 helper、不写 LaunchAgents。
 - **Visualization mode（`startup.visualMode`）**：`keepCurrent`（默认）或 Spectrum / Waveform / Orbit。覆盖时写入 `studio.mode` 与 `island.mode`，避免首帧闪烁。
-- **Optional Visual preset（`startup.presetID`）**：稳定引用内置或自定义预设 ID；缺省不覆盖。选中预设时推断模式；显式模式与预设冲突则跳过预设；缺失/已删除 ID 跳过且不另选替代；应用路径复用 `applyVisualPreset`（只改该模式视觉参数与 `appliedIDByMode`）。
+- **Optional Visual preset（`startup.presetID`）**：稳定引用内置或自定义预设 ID；缺省不覆盖。在 Startup 选中预设时 UI 会同步写入对应 `visualMode`；`keepCurrent` 时冷启动只应用预设参数、不切换 Studio/Island 当前模式。显式模式与预设冲突则跳过预设；缺失/已删除 ID 跳过且不另选替代；应用路径复用 `applyVisualPreset`（只改该模式视觉参数与 `appliedIDByMode`）。Visualization 页应用/保存预设时同步更新 `startup.presetID`，避免冷启动用旧启动预设覆盖本次选择。
 - **Optional auto-capture（`startup.autoStartCapture`）**：默认 `false`。仅当已通过非弹窗探针确认授权时，才在冷启动调用现有 `ProcessTapSpike.start()`；未授权不弹 TCC。打开 Studio/Island/Settings 不会自动开始捕获。
 - 窗口、模式、预设与可选捕获只在**每次进程冷启动**由 `StartupApplicator` 应用一次；激活应用、重新打开窗口、或仅在 Settings 中改选项都不会重放。窗口/可视化修改在下次启动生效；Launch at Login 在下次 macOS 登录生效。
 

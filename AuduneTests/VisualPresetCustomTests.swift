@@ -79,6 +79,17 @@ final class VisualPresetCustomTests: XCTestCase {
         XCTAssertEqual(VisualPresetCatalog.restoring(from: defaults).builtIns.first { $0.id == VisualPresetCatalog.clean.id }, VisualPresetCatalog.clean)
     }
 
+    func testApplyingVisualPresetSyncsStartupPresetID() {
+        var startup = StartupPreferences.standard
+        startup.presetID = VisualPresetCatalog.clean.id
+        startup.save(to: defaults)
+        XCTAssertTrue(studio.applyVisualPreset(VisualPresetCatalog.dense))
+        XCTAssertEqual(StartupPreferences.load(from: defaults).presetID, VisualPresetCatalog.dense.id)
+
+        studio.clearAppliedVisualPreset(for: .spectrum)
+        XCTAssertNil(StartupPreferences.load(from: defaults).presetID)
+    }
+
     func testResetClearsTheAppliedPresetAndKeepsCustomOnes() throws {
         studio.model.prefs.spectrum.barCount = 64
         studio.model.prefs.spectrum.barGap = 6

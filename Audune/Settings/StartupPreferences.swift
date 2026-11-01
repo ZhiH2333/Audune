@@ -74,15 +74,9 @@ nonisolated struct StartupResolution: Equatable, Sendable {
             presetInvalid = false
         }
 
-        let effectiveMode: StudioVisualMode?
-        if let explicit = preferences.visualMode.studioMode {
-            // Explicit mode wins for display; a mismatched preset is skipped below.
-            effectiveMode = explicit
-        } else if let preset = resolvedPreset {
-            effectiveMode = preset.mode
-        } else {
-            effectiveMode = nil
-        }
+        // keepCurrent never switches Studio/Island mode. Startup UI sets an explicit
+        // visualMode when the user picks a launch preset; that path still overrides.
+        let effectiveMode = preferences.visualMode.studioMode
 
         let presetToApply: VisualPreset?
         if let preset = resolvedPreset {

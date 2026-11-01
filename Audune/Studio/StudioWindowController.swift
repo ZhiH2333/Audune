@@ -171,6 +171,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
                 model.spectrumPeaks = []
             }
             savePreferences()
+            // Keep cold-start Startup preset in sync so relaunch does not restore an older one.
+            syncStartupPresetID(preset.id)
             refreshStudioSpectrum(dt: 0)
             refreshWaveform(dt: 0)
             return true
@@ -193,6 +195,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         guard case .success(let preset) = saved else { return saved }
         switch library.setAppliedID(preset.id, for: mode, in: defaults) {
         case .success:
+            syncStartupPresetID(preset.id)
             return .success(preset)
         case .failure(let error):
             return .failure(error)
@@ -211,12 +214,22 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
 
     func deleteVisualPreset(id: String) -> Result<Void, VisualPresetEditError> {
         var library = VisualPresetCatalog.restoring(from: defaults)
-        return library.delete(id: id, in: defaults)
+        switch library.delete(id: id, in: defaults) {
+        case .success:
+            clearStartupPresetIDIfMatching(id)
+            return .success(())
+        case .failure(let error):
+            return .failure(error)
+        }
     }
 
     func clearAppliedVisualPreset(for mode: StudioVisualMode) {
         var library = VisualPresetCatalog.restoring(from: defaults)
+        let clearedID = library.appliedID(for: mode)
         _ = library.setAppliedID(nil, for: mode, in: defaults)
+        if let clearedID {
+            clearStartupPresetIDIfMatching(clearedID)
+        }
     }
 
     func clearAppliedVisualPresets() {
@@ -226,7 +239,33 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     @discardableResult
     func resetVisualPresetLibrary() -> Bool {
         var library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
-        return library.resetLibrary(in: defaults)
+        let didReset = library.resetLibrary(in: defaults)
+        if didReset {
+            clearStartupPresetID()
+        }
+        return didReset
+    }
+
+    /// Visualization apply/save owns the launch preset so cold start does not revive a stale Startup choice.
+    private func syncStartupPresetID(_ presetID: String) {
+        var startup = StartupPreferences.load(from: defaults)
+        guard startup.presetID != presetID else { return }
+        startup.presetID = presetID
+        startup.save(to: defaults)
+    }
+
+    private func clearStartupPresetIDIfMatching(_ presetID: String) {
+        var startup = StartupPreferences.load(from: defaults)
+        guard startup.presetID == presetID else { return }
+        startup.presetID = nil
+        startup.save(to: defaults)
+    }
+
+    private func clearStartupPresetID() {
+        var startup = StartupPreferences.load(from: defaults)
+        guard startup.presetID != nil else { return }
+        startup.presetID = nil
+        startup.save(to: defaults)
     }
 
     /// Encodes the selected presets into the portable exchange format. Does not write UserDefaults.

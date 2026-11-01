@@ -232,7 +232,7 @@ final class StartupPreferencesTests: XCTestCase {
         XCTAssertTrue(resolution.islandShouldPresent)
     }
 
-    func testResolvePresetInfersModeWhenKeepingCurrent() {
+    func testResolveKeepCurrentAppliesPresetWithoutSwitchingMode() {
         let library = VisualPresetLibrary.load(from: defaults, builtIns: VisualPresetCatalog.all)
         let prefs = StartupPreferences(
             openStudioAtLaunch: false,
@@ -243,7 +243,7 @@ final class StartupPreferencesTests: XCTestCase {
             autoStartCapture: false
         )
         let resolution = StartupResolution.resolve(prefs, library: library)
-        XCTAssertEqual(resolution.effectiveMode, .spectrum)
+        XCTAssertNil(resolution.effectiveMode)
         XCTAssertEqual(resolution.presetToApply?.id, VisualPresetCatalog.dense.id)
         XCTAssertFalse(resolution.presetIDWasInvalid)
     }

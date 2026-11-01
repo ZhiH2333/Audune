@@ -337,9 +337,13 @@ final class StartupApplicatorTests: XCTestCase {
         studio.hide()
     }
 
-    func testPresetApplyUsesExistingPathAndSetsMode() throws {
-        StudioPreferences.standard.save(to: defaults)
-        IslandPreferences.standard.save(to: defaults)
+    func testPresetApplyUsesExistingPathWithoutForcingModeWhenKeepingCurrent() throws {
+        var studioPrefs = StudioPreferences.standard
+        studioPrefs.mode = .waveform
+        studioPrefs.save(to: defaults)
+        var islandPrefs = IslandPreferences.standard
+        islandPrefs.mode = .orbit
+        islandPrefs.save(to: defaults)
         let (spike, studio, island, settings) = makeControllers(screens: [notchedScreen()])
         defer {
             studio.shutdown()
@@ -357,8 +361,9 @@ final class StartupApplicatorTests: XCTestCase {
             captureAuthorization: FixedCaptureAuthorization(authorized: false)
         )
 
-        XCTAssertEqual(studio.model.prefs.mode, .spectrum)
-        XCTAssertEqual(island.model.prefs.mode, .spectrum)
+        // keepCurrent + preset applies params only; saved Studio/Island modes stay independent.
+        XCTAssertEqual(studio.model.prefs.mode, .waveform)
+        XCTAssertEqual(island.model.prefs.mode, .orbit)
         let expected = try XCTUnwrap(VisualPresetCatalog.dense.spectrum)
         XCTAssertEqual(studio.model.prefs.spectrum.barCount, expected.barCount)
         XCTAssertEqual(studio.model.prefs.spectrum.colorMode, expected.colorMode)
@@ -503,7 +508,8 @@ final class StartupApplicatorTests: XCTestCase {
         XCTAssertEqual(studio.model.prefs.spectrum.barCount, 16)
         XCTAssertEqual(island.model.prefs.compactBarCountPerSide, 6)
         XCTAssertFalse(island.model.prefs.hoverToExpand)
-        XCTAssertEqual(studio.model.prefs.mode, .orbit)
+        // keepCurrent leaves the previously saved Studio mode alone.
+        XCTAssertEqual(studio.model.prefs.mode, StudioPreferences.standard.mode)
     }
 
     func testAutoStartCaptureSkippedWhenUnauthorized() {
