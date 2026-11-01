@@ -125,7 +125,7 @@ final class IslandWindowControllerTests: XCTestCase {
 
         controller.simulateExpandTimerFired(now: 10.35)
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
-        XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.expandedFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.expandedPlayerFrame())
         XCTAssertFalse(controller.model.hoverArmed)
 
         controller.togglePin()
@@ -133,7 +133,7 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.simulatePointerExited(at: 10.0)
         controller.simulateCollapseTimerFired(now: 50.0)
         XCTAssertEqual(controller.inspectWindowForTests().state, .pinned)
-        XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.expandedFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, expectedGeometry.expandedPlayerFrame())
 
         controller.simulateEscapePressed()
         XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
@@ -210,7 +210,7 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.togglePin()
         controller.simulateExpandTimerFired(now: 12)
         XCTAssertEqual(controller.inspectWindowForTests().state, .pinned)
-        XCTAssertEqual(controller.inspectWindowForTests().frame, movedGeometry.expandedFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, movedGeometry.expandedPlayerFrame())
         controller.simulateEscapePressed()
 
         let haptics = RecordingIslandHaptics()
@@ -273,6 +273,6 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.model.prefs.hapticStrength = .strong
         controller.expand()
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
-        XCTAssertEqual(controller.inspectWindowForTests().frame, try IslandGeometry.analyze(screen: screen).get().expandedFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, try IslandGeometry.analyze(screen: screen).get().expandedPlayerFrame())
     }
 }
