@@ -620,7 +620,7 @@ struct SettingsView: View {
             Toggle("Progress", isOn: $islandModel.prefs.nowPlayingLayout.showProgress)
             Toggle("Controls", isOn: $islandModel.prefs.nowPlayingLayout.showTransport)
             Toggle("Visualization", isOn: $islandModel.prefs.nowPlayingLayout.showVisualization)
-            Text("Layout toggles apply to Expanded Island when Now Playing is on. The preview above always reflects them. Compact wings stay spectrum-only.")
+            Text("Layout toggles apply when Show Now Playing is on. Turning that switch off hides the player chrome in both the live Island and this preview. Compact wings stay spectrum-only.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -850,7 +850,8 @@ private struct IslandLayoutPreview: View {
                         }
                     }
 
-                    if layout.showsAnyChrome {
+                    // Match live Island: chrome only when Show Now Playing is on.
+                    if islandModel.prefs.nowPlayingEnabled, layout.showsAnyChrome {
                         IslandExpandedNowPlayingView(
                             snapshot: frame.nowPlaying,
                             layout: layout,
