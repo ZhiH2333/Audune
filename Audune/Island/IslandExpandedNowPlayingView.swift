@@ -21,8 +21,13 @@ struct IslandExpandedNowPlayingView: View {
                 statusMessage(String(localized: "Nothing playing"))
             case .listening:
                 if snapshot.hasTrack {
-                    TimelineView(.animation(minimumInterval: snapshot.isPlaying && isScrubbing == false ? 1.0 / 30.0 : nil)) { timeline in
-                        playerBody(at: timeline.date)
+                    if snapshot.isPlaying && isScrubbing == false {
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                            playerBody(at: timeline.date)
+                        }
+                    } else {
+                        // Paused / scrubbing: no animation clock — freezes the scrubber visually.
+                        playerBody(at: .now)
                     }
                 } else {
                     statusMessage(String(localized: "Nothing playing"))
@@ -40,21 +45,21 @@ struct IslandExpandedNowPlayingView: View {
         let displayed = isScrubbing ? scrubValue : liveElapsed
         let progress = duration > 0 ? min(max(displayed / duration, 0), 1) : 0
 
-        return HStack(alignment: .center, spacing: 12) {
+        return HStack(alignment: .center, spacing: 14) {
             artworkView
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .center, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(snapshot.title.isEmpty ? String(localized: "Unknown Title") : snapshot.title)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.white.opacity(0.96))
                             .lineLimit(1)
                         Text(snapshot.artist.isEmpty ? String(localized: "Unknown Artist") : snapshot.artist)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(Color.white.opacity(0.62))
                             .lineLimit(1)
                     }
-                    Spacer(minLength: 6)
+                    Spacer(minLength: 8)
                     sourceBadge
                 }
 
@@ -92,7 +97,7 @@ struct IslandExpandedNowPlayingView: View {
                     .blur(radius: 18)
                     .opacity(0.45)
                     .scaleEffect(1.15)
-                    .frame(width: 68, height: 68)
+                    .frame(width: 76, height: 76)
                     .clipped()
             }
 
@@ -102,7 +107,7 @@ struct IslandExpandedNowPlayingView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                 } else {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
@@ -115,20 +120,20 @@ struct IslandExpandedNowPlayingView: View {
                         )
                         .overlay {
                             Image(systemName: "music.note")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(Color.white.opacity(0.7))
                         }
                 }
             }
-            .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
             }
             .shadow(color: .black.opacity(0.45), radius: 8, y: 3)
         }
-        .frame(width: 68, height: 68)
+        .frame(width: 76, height: 76)
         .accessibilityHidden(true)
     }
 
@@ -260,10 +265,16 @@ private struct IslandNowPlayingScrubber: View {
                 Spacer()
                 Text(durationSeconds > 0 ? formatTime(durationSeconds) : "--:--")
             }
-            .font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
+            .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
             .foregroundStyle(Color.white.opacity(0.58))
         }
         .animation(.easeOut(duration: 0.12), value: isScrubbing)
+        .transaction { transaction in
+            // Keep the thumb glued while paused; avoid interpolating noisy remote updates.
+            if isScrubbing == false {
+                transaction.animation = nil
+            }
+        }
     }
 
     private func dragGesture(width: CGFloat) -> some Gesture {

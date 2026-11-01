@@ -209,8 +209,17 @@ struct IslandContentView: View {
     }
 
     private var expandedBody: some View {
-        let notchWidth = model.geometry?.notchRect.width ?? 184
-        let notchHeight = max(model.geometry?.notchRect.height ?? 32, 28)
+        let geometry = model.geometry
+        let notchWidth = geometry?.notchRect.width ?? 184
+        let notchHeight = max(geometry?.notchRect.height ?? 32, 28)
+        let windowFrame = geometry.map {
+            $0.expandedFrame(nowPlayingEnabled: model.prefs.nowPlayingEnabled)
+        }
+        let sideClearance = windowFrame.flatMap { frame in
+            geometry?.expandedSideClearance(in: frame)
+        }
+        let leftWing = max(sideClearance?.left ?? 120, 120) - 16
+        let rightWing = max(sideClearance?.right ?? 120, 120) - 16
 
         return ZStack {
             IslandShape(bottomRadius: 18)
@@ -221,13 +230,14 @@ struct IslandContentView: View {
             VStack(spacing: 4) {
                 HStack(spacing: 0) {
                     statusHeader
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer()
+                        .frame(width: max(leftWing, 1), alignment: .leading)
+                        .padding(.leading, 14)
+                    Spacer(minLength: 0)
                         .frame(width: notchWidth)
                     actionButtons
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .frame(width: max(rightWing, 1), alignment: .trailing)
+                        .padding(.trailing, 14)
                 }
-                .padding(.horizontal, 12)
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
@@ -238,13 +248,13 @@ struct IslandContentView: View {
                         onNext: nextTrack,
                         onSeek: seekNowPlaying
                     )
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 96)
+                    .padding(.horizontal, 18)
+                    .frame(minHeight: 104)
 
                     expandedVisualization
                         .frame(maxWidth: .infinity)
                         .frame(maxHeight: 44)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, 18)
                         .allowsHitTesting(false)
                 } else {
                     expandedVisualization
@@ -255,8 +265,8 @@ struct IslandContentView: View {
                 }
 
                 modePickerRow
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
             }
         }
     }
@@ -267,9 +277,10 @@ struct IslandContentView: View {
                 .fill(statusDotColor)
                 .frame(width: 6, height: 6)
             Text(model.captureLabel(phase: spike.phase))
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: model.prefs.nowPlayingEnabled ? 11 : 10, weight: .medium))
                 .foregroundStyle(warmWhite.opacity(0.78))
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .accessibilityElement(children: .combine)
     }

@@ -194,4 +194,59 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(after, before, accuracy: 0.35)
         XCTAssertGreaterThan(after, 100)
     }
+
+    func testPausedClockStaysFrozenDespiteNoisyElapsed() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+
+        let t0 = Date()
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 50,
+                durationSeconds: 200,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0
+            )
+        )
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: false,
+                elapsedSeconds: 52,
+                durationSeconds: 200,
+                playbackRate: 0,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0.addingTimeInterval(2)
+            )
+        )
+        let pausedAt = service.snapshot.displayElapsed(at: t0.addingTimeInterval(2))
+        XCTAssertFalse(service.snapshot.isPlaying)
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: false,
+                elapsedSeconds: 40,
+                durationSeconds: 200,
+                playbackRate: 0,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0.addingTimeInterval(5)
+            )
+        )
+        let stillPaused = service.snapshot.displayElapsed(at: t0.addingTimeInterval(5))
+        XCTAssertEqual(stillPaused, pausedAt, accuracy: 0.05)
+    }
 }

@@ -64,8 +64,8 @@ final class IslandGeometryTests: XCTestCase {
         XCTAssertTrue(screen.frame.contains(geometry.expandedFrame))
     }
 
-    func testNowPlayingExpandedFrameGrowsDownwardWithoutChangingCompact() throws {
-        let screen = notchedMacBookScreen()
+    func testNowPlayingExpandedFrameGrowsWiderAndTallerWithoutChangingCompact() throws {
+        let screen = notchedMacBookScreen() // notch ~184 pt, matching 14" class
         let geometry = try IslandGeometry.analyze(screen: screen).get()
         let withNowPlaying = geometry.expandedFrame(nowPlayingEnabled: true)
         let without = geometry.expandedFrame(nowPlayingEnabled: false)
@@ -77,6 +77,11 @@ final class IslandGeometryTests: XCTestCase {
             geometry.expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight,
             accuracy: 0.001
         )
+        XCTAssertGreaterThanOrEqual(withNowPlaying.width, IslandGeometry.nowPlayingMinExpandedWidth - 0.5)
+        XCTAssertGreaterThan(withNowPlaying.width, geometry.expandedFrame.width)
+        let sides = geometry.expandedSideClearance(in: withNowPlaying)
+        XCTAssertGreaterThanOrEqual(sides.left, IslandGeometry.nowPlayingMinSideClearance - 1)
+        XCTAssertGreaterThanOrEqual(sides.right, IslandGeometry.nowPlayingMinSideClearance - 1)
         XCTAssertEqual(geometry.compactFrame, try IslandGeometry.analyze(screen: screen).get().compactFrame)
         XCTAssertTrue(withNowPlaying.contains(geometry.compactFrame))
         XCTAssertTrue(screen.frame.contains(withNowPlaying))

@@ -193,6 +193,16 @@ final class NowPlayingService {
         let remote = payload.displayElapsed(at: now)
         let delta = remote - local
 
+        // Stay paused: freeze the clock completely so MediaRemote noise cannot twitch the scrubber.
+        if snapshot.isPlaying == false && payload.isPlaying == false {
+            return (snapshot.elapsedSeconds, snapshot.lastUpdated)
+        }
+
+        // Playing → paused: freeze at the locally displayed position (one snap, then hold).
+        if snapshot.isPlaying && payload.isPlaying == false {
+            return (local, now)
+        }
+
         // Same track, small disagreement → keep local anchor (stops 2:23 → 0:41 style jumps).
         if abs(delta) <= Self.elapsedSmoothingTolerance {
             return (snapshot.elapsedSeconds, snapshot.lastUpdated)

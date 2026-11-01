@@ -79,22 +79,47 @@ nonisolated struct IslandNotchGeometry: Equatable, Sendable {
     /// Expanded window frame in AppKit bottom-left screen coordinates. Always contains `compactFrame`.
     var expandedFrame: CGRect
 
-    /// Expanded frame grown downward for the Experimental Now Playing strip. Compact unchanged.
+    /// Expanded frame grown wider + taller for Experimental Now Playing. Compact unchanged.
     func expandedFrame(nowPlayingEnabled: Bool) -> CGRect {
         guard nowPlayingEnabled else { return expandedFrame }
+
         let proposedHeight = expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight
         let height = min(proposedHeight, screenFrame.height * 0.55, screenFrame.maxY - screenFrame.minY - 8)
-        guard height > expandedFrame.height else { return expandedFrame }
+
+        let maxUsableWidth = screenFrame.width - 32
+        let desiredWidth = min(
+            max(
+                notchRect.width + IslandGeometry.nowPlayingExpandedWidthPadding,
+                IslandGeometry.nowPlayingMinExpandedWidth,
+                notchRect.width + IslandGeometry.nowPlayingMinSideClearance * 2
+            ),
+            min(IslandGeometry.nowPlayingMaxExpandedWidth, maxUsableWidth)
+        )
+        let width = max(desiredWidth, expandedFrame.width)
+
+        var x = notchRect.midX - width / 2
+        let minX = min(screenFrame.minX + 16, compactFrame.minX)
+        let maxX = max(screenFrame.maxX - 16 - width, compactFrame.maxX - width)
+        x = min(max(x, minX), maxX)
+
         let frame = CGRect(
-            x: expandedFrame.minX,
-            y: screenFrame.maxY - height,
-            width: expandedFrame.width,
-            height: height
+            x: x,
+            y: screenFrame.maxY - max(height, expandedFrame.height),
+            width: width,
+            height: max(height, expandedFrame.height)
         )
         guard screenFrame.contains(frame), frame.contains(compactFrame) else {
             return expandedFrame
         }
         return frame
+    }
+
+    /// Clear content width to the left/right of the notch inside an Expanded window frame.
+    func expandedSideClearance(in windowFrame: CGRect) -> (left: CGFloat, right: CGFloat) {
+        let localNotch = localNotchRect(in: windowFrame)
+        let left = max(0, localNotch.minX)
+        let right = max(0, windowFrame.width - localNotch.maxX)
+        return (left, right)
     }
 
     var leftWingWidth: CGFloat {
@@ -162,6 +187,13 @@ nonisolated enum IslandGeometry {
     static let defaultExpandedHeight: CGFloat = 132
     /// Extra Expanded/Pinned height when Experimental Now Playing is enabled.
     static let nowPlayingExpandedExtraHeight: CGFloat = 118
+    /// Physical notch is ~185–220 pt (14"/16" MacBook). Now Playing needs much wider wings
+    /// so Pin/Settings sit clear of the camera housing (~160+ pt per side).
+    static let nowPlayingExpandedWidthPadding: CGFloat = 340
+    static let nowPlayingMinExpandedWidth: CGFloat = 520
+    static let nowPlayingMaxExpandedWidth: CGFloat = 580
+    /// Minimum clear width on each side of the notch for Expanded chrome.
+    static let nowPlayingMinSideClearance: CGFloat = 150
     static let compactBarCounts = [4, 5, 6]
 
     static func analyze(screen: IslandScreenDescriptor) -> Result<IslandNotchGeometry, IslandUnsupportedReason> {
