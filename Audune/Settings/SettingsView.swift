@@ -596,17 +596,14 @@ struct SettingsView: View {
                 get: { islandModel.prefs.nowPlayingEnabled },
                 set: { island.setNowPlayingEnabled($0) }
             ))
-            Text("Uses a private MediaRemote helper (mediaremote-adapter). Default off. Not App Store–ready; may break after macOS updates. Does not start or stop audio capture. Compact wings stay spectrum-only. Expanded Island size stays the same whether this is on or off.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
             if islandModel.prefs.nowPlayingEnabled {
                 switch islandModel.nowPlaying.availability {
                 case .unavailable:
-                    Text("Now Playing unavailable on this Mac or the helper stopped. Turn the switch off and on, or check MANUAL_TESTS.")
+                    Text("Now Playing unavailable")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 case .empty:
-                    Text("Nothing is reporting Now Playing right now.")
+                    Text("Nothing playing")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 case .listening, .idle:
@@ -620,9 +617,6 @@ struct SettingsView: View {
             Toggle("Progress", isOn: $islandModel.prefs.nowPlayingLayout.showProgress)
             Toggle("Controls", isOn: $islandModel.prefs.nowPlayingLayout.showTransport)
             Toggle("Visualization", isOn: $islandModel.prefs.nowPlayingLayout.showVisualization)
-            Text("Layout toggles apply when Show Now Playing is on. Turning that switch off hides the player chrome in both the live Island and this preview. Compact wings stay spectrum-only.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)

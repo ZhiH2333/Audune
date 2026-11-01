@@ -2,6 +2,7 @@
   "sourceLanguage": "en",
   "strings": {
     " A custom color on this mode is replaced when the preset is applied.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -31,17 +32,8 @@
         }
       }
     },
-    "%@ will be removed. The current %@ settings stay as they are.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%1$@”将被移除。当前的%2$@设置保持不变。"
-          }
-        }
-      }
-    },
     "%@ · Built-in": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -52,6 +44,7 @@
       }
     },
     "%@ · Custom": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -62,11 +55,32 @@
       }
     },
     "%@ · Modified": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ · 已修改"
+          }
+        }
+      }
+    },
+    "%@ (Modified)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（已修改）"
+          }
+        }
+      }
+    },
+    "%@ will be removed. The current %@ settings stay as they are.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”将被移除。当前的%2$@设置保持不变。"
           }
         }
       }
@@ -87,6 +101,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法创建新的预设标识。"
+          }
+        }
+      }
+    },
+    "A selected preset is missing its visual settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选预设缺少视觉设置。"
+          }
+        }
+      }
+    },
+    "A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "视觉预设会更新该模式已保存的外观，效果与在设置中应用预设相同。外观、窗口和 Island 外观控件保持不变。"
           }
         }
       }
@@ -142,6 +177,7 @@
       }
     },
     "Allowed": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -202,6 +238,7 @@
       }
     },
     "Apple Event %lld": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -212,11 +249,22 @@
       }
     },
     "Applies %@ settings only. Appearance, Window, and the other visual modes stay as they are.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "仅应用%@设置。外观、窗口和其他可视化模式保持不变。"
+          }
+        }
+      }
+    },
+    "Artwork": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "封面"
           }
         }
       }
@@ -232,6 +280,7 @@
       }
     },
     "As Window behaves like an ordinary window and can be covered by others.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -242,6 +291,7 @@
       }
     },
     "As Window stays on its own desktop and full-screen apps can cover it.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -261,6 +311,17 @@
         }
       }
     },
+    "At launch": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时"
+          }
+        }
+      }
+    },
     "Attack (ms)": {
       "localizations": {
         "zh-Hans": {
@@ -272,6 +333,7 @@
       }
     },
     "Audio below the noise floor counts as silence. Bars then settle to the baseline instead of switching off. This only affects the visualization, not system audio.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -301,17 +363,8 @@
         }
       }
     },
-    "Audune Settings": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audune 设置"
-          }
-        }
-      }
-    },
     "Audune can only control Music or Spotify, and only after you allow it. It cannot pause browser audio or other system output. Open the player first, then choose Request Access.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -332,11 +385,32 @@
       }
     },
     "Audune has not been allowed to control this player yet. Use Request Access in Settings > Playback.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "尚未允许 Audune 控制此播放器。请在“设置 > 播放”中选择“请求授权”。"
+          }
+        }
+      }
+    },
+    "Audune is waiting for approval in System Settings > General > Login Items.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 正在等待系统设置 > 通用 > 登录项中的批准。"
+          }
+        }
+      }
+    },
+    "Audune Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 设置"
           }
         }
       }
@@ -372,6 +446,7 @@
       }
     },
     "Automation": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -382,6 +457,7 @@
       }
     },
     "Automation was denied. Allow Audune in System Settings > Privacy & Security > Automation.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -472,6 +548,7 @@
       }
     },
     "Changes show in Studio immediately.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -482,6 +559,7 @@
       }
     },
     "Checking": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -492,6 +570,7 @@
       }
     },
     "Checking Automation access…": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -502,6 +581,7 @@
       }
     },
     "Checking…": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -511,7 +591,29 @@
         }
       }
     },
+    "Choose a player": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择播放器"
+          }
+        }
+      }
+    },
+    "Choose an Audune preset JSON file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一个 Audune 预设 JSON 文件。"
+          }
+        }
+      }
+    },
     "Choose Music or Spotify to enable Play/Pause in Studio.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -521,12 +623,22 @@
         }
       }
     },
-    "Choose a player": {
+    "Choose where to save the Audune preset file.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请选择播放器"
+            "value": "选择 Audune 预设文件的保存位置。"
+          }
+        }
+      }
+    },
+    "Choose which %@ presets to export.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择要导出的%@预设。"
           }
         }
       }
@@ -542,11 +654,22 @@
       }
     },
     "Clicks on the visualization reach the app underneath in On Top, On Desktop, and As Window. The drag handle stays visible. The other buttons appear when the pointer is near and hide after 3 seconds without it.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "在“置顶”“在桌面”和“作为窗口”模式下，点击可视化区域的操作会传递给下方的 App。拖动手柄始终可见。其他按钮在指针靠近时出现，指针离开 3 秒后隐藏。"
+          }
+        }
+      }
+    },
+    "Collapse delay (s)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起延迟（秒）"
           }
         }
       }
@@ -567,16 +690,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "立即收起"
-          }
-        }
-      }
-    },
-    "Collapse delay (s)": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收起延迟（秒）"
           }
         }
       }
@@ -632,6 +745,7 @@
       }
     },
     "Compact mode draws a symmetric live spectrum on both sides of the notch. Colors follow Appearance.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -642,6 +756,7 @@
       }
     },
     "Control": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -722,6 +837,7 @@
       }
     },
     "Denied": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -757,6 +873,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "密度"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标"
           }
         }
       }
@@ -812,6 +939,7 @@
       }
     },
     "Draws the real captured audio signal. Density sets how many points are drawn.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -832,6 +960,7 @@
       }
     },
     "Dual Band maps the lower half of the bands to an inner ring and the upper half to an outer ring.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -862,6 +991,7 @@
       }
     },
     "Each bar reads its own real band.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -872,6 +1002,7 @@
       }
     },
     "Each bar shows the strength of one real frequency range from the captured audio.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -901,22 +1032,22 @@
         }
       }
     },
-    "Expand Now": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "立即展开"
-          }
-        }
-      }
-    },
     "Expand delay (s)": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "展开延迟（秒）"
+          }
+        }
+      }
+    },
+    "Expand Now": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即展开"
           }
         }
       }
@@ -941,12 +1072,72 @@
         }
       }
     },
+    "Expanded Island layout preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开的 Island 布局预览"
+          }
+        }
+      }
+    },
     "Expanded mode": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "展开模式"
+          }
+        }
+      }
+    },
+    "Experimental Now Playing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实验性正在播放"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
+          }
+        }
+      }
+    },
+    "Export Presets": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出预设"
+          }
+        }
+      }
+    },
+    "Export…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出…"
+          }
+        }
+      }
+    },
+    "Exported %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导出 %lld 个预设。"
           }
         }
       }
@@ -1002,6 +1193,7 @@
       }
     },
     "Fill strength applies to Soft Fill and Mirror. Fine Line stays a stroke only.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1037,6 +1229,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "固定大小"
+          }
+        }
+      }
+    },
+    "Follow current behavior": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沿用当前行为"
           }
         }
       }
@@ -1112,6 +1315,7 @@
       }
     },
     "Hidden buttons do not receive clicks. Reduce Motion removes the fade.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1162,6 +1366,7 @@
       }
     },
     "Hold time keeps each cap at its peak. Fall speed sets how fast it drops afterwards.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1172,6 +1377,7 @@
       }
     },
     "How much of the stroke-safe canvas height the waveform may occupy. This is not a clip box and does not change the Studio window size (see Layout and Window).": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1182,11 +1388,82 @@
       }
     },
     "How strongly the signal fills that height. It does not change system volume, captured audio, or the window size.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "信号填满该高度的力度。它不会改变系统音量、捕获的音频或窗口大小。"
+          }
+        }
+      }
+    },
+    "If a name is already used": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若名称已被使用"
+          }
+        }
+      }
+    },
+    "Import": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入"
+          }
+        }
+      }
+    },
+    "Import as copies": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入为副本"
+          }
+        }
+      }
+    },
+    "Import Presets": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入预设"
+          }
+        }
+      }
+    },
+    "Import…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入…"
+          }
+        }
+      }
+    },
+    "Imported %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 个预设。"
+          }
+        }
+      }
+    },
+    "Imported %lld presets. Skipped %lld.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 个预设，跳过 %lld 个。"
           }
         }
       }
@@ -1202,6 +1479,7 @@
       }
     },
     "Installed": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1221,6 +1499,37 @@
         }
       }
     },
+    "Island layout preview": {},
+    "Keep current selection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持当前选择"
+          }
+        }
+      }
+    },
+    "Launch at login is unavailable in this build. Use a normally installed Audune app.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此构建无法使用登录时启动。请使用正常安装的 Audune。"
+          }
+        }
+      }
+    },
+    "Launch Audune at login": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录时启动 Audune"
+          }
+        }
+      }
+    },
     "Layers": {
       "localizations": {
         "zh-Hans": {
@@ -1232,6 +1541,7 @@
       }
     },
     "Layout": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1262,6 +1572,7 @@
       }
     },
     "Light, Medium, and Strong use different trackpad feedback patterns. A Mac without a Force Touch trackpad does not vibrate.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1311,6 +1622,16 @@
         }
       }
     },
+    "Login": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录"
+          }
+        }
+      }
+    },
     "Look": {
       "localizations": {
         "zh-Hans": {
@@ -1331,6 +1652,16 @@
         }
       }
     },
+    "macOS could not find Audune’s login item. Try turning the option on again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 找不到 Audune 的登录项。请尝试重新打开此选项。"
+          }
+        }
+      }
+    },
     "Maximum display height": {
       "localizations": {
         "zh-Hans": {
@@ -1347,6 +1678,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "中"
+          }
+        }
+      }
+    },
+    "Menu Bar only": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅菜单栏"
           }
         }
       }
@@ -1372,6 +1714,7 @@
       }
     },
     "Mirrored rings read %lld real bands and show each twice, low at the top.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1382,6 +1725,7 @@
       }
     },
     "Missing": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1451,6 +1795,26 @@
         }
       }
     },
+    "Name conflict — skipped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称冲突 — 已跳过"
+          }
+        }
+      }
+    },
+    "Name conflict — will import as \"%@\"": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称冲突 — 将导入为“%@”"
+          }
+        }
+      }
+    },
     "Name the current %@ settings.": {
       "localizations": {
         "zh-Hans": {
@@ -1462,6 +1826,7 @@
       }
     },
     "Needs access": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1471,7 +1836,19 @@
         }
       }
     },
+    "New custom preset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新的自定义预设"
+          }
+        }
+      }
+    },
+    "Next Track": {},
     "No": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1552,6 +1929,7 @@
       }
     },
     "Not available": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1572,6 +1950,7 @@
       }
     },
     "Not requested yet": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1582,6 +1961,7 @@
       }
     },
     "Not running": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1611,12 +1991,24 @@
         }
       }
     },
-    "Notch Island Settings": {
+    "Notch Island appears only on supported displays. Menu Bar only turns Island off at launch.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notch Island 设置"
+            "value": "Notch Island 仅在受支持的显示器上显示。“仅菜单栏”会在启动时关闭 Island。"
+          }
+        }
+      }
+    },
+    "Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 仅在受支持的显示器上显示。关闭「启动时显示 Notch Island」不会更改 Island 的启用开关。"
           }
         }
       }
@@ -1641,12 +2033,33 @@
         }
       }
     },
+    "Notch Island is disabled. Enable it under Notch Island, or it will not appear at launch.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 当前已禁用。请在「Notch Island」中启用，否则启动时不会显示。"
+          }
+        }
+      }
+    },
     "Notch Island requires a Mac display with a camera housing and valid top auxiliary areas. Menu Bar and Studio remain available on non-notched displays.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Notch Island 需要带摄像头刘海且顶部辅助区域有效的 Mac 显示器。在没有刘海的显示器上，菜单栏和 Studio 仍然可用。"
+          }
+        }
+      }
+    },
+    "Notch Island Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Island 设置"
           }
         }
       }
@@ -1661,12 +2074,53 @@
         }
       }
     },
+    "Nothing playing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无播放"
+          }
+        }
+      }
+    },
+    "Now Playing layout": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在播放布局"
+          }
+        }
+      }
+    },
+    "Now Playing unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在播放不可用"
+          }
+        }
+      }
+    },
     "Off": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "关"
+          }
+        }
+      }
+    },
+    "Off by default. Capture starts only if Audune already has Screen & System Audio Recording permission. Showing Studio or Notch Island never starts capture by itself.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认关闭。仅当 Audune 已获得“屏幕与系统音频录制”权限时才会自动开始捕获。显示 Studio 或 Notch Island 本身不会开始捕获。"
           }
         }
       }
@@ -1682,6 +2136,7 @@
       }
     },
     "On Desktop is set to appear on all desktops.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1692,6 +2147,7 @@
       }
     },
     "On Desktop sits above the wallpaper and below ordinary windows.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1712,6 +2168,7 @@
       }
     },
     "On Top joins all desktops and is allowed beside full-screen apps.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1722,6 +2179,7 @@
       }
     },
     "On Top stays above ordinary windows and can sit beside a full-screen app.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1742,11 +2200,22 @@
       }
     },
     "Open Automation Settings": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "打开“自动化”设置"
+          }
+        }
+      }
+    },
+    "Open Login Items…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开登录项…"
           }
         }
       }
@@ -1757,6 +2226,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Studio"
+          }
+        }
+      }
+    },
+    "Open Studio and Notch Island": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Studio 并显示 Notch Island"
           }
         }
       }
@@ -1801,7 +2281,18 @@
         }
       }
     },
+    "Pause Preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停预览"
+          }
+        }
+      }
+    },
     "Paused": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1872,6 +2363,7 @@
       }
     },
     "Play or pause": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1882,6 +2374,7 @@
       }
     },
     "Play/Pause": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1892,6 +2385,7 @@
       }
     },
     "Playback": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1902,6 +2396,7 @@
       }
     },
     "Player": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1912,6 +2407,7 @@
       }
     },
     "Playing": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1932,6 +2428,7 @@
       }
     },
     "Press Start to visualize your Mac's system audio. macOS asks for permission the first time. Audio is never recorded or uploaded.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1951,7 +2448,29 @@
         }
       }
     },
+    "Preview is in energy-saving mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览已进入节能模式"
+          }
+        }
+      }
+    },
+    "Previous Track": {},
+    "Progress": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进度"
+          }
+        }
+      }
+    },
     "Pulse gently lengthens bars from mean band energy. Set to 0 to disable.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1977,6 +2496,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "退出 Audune"
+          }
+        }
+      }
+    },
+    "Ready to import %lld presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备导入 %lld 个预设。"
+          }
+        }
+      }
+    },
+    "Ready to import %lld presets. %lld will be skipped.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "准备导入 %lld 个预设，将跳过 %lld 个。"
           }
         }
       }
@@ -2032,6 +2571,7 @@
       }
     },
     "Request Access": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2161,6 +2701,26 @@
         }
       }
     },
+    "Resume Preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复预览"
+          }
+        }
+      }
+    },
+    "Review the presets in this file before adding them to your library.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入前请先预览此文件中的预设。"
+          }
+        }
+      }
+    },
     "Ring": {
       "localizations": {
         "zh-Hans": {
@@ -2172,6 +2732,7 @@
       }
     },
     "Running": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2232,6 +2793,7 @@
       }
     },
     "Scale 100% is 640 pt wide. If the window is smaller than the visualization, it shrinks to fit and keeps its aspect ratio. This is separate from Window → Size.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2251,6 +2813,36 @@
         }
       }
     },
+    "Select All": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全选"
+          }
+        }
+      }
+    },
+    "Select None": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全不选"
+          }
+        }
+      }
+    },
+    "Selected preset is no longer available": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选预设已不可用"
+          }
+        }
+      }
+    },
     "Sensitivity": {
       "localizations": {
         "zh-Hans": {
@@ -2262,6 +2854,7 @@
       }
     },
     "Sensitivity sets how quiet a sound can be and still show. Amplitude scales the bar height. Smoothing blends neighboring bars. Attack and Release set how fast bars rise and fall, in milliseconds.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2301,22 +2894,12 @@
         }
       }
     },
-    "Show Notch Island": {
+    "Show at launch": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "显示 Notch Island"
-          }
-        }
-      }
-    },
-    "Show Studio": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "显示 Studio"
+            "value": "启动时显示"
           }
         }
       }
@@ -2327,6 +2910,37 @@
           "stringUnit": {
             "state": "translated",
             "value": "在全屏 App 中显示"
+          }
+        }
+      }
+    },
+    "Show Notch Island": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Notch Island"
+          }
+        }
+      }
+    },
+    "Show Now Playing when expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开时显示正在播放"
+          }
+        }
+      }
+    },
+    "Show Studio": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Studio"
           }
         }
       }
@@ -2371,6 +2985,16 @@
         }
       }
     },
+    "Skip conflicts": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跳过冲突项"
+          }
+        }
+      }
+    },
     "Smoothing": {
       "localizations": {
         "zh-Hans": {
@@ -2402,6 +3026,7 @@
       }
     },
     "Solid uses Appearance fill. Frequency shifts hue across the band. Amplitude brightens taller bars. Peak caps keep the stroke color.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2432,6 +3057,7 @@
       }
     },
     "Stabilizes motion over real time. Separate from Spectrum Attack / Release.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2451,12 +3077,32 @@
         }
       }
     },
+    "Start system audio capture automatically": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动时自动开始系统音频捕获"
+          }
+        }
+      }
+    },
     "Starting": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "正在启动"
+          }
+        }
+      }
+    },
+    "Startup": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动"
           }
         }
       }
@@ -2492,6 +3138,7 @@
       }
     },
     "Stopped": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2531,7 +3178,18 @@
         }
       }
     },
+    "Studio": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Studio"
+          }
+        }
+      }
+    },
     "Studio is hidden. Show it to preview changes.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2561,6 +3219,26 @@
         }
       }
     },
+    "That file is not an Audune preset exchange file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该文件不是 Audune 预设交换文件。"
+          }
+        }
+      }
+    },
+    "That file is not valid JSON.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该文件不是有效的 JSON。"
+          }
+        }
+      }
+    },
     "That name is already used for this mode.": {
       "localizations": {
         "zh-Hans": {
@@ -2571,22 +3249,82 @@
         }
       }
     },
+    "That preset file contains too many presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件包含的预设过多。"
+          }
+        }
+      }
+    },
+    "That preset file could not be read.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取该预设文件。"
+          }
+        }
+      }
+    },
+    "That preset file does not contain any presets.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件不包含任何预设。"
+          }
+        }
+      }
+    },
+    "That preset file is missing a schema version.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件缺少 schema 版本。"
+          }
+        }
+      }
+    },
+    "That preset file is too large.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件过大。"
+          }
+        }
+      }
+    },
+    "That preset file lists \"%@\" more than once for the same mode.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件在同一模式下多次列出了“%@”。"
+          }
+        }
+      }
+    },
+    "That preset file uses an unsupported schema version.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该预设文件使用了不支持的 schema 版本。"
+          }
+        }
+      }
+    },
     "That preset is no longer available.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "该预设已不存在。"
-          }
-        }
-      }
-    },
-    "The Studio window background is always fully transparent. Opacity only changes the graphic.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Studio 窗口背景始终完全透明。不透明度只影响图形。"
           }
         }
       }
@@ -2612,6 +3350,7 @@
       }
     },
     "The outer frame is the Studio window; the inner frame is the visualization. In Fixed size mode the visualization keeps its own size when the window grows, which can look like an empty border around the graphic. Use Fill window to draw edge to edge.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2622,6 +3361,7 @@
       }
     },
     "The play command could not be prepared.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2632,6 +3372,7 @@
       }
     },
     "The player did not answer in time.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2642,6 +3383,7 @@
       }
     },
     "The player did not return a state.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2652,6 +3394,7 @@
       }
     },
     "The player returned an unrecognized state.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2681,7 +3424,18 @@
         }
       }
     },
+    "The presets could not be exported.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法导出这些预设。"
+          }
+        }
+      }
+    },
     "The selected player is not installed.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2692,11 +3446,45 @@
       }
     },
     "The selected player is not running.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "所选播放器未运行。"
+          }
+        }
+      }
+    },
+    "The Studio window background is always fully transparent. Opacity only changes the graphic.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Studio 窗口背景始终完全透明。不透明度只影响图形。"
+          }
+        }
+      }
+    },
+    "These checkboxes can be combined. With none selected, Audune stays in the menu bar only.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些复选框可以同时勾选。全部不选时，Audune 只保留菜单栏入口。"
+          }
+        }
+      }
+    },
+    "These options apply the next time Audune launches. Changing them here does not alter the current session.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些选项在下次启动 Audune 时生效。在此修改不会改变当前会话。"
           }
         }
       }
@@ -2731,7 +3519,29 @@
         }
       }
     },
+    "This registers Audune with macOS Login Items. It is separate from which windows open after launch.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这会将 Audune 注册到 macOS「登录项」。它与启动后显示哪些窗口是分开的设置。"
+          }
+        }
+      }
+    },
+    "Title & Artist": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题与艺人"
+          }
+        }
+      }
+    },
     "Unavailable": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2742,6 +3552,7 @@
       }
     },
     "Unknown": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2751,7 +3562,10 @@
         }
       }
     },
+    "Unknown Artist": {},
+    "Unknown Title": {},
     "Unknown until the player is running": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2841,6 +3655,16 @@
         }
       }
     },
+    "Visualization": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化"
+          }
+        }
+      }
+    },
     "Visualization size": {
       "localizations": {
         "zh-Hans": {
@@ -2862,6 +3686,7 @@
       }
     },
     "Waiting for macOS": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2902,6 +3727,7 @@
       }
     },
     "Width and height set the Studio window frame in points (not Retina pixels). Dragging the window edges updates these values. Layout controls the visualization inside the window. Notch Island is unchanged.": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2912,6 +3738,7 @@
       }
     },
     "Window": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2931,6 +3758,17 @@
         }
       }
     },
+    "Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.": {
+      "extractionState": "stale",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "窗口与可视化选项将在下次启动 Audune 时生效。登录时启动会在下次登录 macOS 时生效。在此修改不会改变当前会话已打开的窗口。"
+          }
+        }
+      }
+    },
     "Window mode": {
       "localizations": {
         "zh-Hans": {
@@ -2942,621 +3780,12 @@
       }
     },
     "Yes": {
+      "extractionState": "stale",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "是"
-          }
-        }
-      }
-    },
-    "Export…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导出…"
-          }
-        }
-      }
-    },
-    "Export": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导出"
-          }
-        }
-      }
-    },
-    "Export Presets": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导出预设"
-          }
-        }
-      }
-    },
-    "Choose which %@ presets to export.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择要导出的%@预设。"
-          }
-        }
-      }
-    },
-    "Choose where to save the Audune preset file.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择 Audune 预设文件的保存位置。"
-          }
-        }
-      }
-    },
-    "Select All": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全选"
-          }
-        }
-      }
-    },
-    "Select None": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全不选"
-          }
-        }
-      }
-    },
-    "Exported %lld presets.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已导出 %lld 个预设。"
-          }
-        }
-      }
-    },
-    "The presets could not be exported.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法导出这些预设。"
-          }
-        }
-      }
-    },
-    "That preset file is too large.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件过大。"
-          }
-        }
-      }
-    },
-    "That file is not valid JSON.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该文件不是有效的 JSON。"
-          }
-        }
-      }
-    },
-    "That file is not an Audune preset exchange file.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该文件不是 Audune 预设交换文件。"
-          }
-        }
-      }
-    },
-    "That preset file is missing a schema version.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件缺少 schema 版本。"
-          }
-        }
-      }
-    },
-    "That preset file uses an unsupported schema version.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件使用了不支持的 schema 版本。"
-          }
-        }
-      }
-    },
-    "That preset file does not contain any presets.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件不包含任何预设。"
-          }
-        }
-      }
-    },
-    "That preset file contains too many presets.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件包含的预设过多。"
-          }
-        }
-      }
-    },
-    "A selected preset is missing its visual settings.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "所选预设缺少视觉设置。"
-          }
-        }
-      }
-    },
-    "That preset file lists \"%@\" more than once for the same mode.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该预设文件在同一模式下多次列出了“%@”。"
-          }
-        }
-      }
-    },
-    "Import Presets": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入预设"
-          }
-        }
-      }
-    },
-    "Choose an Audune preset JSON file.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择一个 Audune 预设 JSON 文件。"
-          }
-        }
-      }
-    },
-    "Import…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入…"
-          }
-        }
-      }
-    },
-    "Review the presets in this file before adding them to your library.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入前请先预览此文件中的预设。"
-          }
-        }
-      }
-    },
-    "If a name is already used": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "若名称已被使用"
-          }
-        }
-      }
-    },
-    "Import as copies": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入为副本"
-          }
-        }
-      }
-    },
-    "Skip conflicts": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "跳过冲突项"
-          }
-        }
-      }
-    },
-    "Ready to import %lld presets.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "准备导入 %lld 个预设。"
-          }
-        }
-      }
-    },
-    "Ready to import %lld presets. %lld will be skipped.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "准备导入 %lld 个预设，将跳过 %lld 个。"
-          }
-        }
-      }
-    },
-    "New custom preset": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "新的自定义预设"
-          }
-        }
-      }
-    },
-    "Name conflict — will import as \"%@\"": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名称冲突 — 将导入为“%@”"
-          }
-        }
-      }
-    },
-    "Name conflict — skipped": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名称冲突 — 已跳过"
-          }
-        }
-      }
-    },
-    "Imported %lld presets.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已导入 %lld 个预设。"
-          }
-        }
-      }
-    },
-    "Imported %lld presets. Skipped %lld.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已导入 %lld 个预设，跳过 %lld 个。"
-          }
-        }
-      }
-    },
-    "That preset file could not be read.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法读取该预设文件。"
-          }
-        }
-      }
-    },
-    "Import": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入"
-          }
-        }
-      }
-    },
-    "Startup": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "启动"
-          }
-        }
-      }
-    },
-    "Follow current behavior": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "沿用当前行为"
-          }
-        }
-      }
-    },
-    "Menu Bar only": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "仅菜单栏"
-          }
-        }
-      }
-    },
-    "Open Studio and Notch Island": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开 Studio 并显示 Notch Island"
-          }
-        }
-      }
-    },
-    "Keep current selection": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保持当前选择"
-          }
-        }
-      }
-    },
-    "At launch": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "启动时"
-          }
-        }
-      }
-    },
-    "Destination": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标"
-          }
-        }
-      }
-    },
-    "Visualization": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "可视化"
-          }
-        }
-      }
-    },
-    "These options apply the next time Audune launches. Changing them here does not alter the current session.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这些选项在下次启动 Audune 时生效。在此修改不会改变当前会话。"
-          }
-        }
-      }
-    },
-    "Notch Island appears only on supported displays. Menu Bar only turns Island off at launch.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notch Island 仅在受支持的显示器上显示。“仅菜单栏”会在启动时关闭 Island。"
-          }
-        }
-      }
-    },
-    "A Visual preset updates that mode's saved look, like applying it in Settings. Appearance, Window, and Island chrome stay unchanged.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "视觉预设会更新该模式已保存的外观，效果与在设置中应用预设相同。外观、窗口和 Island 外观控件保持不变。"
-          }
-        }
-      }
-    },
-    "Selected preset is no longer available": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "所选预设已不可用"
-          }
-        }
-      }
-    },
-    "Show at launch": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "启动时显示"
-          }
-        }
-      }
-    },
-    "Studio": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Studio"
-          }
-        }
-      }
-    },
-    "These checkboxes can be combined. With none selected, Audune stays in the menu bar only.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这些复选框可以同时勾选。全部不选时，Audune 只保留菜单栏入口。"
-          }
-        }
-      }
-    },
-    "Notch Island is disabled. Enable it under Notch Island, or it will not appear at launch.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notch Island 当前已禁用。请在「Notch Island」中启用，否则启动时不会显示。"
-          }
-        }
-      }
-    },
-    "Notch Island appears only on supported displays. Turning off Show Notch Island does not change the Island enable switch.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notch Island 仅在受支持的显示器上显示。关闭「启动时显示 Notch Island」不会更改 Island 的启用开关。"
-          }
-        }
-      }
-    },
-    "Login": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "登录"
-          }
-        }
-      }
-    },
-    "Launch Audune at login": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "登录时启动 Audune"
-          }
-        }
-      }
-    },
-    "This registers Audune with macOS Login Items. It is separate from which windows open after launch.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这会将 Audune 注册到 macOS「登录项」。它与启动后显示哪些窗口是分开的设置。"
-          }
-        }
-      }
-    },
-    "Audune is waiting for approval in System Settings > General > Login Items.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audune 正在等待系统设置 > 通用 > 登录项中的批准。"
-          }
-        }
-      }
-    },
-    "macOS could not find Audune’s login item. Try turning the option on again.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "macOS 找不到 Audune 的登录项。请尝试重新打开此选项。"
-          }
-        }
-      }
-    },
-    "Launch at login is unavailable in this build. Use a normally installed Audune app.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此构建无法使用登录时启动。请使用正常安装的 Audune。"
-          }
-        }
-      }
-    },
-    "Open Login Items…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开登录项…"
-          }
-        }
-      }
-    },
-    "Window and visualization options apply the next time Audune launches. Launch at login takes effect for the next macOS login. Changing these here does not alter the current session’s open windows.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "窗口与可视化选项将在下次启动 Audune 时生效。登录时启动会在下次登录 macOS 时生效。在此修改不会改变当前会话已打开的窗口。"
-          }
-        }
-      }
-    },
-    "Start system audio capture automatically": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "启动时自动开始系统音频捕获"
-          }
-        }
-      }
-    },
-    "Off by default. Capture starts only if Audune already has Screen & System Audio Recording permission. Showing Studio or Notch Island never starts capture by itself.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "默认关闭。仅当 Audune 已获得“屏幕与系统音频录制”权限时才会自动开始捕获。显示 Studio 或 Notch Island 本身不会开始捕获。"
           }
         }
       }
