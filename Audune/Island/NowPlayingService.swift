@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-/// Owns the Experimental Island Now Playing listener lifecycle.
+/// Owns the Experimental Now Playing listener lifecycle (Island + Fullscreen).
 /// Never starts or stops Process Tap.
 @MainActor
 @Observable

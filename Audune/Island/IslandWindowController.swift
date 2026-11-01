@@ -81,7 +81,10 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let haptics: any IslandHapticPerforming
     private var hapticToken = 0
     let model = IslandModel()
-    let nowPlaying = NowPlayingService()
+    /// Shared with Fullscreen when injected from `AppCoordinator`; tests may use a private instance.
+    let nowPlaying: NowPlayingService
+    /// When set, listening is reconciled by the owner (Island ∪ Fullscreen). Otherwise Island owns start/stop.
+    var reconcileNowPlayingListening: (() -> Void)?
     private let panel: NSPanel
     private var stateContext = IslandStateContext(state: .compact)
     private var timer: Timer?
@@ -106,6 +109,15 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     var openStudio: (() -> Void)?
     var openSettings: (() -> Void)?
+    var openFullscreen: (() -> Void)?
+
+    /// True when this surface alone needs the MediaRemote listener.
+    var wantsNowPlayingListening: Bool {
+        didShutdown == false
+            && isEffectivelyEnabled
+            && model.isSupported
+            && model.prefs.nowPlayingEnabled
+    }
 
     static func systemScreens() -> [IslandScreenDescriptor] {
         NSScreen.screens.enumerated().map { index, screen in
@@ -123,6 +135,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     init(
         spike: ProcessTapSpike,
         defaults: UserDefaults = .standard,
+        nowPlaying: NowPlayingService? = nil,
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
         allowsOrderFront: Bool = true,
         /// When false, load prefs and configure the panel but defer screen evaluation until
@@ -132,6 +145,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     ) {
         self.spike = spike
         self.defaults = defaults
+        self.nowPlaying = nowPlaying ?? NowPlayingService()
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
         self.haptics = haptics
@@ -181,8 +195,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         expandTask = nil
         saveTask?.cancel()
         saveTask = nil
-        nowPlaying.stop()
         model.nowPlaying = .idle
+        if reconcileNowPlayingListening != nil {
+            reconcileNowPlayingListening?()
+        } else {
+            nowPlaying.stop()
+        }
         stopDisplayTimer()
         updateKeyMonitor(active: false)
         if let screenObserver {
@@ -355,12 +373,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func syncNowPlayingListening() {
-        let shouldListen = didShutdown == false
-            && isEffectivelyEnabled
-            && model.isSupported
-            && model.prefs.nowPlayingEnabled
-        nowPlaying.syncDesiredListening(shouldListen: shouldListen)
-        model.nowPlaying = shouldListen ? nowPlaying.snapshot : .idle
+        if let reconcileNowPlayingListening {
+            reconcileNowPlayingListening()
+        } else {
+            nowPlaying.syncDesiredListening(shouldListen: wantsNowPlayingListening)
+        }
+        refreshNowPlayingSnapshot()
+    }
+
+    func refreshNowPlayingSnapshot() {
+        model.nowPlaying = wantsNowPlayingListening ? nowPlaying.snapshot : .idle
     }
 
     #if DEBUG
@@ -458,6 +480,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             openSettings: { [weak self] in
                 self?.openSettings?()
+            },
+            openFullscreen: { [weak self] in
+                self?.openFullscreen?()
             },
             toggleNowPlaying: { [weak self] in
                 self?.nowPlaying.togglePlayPause()

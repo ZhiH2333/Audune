@@ -13,9 +13,15 @@ final class SettingsWindowController: NSObject {
     let window: NSWindow
     private let studio: StudioWindowController
     let island: IslandWindowController
+    let fullscreen: FullscreenWindowController?
     private let ownsIsland: Bool
+    private let ownsFullscreen: Bool
 
-    init(studio: StudioWindowController, island: IslandWindowController? = nil) {
+    init(
+        studio: StudioWindowController,
+        island: IslandWindowController? = nil,
+        fullscreen: FullscreenWindowController? = nil
+    ) {
         self.studio = studio
         if let island {
             self.island = island
@@ -23,6 +29,13 @@ final class SettingsWindowController: NSObject {
         } else {
             self.island = IslandWindowController(spike: ProcessTapSpike(), allowsOrderFront: false)
             self.ownsIsland = true
+        }
+        if let fullscreen {
+            self.fullscreen = fullscreen
+            self.ownsFullscreen = false
+        } else {
+            self.fullscreen = nil
+            self.ownsFullscreen = false
         }
         window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.initialSize),
@@ -39,7 +52,9 @@ final class SettingsWindowController: NSObject {
         window.collectionBehavior = []
         window.hidesOnDeactivate = false
         window.contentMinSize = Self.minimumSize
-        let host = NSHostingView(rootView: SettingsView(studio: studio, island: self.island))
+        let host = NSHostingView(
+            rootView: SettingsView(studio: studio, island: self.island, fullscreen: self.fullscreen)
+        )
         host.sizingOptions = []
         window.contentView = host
         window.setContentSize(Self.initialSize)
@@ -62,6 +77,9 @@ final class SettingsWindowController: NSObject {
         window.orderOut(nil)
         if ownsIsland {
             island.shutdown()
+        }
+        if ownsFullscreen {
+            fullscreen?.shutdown()
         }
     }
 }

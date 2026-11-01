@@ -589,17 +589,17 @@ Compact mini Now Playing, lyrics (see AUD-NP-02), art color themes, AppleScript 
 Optional fullscreen ambient player sharing Island Now Playing metadata and the single `AudioSnapshot`: blurred artwork backdrop, transport, low-opacity visualization. Optional synced lyrics via LRCLIB when the user enables network search (default off). Does not count toward Core MVP.
 
 ### Tasks
-- [ ] Document Experimental Fullscreen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
-- [ ] Hoist `NowPlayingService` so Island and Fullscreen share one listener; reconcile when either surface wants metadata.
-- [ ] Fullscreen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
-- [ ] `LyricsService` + LRCLIB HTTPS client; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
+- [x] Document Experimental Fullscreen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
+- [x] Hoist `NowPlayingService` so Island and Fullscreen share one listener; reconcile when either surface wants metadata.
+- [x] Fullscreen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
+- [x] `LyricsService` + LRCLIB HTTPS client; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
 
 ### Acceptance criteria
-- [ ] Default: Fullscreen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online.
-- [ ] Opening Fullscreen with a playing track shows artwork/title/artist/transport; Esc / close exits; Island Compact unchanged.
-- [ ] Enabling lyrics fetches only title/artist/(album)/duration from lrclib.net; no artwork/PCM upload; empty/error states are explicit.
-- [ ] Capture pipeline unaffected by Fullscreen or lyrics toggles.
-- [ ] Manual GUI rows recorded honestly; no App Store claim.
+- [x] Default: Fullscreen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*
+- [ ] Opening Fullscreen with a playing track shows artwork/title/artist/transport; Esc / close exits; Island Compact unchanged. *(manual — see MANUAL_TESTS)*
+- [x] Enabling lyrics fetches only title/artist/(album)/duration from lrclib.net; no artwork/PCM upload; empty/error states are explicit. *(client + service unit-covered; GUI manual)*
+- [x] Capture pipeline unaffected by Fullscreen or lyrics toggles. *(Fullscreen never touches ProcessTapSpike)*
+- [ ] Manual GUI rows recorded honestly; no App Store claim. *(rows remain NOT TESTED)*
 
 ### Dependencies
 AUD-NP-01 (shared Now Playing).
