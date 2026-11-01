@@ -81,6 +81,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let haptics: any IslandHapticPerforming
     private var hapticToken = 0
     let model = IslandModel()
+    let nowPlaying = NowPlayingService()
     private let panel: NSPanel
     private var stateContext = IslandStateContext(state: .compact)
     private var timer: Timer?
@@ -178,6 +179,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         expandTask = nil
         saveTask?.cancel()
         saveTask = nil
+        nowPlaying.stop()
+        model.nowPlaying = .idle
         stopDisplayTimer()
         updateKeyMonitor(active: false)
         if let screenObserver {
@@ -270,11 +273,22 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         applyCollectionBehavior()
         evaluateScreensAndApply(animated: false)
         refreshVisuals()
+        syncNowPlayingListening()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
             guard Task.isCancelled == false else { return }
             self?.savePreferences()
+        }
+    }
+
+    func setNowPlayingEnabled(_ enabled: Bool) {
+        model.prefs.nowPlayingEnabled = enabled
+        savePreferences()
+        syncNowPlayingListening()
+        if let geometry = model.geometry, stateContext.state.isExpandedOrPinned {
+            let target = geometry.expandedFrame(nowPlayingEnabled: enabled)
+            updatePanelFrame(target, expanding: false, animated: false, hapticPattern: nil, hapticToken: hapticToken)
         }
     }
 
@@ -294,6 +308,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         applyCollectionBehavior()
         evaluateScreensAndApply(animated: false)
         refreshVisuals()
+        syncNowPlayingListening()
     }
 
     func evaluateScreensAndApply(animated: Bool = false) {
@@ -324,7 +339,17 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             .availabilityChanged(isEnabled: isEffectivelyEnabled, isSupported: model.isSupported),
             animated: animated
         )
+        syncNowPlayingListening()
         rearmHoverIfPointerStillInside()
+    }
+
+    private func syncNowPlayingListening() {
+        let shouldListen = didShutdown == false
+            && isEffectivelyEnabled
+            && model.isSupported
+            && model.prefs.nowPlayingEnabled
+        nowPlaying.syncDesiredListening(shouldListen: shouldListen)
+        model.nowPlaying = shouldListen ? nowPlaying.snapshot : .idle
     }
 
     #if DEBUG
@@ -507,7 +532,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        let targetFrame = stateContext.state.isExpandedOrPinned ? geometry.expandedFrame : geometry.compactFrame
+        let targetFrame: NSRect
+        if stateContext.state.isExpandedOrPinned {
+            targetFrame = geometry.expandedFrame(nowPlayingEnabled: model.prefs.nowPlayingEnabled)
+        } else {
+            targetFrame = geometry.compactFrame
+        }
         let expanding = stateContext.state.isExpandedOrPinned && previousState == .compact
         let collapsing = stateContext.state == .compact && previousState.isExpandedOrPinned
         let shouldAnimate = animated && (expanding || collapsing) && allowsOrderFront
@@ -700,6 +730,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let dt = lastTick.map { Double((now - $0).components.seconds) + Double((now - $0).components.attoseconds) / 1e18 } ?? 0
         lastTick = now
         model.snapshot = spike.snapshots.load()
+        if model.prefs.nowPlayingEnabled {
+            model.nowPlaying = nowPlaying.snapshot
+        }
         if allowsOrderFront,
            stateContext.state == .expanded,
            stateContext.pointerInside,

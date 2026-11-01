@@ -79,6 +79,24 @@ nonisolated struct IslandNotchGeometry: Equatable, Sendable {
     /// Expanded window frame in AppKit bottom-left screen coordinates. Always contains `compactFrame`.
     var expandedFrame: CGRect
 
+    /// Expanded frame grown downward for the Experimental Now Playing strip. Compact unchanged.
+    func expandedFrame(nowPlayingEnabled: Bool) -> CGRect {
+        guard nowPlayingEnabled else { return expandedFrame }
+        let proposedHeight = expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight
+        let height = min(proposedHeight, screenFrame.height * 0.55, screenFrame.maxY - screenFrame.minY - 8)
+        guard height > expandedFrame.height else { return expandedFrame }
+        let frame = CGRect(
+            x: expandedFrame.minX,
+            y: screenFrame.maxY - height,
+            width: expandedFrame.width,
+            height: height
+        )
+        guard screenFrame.contains(frame), frame.contains(compactFrame) else {
+            return expandedFrame
+        }
+        return frame
+    }
+
     var leftWingWidth: CGFloat {
         max(0, notchRect.minX - compactFrame.minX)
     }
@@ -142,6 +160,8 @@ nonisolated enum IslandGeometry {
     static let minExpandedWidth: CGFloat = 320
     static let maxExpandedWidth: CGFloat = 420
     static let defaultExpandedHeight: CGFloat = 132
+    /// Extra Expanded/Pinned height when Experimental Now Playing is enabled.
+    static let nowPlayingExpandedExtraHeight: CGFloat = 88
     static let compactBarCounts = [4, 5, 6]
 
     static func analyze(screen: IslandScreenDescriptor) -> Result<IslandNotchGeometry, IslandUnsupportedReason> {

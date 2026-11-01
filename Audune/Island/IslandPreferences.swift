@@ -12,6 +12,7 @@ nonisolated enum IslandPreferenceKey {
     static let compactBarCountPerSide = "island.compactBarCountPerSide"
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
+    static let nowPlayingEnabled = "island.nowPlayingEnabled"
 }
 
 nonisolated struct IslandPreferences: Equatable, Sendable {
@@ -26,6 +27,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var compactBarCountPerSide: Int
     var showsInFullScreen: Bool
     var followsReduceMotion: Bool
+    /// Experimental system Now Playing in Expanded/Pinned. Default off.
+    var nowPlayingEnabled: Bool
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
     static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
@@ -43,7 +46,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         animationSpeed: 1,
         compactBarCountPerSide: 5,
         showsInFullScreen: false,
-        followsReduceMotion: true
+        followsReduceMotion: true,
+        nowPlayingEnabled: false
     )
 
     var targetScreenMode: IslandTargetScreenMode {
@@ -107,6 +111,9 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         let followsReduceMotion = defaults.object(forKey: IslandPreferenceKey.followsReduceMotion) == nil
             ? standard.followsReduceMotion
             : defaults.bool(forKey: IslandPreferenceKey.followsReduceMotion)
+        let nowPlayingEnabled = defaults.object(forKey: IslandPreferenceKey.nowPlayingEnabled) == nil
+            ? standard.nowPlayingEnabled
+            : defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled)
 
         return IslandPreferences(
             isEnabled: isEnabled,
@@ -119,7 +126,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             animationSpeed: animationSpeed,
             compactBarCountPerSide: compactBarCount,
             showsInFullScreen: showsInFullScreen,
-            followsReduceMotion: followsReduceMotion
+            followsReduceMotion: followsReduceMotion,
+            nowPlayingEnabled: nowPlayingEnabled
         ).normalized()
     }
 
@@ -165,6 +173,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.compactBarCountPerSide, forKey: IslandPreferenceKey.compactBarCountPerSide)
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
+        defaults.set(normalized.nowPlayingEnabled, forKey: IslandPreferenceKey.nowPlayingEnabled)
     }
 
     static func reset(in defaults: UserDefaults = .standard) {

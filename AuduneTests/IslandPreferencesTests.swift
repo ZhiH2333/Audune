@@ -28,6 +28,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.compactBarCountPerSide, 5)
         XCTAssertFalse(loaded.showsInFullScreen)
         XCTAssertTrue(loaded.followsReduceMotion)
+        XCTAssertFalse(loaded.nowPlayingEnabled)
     }
 
     func testSaveAndLoadRoundTrip() {
@@ -42,7 +43,8 @@ final class IslandPreferencesTests: XCTestCase {
             animationSpeed: 1.5,
             compactBarCountPerSide: 6,
             showsInFullScreen: true,
-            followsReduceMotion: false
+            followsReduceMotion: false,
+            nowPlayingEnabled: true
         )
         custom.save(to: defaults)
 

@@ -573,6 +573,29 @@ struct SettingsView: View {
             }
             .pickerStyle(.segmented)
         }
+        Section("Experimental Now Playing") {
+            Toggle("Show Now Playing when expanded", isOn: Binding(
+                get: { islandModel.prefs.nowPlayingEnabled },
+                set: { island.setNowPlayingEnabled($0) }
+            ))
+            Text("Uses a private MediaRemote helper (mediaremote-adapter). Default off. Not App Store–ready; may break after macOS updates. Does not start or stop audio capture. Compact wings stay spectrum-only.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if islandModel.prefs.nowPlayingEnabled {
+                switch islandModel.nowPlaying.availability {
+                case .unavailable:
+                    Text("Now Playing unavailable on this Mac or the helper stopped. Turn the switch off and on, or check MANUAL_TESTS.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                case .empty:
+                    Text("Nothing is reporting Now Playing right now.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                case .listening, .idle:
+                    EmptyView()
+                }
+            }
+        }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
             SettingsSlider(

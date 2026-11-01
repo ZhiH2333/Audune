@@ -23,6 +23,8 @@ final class IslandModel {
     var pointerDown = false
     /// Compact-only anticipation. The window frame stays on the compact geometry while this is true.
     var hoverArmed = false
+    /// Experimental Now Playing snapshot mirrored from `NowPlayingService` for Expanded UI.
+    var nowPlaying = NowPlayingSnapshot.idle
 
     var isSupported: Bool {
         geometry != nil && unsupportedReason == nil

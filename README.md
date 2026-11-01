@@ -11,7 +11,9 @@ Audune is a native, local-first macOS music visualizer. It draws the system audi
 - Notch Island on displays that have a camera housing. On other displays it is unavailable and says so; the menu bar and Studio still work.
 - English and Simplified Chinese. The language follows the system language order; there is no in-app switcher.
 
-Not included: Desktop Magnet, external player Play/Pause or Now Playing metadata, volume or mute control, microphone input, and any non-macOS platform.
+Not included in Core MVP: Desktop Magnet, volume or mute control, microphone input, and any non-macOS platform.
+
+Optional / Experimental: Notch Island can show system Now Playing (title, artwork, transport, scrubber) when enabled under Settings → Notch Island. It uses [mediaremote-adapter](https://github.com/ejbills/mediaremote-adapter) (private MediaRemote helper). Default off; not App Store–ready. See `docs/THIRD_PARTY_NOTICES.md`.
 
 ## Requirements
 
