@@ -687,8 +687,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 speed: model.prefs.animationSpeed
             )
             : 0
-        // Now Playing expands much wider; give the morph a touch more time so it doesn't feel snapped.
-        if duration > 0, model.prefs.nowPlayingEnabled, expanding || collapsing {
+        // Now Playing expands much wider; only expand gets extra settle time. Collapse stays snappy.
+        if duration > 0, model.prefs.nowPlayingEnabled, expanding {
             duration *= 1.25
         }
 

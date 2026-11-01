@@ -263,7 +263,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - **窗口与鼠标命中架构**：使用无边框 `NSPanel`（`.borderless, .nonactivatingPanel`，`level = .statusBar`）。Compact 状态下窗口 frame 仅包裹物理刘海及左右各约 34 pt 的窄侧翼，外侧菜单栏完全不在窗口 frame 内，因此不拦截正常菜单栏点击，也不需要 Accessibility 或 Input Monitoring 权限。
 - **悬停展开与防抖收起**：通过视图级 `NSTrackingArea` 检测鼠标进入 Compact 窗口。进入后先做内容预反馈，不改变窗口 frame：频谱最多放大到 1.03，并可以立刻出现描边，动画时长为 `min(0.12, 展开延迟)`。展开延迟独立于收起延迟，默认 0.35 秒，范围 0.1–1.0 秒，步长 0.05 秒（`island.expandDelaySeconds`）。延迟结束时若仍是 Compact、指针仍在有效区域且没有按下，才把窗口 frame 扩到 Expanded（Expanded frame 严格包含 Compact frame）。指针离开、按下、Pin、Escape、禁用或屏幕变化都会作废这一次等待；重新进入会重新计时。鼠标离开窗口（含 6 pt 边缘容差）后按收起延迟（0.15–1.5 秒，默认 0.35 秒）自动收起，延时内重新进入立即取消收起。
 - **触觉反馈**：默认关闭（`island.hapticStrength`）。Light、Medium、Strong 分别映射到公开 `NSHapticFeedbackManager` 的 Alignment、Generic、Level Change。这是三种系统触感模式，不是硬件振幅。只在一次真正完成的 Compact → Expanded 后触发一次；悬停、取消、重复进入、Pin，或已经处于 Expanded，都不触发。没有 Force Touch 触控板时调用安全空操作。
-- **动画速度**：默认 1.0×，范围 0.5×–2.0×，步长 0.1×（`island.animationSpeed`）。展开基准 200ms、收起基准 180ms，实际时长为基准除以速度。展开用控制点 `(0.22, 0.90, 0.20, 1)` 的缓出，四个分量都在 0...1，窗口 frame 不会越过目标；收起用 ease-in。系统 Reduce Motion 且“Follow system Reduce Motion”打开时，时长为 0，速度设置不能把它改回动画。预反馈同样在 Reduce Motion 下取消缩放。
+- **动画速度**：默认 1.0×，范围 0.5×–2.0×，步长 0.1×（`island.animationSpeed`）。展开基准 200ms、收起基准 120ms，实际时长为基准除以速度。展开用控制点 `(0.22, 0.90, 0.20, 1)` 的缓出，四个分量都在 0...1，窗口 frame 不会越过目标；收起用 ease-in。开启 Now Playing 时仅展开再 ×1.25，收起不加时。系统 Reduce Motion 且“Follow system Reduce Motion”打开时，时长为 0，速度设置不能把它改回动画。预反馈同样在 Reduce Motion 下取消缩放。
 - **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。从 Compact 直接 Pin 不经过悬停展开，也不触发触觉。
 - **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 或 Now Playing **绝不**擅自启动或停止系统音频捕获。
 - **Experimental Now Playing**：偏好键 `island.nowPlayingEnabled`（默认 `false`）只控制是否监听 MediaRemote / 是否显示播放器条，**不**改变 Expanded frame。布局键 `island.nowPlayingLayout.showArtwork|showTitleArtist|showProgress|showTransport|showVisualization`（默认均为 `true`）。仅在 Island 已启用且刘海几何有效时启动 adapter 监听；禁用 Island、关闭开关、无刘海降级或 app shutdown 时立即停止。Seek 对不支持的 `bundleIdentifier` 降级为只读进度条，transport 仍尽量可用。
@@ -621,7 +621,7 @@ Core Audio Process Tap + Aggregate Device
 ### 动效
 
 - 可视化应随最新音频样本平滑更新；不得通过动画曲线假装有声音。
-- Island 收起/展开基准 180ms/200ms，再除以动画速度（默认 1.0×，0.5×–2.0×）。Reduce Motion 优先于速度，打开时时长为 0。
+- Island 收起/展开基准 120ms/200ms，再除以动画速度（默认 1.0×，0.5×–2.0×）。开启 Now Playing 时仅展开 ×1.25。Reduce Motion 优先于速度，打开时时长为 0。
 - 菜单栏图标不播放无意义的开场动画或持续 pulse；真实输入静音时图形稳定。
 - 快速切换模式不得重建音频服务，也不得卡住主线程。
 

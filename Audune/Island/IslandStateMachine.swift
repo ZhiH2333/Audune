@@ -40,7 +40,8 @@ nonisolated enum IslandEvent: Equatable, Sendable {
 
 nonisolated enum IslandMotion {
     static let expandSeconds = 0.20
-    static let collapseSeconds = 0.18
+    /// Snappier than expand — retracting a wide Expanded shell should not linger.
+    static let collapseSeconds = 0.12
     static let defaultCollapseDelaySeconds = 0.35
     static let defaultExpandDelaySeconds = 0.35
     static let maxPrefeedbackSeconds = 0.12

@@ -188,7 +188,7 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertFalse(IslandStateMachine.pointerIsInside(windowFrame: .zero, cursor: CGPoint(x: 0, y: 0)))
 
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: false), 0.20, accuracy: 0.000_1)
-        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false), 0.18, accuracy: 0.000_1)
+        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false), 0.12, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: true, followsReduceMotion: true), 0)
         XCTAssertEqual(
             IslandMotion.transitionSeconds(expanding: true, reduceMotion: true, followsReduceMotion: false),
@@ -203,16 +203,16 @@ final class IslandStateMachineTests: XCTestCase {
         XCTAssertEqual(IslandMotion.prefeedbackScale(hoverArmed: false, reduceMotion: false), 1)
 
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: false, speed: 1), 0.20, accuracy: 0.000_1)
-        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false, speed: 1), 0.18, accuracy: 0.000_1)
+        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false, speed: 1), 0.12, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: false, speed: 2), 0.10, accuracy: 0.000_1)
-        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false, speed: 0.5), 0.36, accuracy: 0.000_1)
+        XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: false, speed: 0.5), 0.24, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: false, speed: .nan), 0.20, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: false, speed: 9), 0.10, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: false, reduceMotion: true, followsReduceMotion: true, speed: 0.5), 0)
         XCTAssertEqual(IslandMotion.transitionSeconds(expanding: true, reduceMotion: true, followsReduceMotion: false, speed: 2), 0.10, accuracy: 0.000_1)
         XCTAssertEqual(IslandMotion.framePace(expanding: true, duration: 0), .immediate)
         XCTAssertEqual(IslandMotion.framePace(expanding: true, duration: 0.2), .expandSettle)
-        XCTAssertEqual(IslandMotion.framePace(expanding: false, duration: 0.18), .collapseSettle)
+        XCTAssertEqual(IslandMotion.framePace(expanding: false, duration: 0.12), .collapseSettle)
         let points = IslandMotion.expandSettleControlPoints
         for value in [points.0, points.1, points.2, points.3] {
             XCTAssertGreaterThanOrEqual(value, 0)
