@@ -241,41 +241,44 @@ struct IslandContentView: View {
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
-                    VStack(spacing: 0) {
-                        IslandExpandedNowPlayingView(
-                            snapshot: model.nowPlaying,
-                            onTogglePlay: toggleNowPlaying,
-                            onPrevious: previousTrack,
-                            onNext: nextTrack,
-                            onSeek: seekNowPlaying
+                    // Viz as soft backdrop; chrome sits on top with press/darken gradients for contrast.
+                    ZStack {
+                        nowPlayingAmbientVisualization
+                            .scaleEffect(1.06)
+                            .blur(radius: reduceMotion ? 0 : 6)
+                            .opacity(0.78)
+                            .allowsHitTesting(false)
+
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.82), location: 0),
+                                .init(color: Color.black.opacity(0.42), location: 0.28),
+                                .init(color: Color.black.opacity(0.18), location: 0.55),
+                                .init(color: Color.black.opacity(0.28), location: 0.72),
+                                .init(color: Color.black.opacity(0.72), location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
-                        .padding(.horizontal, 18)
-                        .padding(.top, 2)
+                        .allowsHitTesting(false)
 
-                        Spacer(minLength: 4)
+                        VStack(spacing: 0) {
+                            IslandExpandedNowPlayingView(
+                                snapshot: model.nowPlaying,
+                                onTogglePlay: toggleNowPlaying,
+                                onPrevious: previousTrack,
+                                onNext: nextTrack,
+                                onSeek: seekNowPlaying
+                            )
+                            .padding(.horizontal, 18)
+                            .padding(.top, 2)
 
-                        // Readable ambient strip: spectrum/waveform fill width; orbit keeps a square viewport.
-                        ZStack(alignment: .bottom) {
-                            nowPlayingAmbientVisualization
-                                .allowsHitTesting(false)
+                            Spacer(minLength: 8)
 
                             modePickerRow
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background {
-                                    Capsule(style: .continuous)
-                                        .fill(Color.black.opacity(0.55))
-                                        .overlay {
-                                            Capsule(style: .continuous)
-                                                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-                                        }
-                                }
-                                .padding(.bottom, 8)
+                                .padding(.horizontal, 14)
+                                .padding(.bottom, 10)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: model.prefs.mode == .orbit ? 96 : 58)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -354,32 +357,27 @@ struct IslandContentView: View {
         .frame(height: 22)
     }
 
-    /// Now Playing ambient strip — brighter than the old backdrop wash, orbit gets a square stage.
+    /// Full-bleed Now Playing backdrop (blur + press gradients applied by the caller).
     @ViewBuilder
     private var nowPlayingAmbientVisualization: some View {
-        let strength = min(max(model.appearance.opacity * 1.15, 0.72), 1)
-        switch model.prefs.mode {
-        case .orbit:
-            expandedVisualization(opacityOverride: strength, orbitBoost: true)
-                .frame(width: 92, height: 92)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .opacity(0.92)
-        case .spectrum, .waveform:
-            expandedVisualization(opacityOverride: strength, orbitBoost: false)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .opacity(0.88)
-                .mask(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.35),
-                            Color.black,
-                            Color.black
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+        let strength = min(max(model.appearance.opacity * 1.2, 0.8), 1)
+        Group {
+            switch model.prefs.mode {
+            case .orbit:
+                // Keep orbit roughly square so the ring stays readable behind chrome.
+                GeometryReader { geo in
+                    let side = min(geo.size.width, geo.size.height) * 0.92
+                    expandedVisualization(opacityOverride: strength, orbitBoost: true)
+                        .frame(width: side, height: side)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                }
+            case .spectrum, .waveform:
+                expandedVisualization(opacityOverride: strength, orbitBoost: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
