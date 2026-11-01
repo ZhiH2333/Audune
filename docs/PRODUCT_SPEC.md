@@ -142,17 +142,25 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
 - 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
 
+### Experimental — Fullscreen Player + Network Lyrics（可选，默认关闭）
+
+- **不属于 Core MVP。** Settings → Fullscreen Player；也可从 Island Expanded 进入。
+- 全屏氛围窗：封面模糊底景、大封面、曲名/歌手、进度与 transport、低不透明度共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。
+- **绝不** start/stop Process Tap；不用 SkyLight / CGSSpace。
+- **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration 向 **LRCLIB**（`https://lrclib.net`）HTTPS 查询 synced LRC；不上传封面或 PCM；切歌取消 in-flight；无结果/失败显示明确空态。
+- 实验性；不可承诺 Mac App Store；匹配失败可接受。
+
 ### v0.4+ — 其他播放器 / 视觉扩展
 
 - 分源 Apple Events（Music/Spotify Automation）方案已从产品中移除；不以此替代上述 Experimental Now Playing。
-- 专辑封面取色主题、歌词、录制、动态桌面和高级视觉均不属于 Core MVP。
+- 专辑封面取色主题、本地 `.lrc` 导入、录制、动态桌面和高级视觉均不属于 Core MVP（联网歌词仅见上方 Experimental Fullscreen）。
 
 ### 首版明确不做
 
 - 独立音乐播放器、播放列表或媒体库。
-- 歌词与专辑封面联动主题（Now Playing 仅展示系统已提供的封面字节，不做取色主题）。
+- 专辑封面联动取色主题（Now Playing / Fullscreen 仅展示系统已提供的封面字节，不做取色主题）。
 - 桌面壁纸层、屏幕边缘灯效、屏幕保护程序。
-- AI 功能、云服务、账号登录、远程配置、广告、遥测。
+- AI 功能、账号登录、远程配置、广告、遥测（Fullscreen 联网歌词仅在用户显式开启时访问 lrclib.net）。
 - 音频录制、直播、视频导出、听歌历史统计。
 - 插件市场、脚本执行系统、复杂可视化编辑器。
 - 要求用户安装虚拟音频驱动或第三方音频路由工具。
@@ -636,7 +644,7 @@ Core Audio Process Tap + Aggregate Device
 
 - 可视化编辑器节点/连线系统。
 - 任意脚本、Shader 编辑器或下载第三方主题。
-- 专辑封面自动取色、歌词、动态壁纸、视频录制。
+- 专辑封面自动取色、动态壁纸、视频录制。（Experimental Fullscreen 联网歌词见 §3，默认关闭。）
 
 ---
 
@@ -762,6 +770,7 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 5. **Phase 4 — Desktop Magnet**：普通层级的桌面磁贴和位置恢复。
 6. **Phase 5 — Release Readiness**：隐私说明、文档、CI、人工回归与测试包。
 7. **Experimental — Island Now Playing**：可选完整播放器（AUD-NP-01）；默认关闭；不计入 Core MVP。若 Apple 日后提供公开系统 Now Playing API，再评估替换私有旁路。
+8. **Experimental — Fullscreen Player + Network Lyrics**：全屏氛围播放器与可选 LRCLIB 歌词（AUD-NP-02）；默认关闭；不计入 Core MVP。
 
 ### Definition of Done（每个 Issue）
 
