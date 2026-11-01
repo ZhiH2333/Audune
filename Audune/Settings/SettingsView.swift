@@ -833,8 +833,9 @@ private struct IslandLayoutPreview: View {
 
                 ZStack {
                     if layout.showVisualization {
+                        // Island Expanded mode is independent of Studio; preview must follow island prefs.
                         StudioVisualizationView(
-                            prefs: studioModel.prefs,
+                            prefs: islandPreviewPrefs,
                             spectrum: frame.spectrum,
                             peaks: frame.peaks,
                             waveform: frame.waveform,
@@ -848,6 +849,7 @@ private struct IslandLayoutPreview: View {
                                 .fill(Color.white)
                                 .blur(radius: 8)
                         }
+                        .id(islandModel.prefs.mode)
                     }
 
                     // Match live Island: chrome only when Show Now Playing is on.
@@ -906,6 +908,13 @@ private struct IslandLayoutPreview: View {
             return frozen
         }
         return .live(from: islandModel, studio: studioModel)
+    }
+
+    /// Appearance/spectrum params from Studio prefs, but mode from Notch Island.
+    private var islandPreviewPrefs: StudioPreferences {
+        var prefs = studioModel.prefs
+        prefs.mode = islandModel.prefs.mode
+        return prefs
     }
 }
 
