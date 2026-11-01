@@ -447,6 +447,18 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             openSettings: { [weak self] in
                 self?.openSettings?()
+            },
+            toggleNowPlaying: { [weak self] in
+                self?.nowPlaying.togglePlayPause()
+            },
+            previousTrack: { [weak self] in
+                self?.nowPlaying.previousTrack()
+            },
+            nextTrack: { [weak self] in
+                self?.nowPlaying.nextTrack()
+            },
+            seekNowPlaying: { [weak self] seconds in
+                self?.nowPlaying.seek(to: seconds)
             }
         )
         let host = IslandHostingView(rootView: root)

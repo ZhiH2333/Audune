@@ -157,6 +157,10 @@ struct IslandContentView: View {
     var collapse: () -> Void
     var openStudio: () -> Void
     var openSettings: () -> Void
+    var toggleNowPlaying: () -> Void = {}
+    var previousTrack: () -> Void = {}
+    var nextTrack: () -> Void = {}
+    var seekNowPlaying: (Double) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -226,11 +230,29 @@ struct IslandContentView: View {
                 .padding(.horizontal, 12)
                 .frame(height: notchHeight)
 
-                expandedVisualization
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 2)
-                    .allowsHitTesting(false)
+                if model.prefs.nowPlayingEnabled {
+                    IslandExpandedNowPlayingView(
+                        snapshot: model.nowPlaying,
+                        onTogglePlay: toggleNowPlaying,
+                        onPrevious: previousTrack,
+                        onNext: nextTrack,
+                        onSeek: seekNowPlaying
+                    )
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 72)
+
+                    expandedVisualization
+                        .frame(maxWidth: .infinity)
+                        .frame(maxHeight: 52)
+                        .padding(.horizontal, 14)
+                        .allowsHitTesting(false)
+                } else {
+                    expandedVisualization
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 2)
+                        .allowsHitTesting(false)
+                }
 
                 modePickerRow
                     .padding(.horizontal, 12)
