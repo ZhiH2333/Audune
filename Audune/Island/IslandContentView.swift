@@ -254,17 +254,16 @@ struct IslandContentView: View {
                         )
                         .padding(.horizontal, 18)
                         .padding(.top, 2)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 8)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ZStack {
+                    softEdgedVisualization(
                         expandedVisualization
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                        visualizationEdgePress
-                    }
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .allowsHitTesting(false)
                 }
             }
@@ -315,89 +314,93 @@ struct IslandContentView: View {
         }
     }
 
-    /// Soft edge vignette so the viz fades into the Island chrome (very light press).
-    private var visualizationEdgePress: some View {
-        ZStack {
-            LinearGradient(
-                stops: [
-                    .init(color: Color.black.opacity(0.28), location: 0),
-                    .init(color: Color.clear, location: 0.14),
-                    .init(color: Color.clear, location: 0.86),
-                    .init(color: Color.black.opacity(0.32), location: 1)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            LinearGradient(
-                stops: [
-                    .init(color: Color.black.opacity(0.22), location: 0),
-                    .init(color: Color.clear, location: 0.16),
-                    .init(color: Color.clear, location: 0.78),
-                    .init(color: Color.black.opacity(0.36), location: 1)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .allowsHitTesting(false)
-    }
-
-    /// Backdrop viz: mostly sharp, light bottom press + tiny edge darkening.
-    private var nowPlayingBackdrop: some View {
-        ZStack {
-            nowPlayingAmbientVisualization
-                .opacity(0.88)
-
-            if reduceMotion == false {
-                nowPlayingAmbientVisualization
-                    .blur(radius: 3)
-                    .mask(
+    /// Fade viz alpha at the perimeter so bars don't hard-clip against the Island edge.
+    private func softEdgedVisualization<Content: View>(_ content: Content) -> some View {
+        content
+            .mask {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .inset(by: 7)
+                    .fill(Color.white)
+                    .blur(radius: reduceMotion ? 0 : 10)
+            }
+            .overlay {
+                // Extra press: soft black falloff around the rim.
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(
                         LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .clear, location: 0.55),
-                                .init(color: .black.opacity(0.4), location: 0.82),
-                                .init(color: .black, location: 1)
+                            colors: [
+                                Color.black.opacity(0.55),
+                                Color.black.opacity(0.12),
+                                Color.black.opacity(0.5)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
-                        )
+                        ),
+                        lineWidth: 14
                     )
+                    .blur(radius: reduceMotion ? 0 : 6)
+                    .opacity(0.85)
+            }
+    }
+
+    /// Dimmer backdrop with soft perimeter fade + gentle bottom press.
+    private var nowPlayingBackdrop: some View {
+        ZStack {
+            softEdgedVisualization(
+                nowPlayingAmbientVisualization
+                    .opacity(0.48)
+            )
+
+            if reduceMotion == false {
+                softEdgedVisualization(
+                    nowPlayingAmbientVisualization
+                        .opacity(0.35)
+                        .blur(radius: 4)
+                )
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .clear, location: 0.5),
+                            .init(color: .black.opacity(0.45), location: 0.8),
+                            .init(color: .black, location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
             }
 
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.28), location: 0),
-                    .init(color: Color.black.opacity(0.08), location: 0.35),
-                    .init(color: Color.black.opacity(0.12), location: 0.65),
-                    .init(color: Color.black.opacity(0.42), location: 1)
+                    .init(color: Color.black.opacity(0.4), location: 0),
+                    .init(color: Color.black.opacity(0.18), location: 0.4),
+                    .init(color: Color.black.opacity(0.22), location: 0.7),
+                    .init(color: Color.black.opacity(0.55), location: 1)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-
-            visualizationEdgePress
         }
     }
 
-    /// Full-bleed Now Playing backdrop (blur + press gradients applied by the caller).
+    /// Full-bleed Now Playing backdrop (edge soft-mask applied by the caller).
     @ViewBuilder
     private var nowPlayingAmbientVisualization: some View {
-        let strength = min(max(model.appearance.opacity * 1.2, 0.8), 1)
+        let strength = min(max(model.appearance.opacity * 0.85, 0.45), 0.7)
         Group {
             switch model.prefs.mode {
             case .orbit:
-                // Keep orbit roughly square so the ring stays readable behind chrome.
                 GeometryReader { geo in
-                    let side = min(geo.size.width, geo.size.height) * 0.92
+                    let side = min(geo.size.width, geo.size.height) * 0.88
                     expandedVisualization(opacityOverride: strength, orbitBoost: true)
                         .frame(width: side, height: side)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             case .spectrum, .waveform:
                 expandedVisualization(opacityOverride: strength, orbitBoost: false)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

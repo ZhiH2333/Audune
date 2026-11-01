@@ -187,7 +187,7 @@ nonisolated enum IslandGeometry {
     static let defaultExpandedHeight: CGFloat = 132
     /// Extra Expanded/Pinned height when Experimental Now Playing is enabled.
     /// Visualizer is a backdrop behind the player; mode icons live in the left wing.
-    static let nowPlayingExpandedExtraHeight: CGFloat = 96
+    static let nowPlayingExpandedExtraHeight: CGFloat = 72
     /// Physical notch is ~185–220 pt (14"/16" MacBook). Now Playing needs much wider wings
     /// so Pin/Settings sit clear of the camera housing (~160+ pt per side).
     static let nowPlayingExpandedWidthPadding: CGFloat = 340
