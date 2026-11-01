@@ -89,51 +89,38 @@ struct IslandExpandedNowPlayingView: View {
     }
 
     private var artworkView: some View {
-        ZStack {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return ZStack {
             if let artwork = snapshot.artwork {
                 Image(nsImage: artwork)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .blur(radius: 18)
-                    .opacity(0.45)
-                    .scaleEffect(1.15)
-                    .frame(width: 76, height: 76)
-                    .clipped()
-            }
-
-            Group {
-                if let artwork = snapshot.artwork {
-                    Image(nsImage: artwork)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.14),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Image(systemName: "music.note")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Color.white.opacity(0.7))
-                        }
+                    .blur(radius: 16)
+                    .opacity(0.4)
+                    .scaleEffect(1.12)
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.14),
+                        Color.white.opacity(0.05)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .overlay {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.7))
                 }
             }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
-            }
-            .shadow(color: .black.opacity(0.45), radius: 8, y: 3)
         }
-        .frame(width: 76, height: 76)
+        .frame(width: 72, height: 72)
+        .clipShape(shape)
+        .compositingGroup()
+        .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
         .accessibilityHidden(true)
     }
 

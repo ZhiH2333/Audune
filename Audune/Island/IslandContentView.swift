@@ -241,46 +241,41 @@ struct IslandContentView: View {
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
-                    // Player stays on solid black; soft viz only in a bottom ambient band under the mode chips.
-                    ZStack(alignment: .bottom) {
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 0)
-                            expandedVisualization
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 64)
-                                .opacity(0.38)
-                                .mask(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.black.opacity(0),
-                                            Color.black.opacity(0.55),
-                                            Color.black
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
+                    VStack(spacing: 0) {
+                        IslandExpandedNowPlayingView(
+                            snapshot: model.nowPlaying,
+                            onTogglePlay: toggleNowPlaying,
+                            onPrevious: previousTrack,
+                            onNext: nextTrack,
+                            onSeek: seekNowPlaying
+                        )
+                        .padding(.horizontal, 18)
+                        .padding(.top, 2)
+
+                        Spacer(minLength: 4)
+
+                        // Readable ambient strip: spectrum/waveform fill width; orbit keeps a square viewport.
+                        ZStack(alignment: .bottom) {
+                            nowPlayingAmbientVisualization
                                 .allowsHitTesting(false)
-                        }
-                        .padding(.horizontal, 14)
-
-                        VStack(spacing: 0) {
-                            IslandExpandedNowPlayingView(
-                                snapshot: model.nowPlaying,
-                                onTogglePlay: toggleNowPlaying,
-                                onPrevious: previousTrack,
-                                onNext: nextTrack,
-                                onSeek: seekNowPlaying
-                            )
-                            .padding(.horizontal, 18)
-                            .padding(.top, 2)
-
-                            Spacer(minLength: 8)
 
                             modePickerRow
-                                .padding(.horizontal, 14)
-                                .padding(.bottom, 10)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background {
+                                    Capsule(style: .continuous)
+                                        .fill(Color.black.opacity(0.55))
+                                        .overlay {
+                                            Capsule(style: .continuous)
+                                                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                                        }
+                                }
+                                .padding(.bottom, 8)
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: model.prefs.mode == .orbit ? 96 : 58)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 4)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -359,10 +354,44 @@ struct IslandContentView: View {
         .frame(height: 22)
     }
 
+    /// Now Playing ambient strip — brighter than the old backdrop wash, orbit gets a square stage.
+    @ViewBuilder
+    private var nowPlayingAmbientVisualization: some View {
+        let strength = min(max(model.appearance.opacity * 1.15, 0.72), 1)
+        switch model.prefs.mode {
+        case .orbit:
+            expandedVisualization(opacityOverride: strength, orbitBoost: true)
+                .frame(width: 92, height: 92)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .opacity(0.92)
+        case .spectrum, .waveform:
+            expandedVisualization(opacityOverride: strength, orbitBoost: false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .opacity(0.88)
+                .mask(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.35),
+                            Color.black,
+                            Color.black
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        }
+    }
+
     @ViewBuilder
     private var expandedVisualization: some View {
+        expandedVisualization(opacityOverride: nil, orbitBoost: false)
+    }
+
+    @ViewBuilder
+    private func expandedVisualization(opacityOverride: Double?, orbitBoost: Bool) -> some View {
         let fill = model.appearance.color.swiftUI
         let stroke = model.appearance.strokeColor.swiftUI
+        let opacity = opacityOverride ?? model.appearance.opacity
         switch model.prefs.mode {
         case .spectrum:
             SpectrumCanvas(
@@ -372,7 +401,7 @@ struct IslandContentView: View {
                 color: fill,
                 baseColor: model.appearance.color,
                 strokeColor: stroke,
-                opacity: model.appearance.opacity,
+                opacity: opacity,
                 amplitude: model.spectrum.amplitude,
                 lineWidth: model.appearance.lineWidth,
                 cornerRadius: model.spectrum.cornerRadius,
@@ -385,10 +414,10 @@ struct IslandContentView: View {
             WaveformCanvas(
                 samples: model.expandedWaveform,
                 color: (model.waveform.customColor ?? model.appearance.color).swiftUI,
-                opacity: model.appearance.opacity,
+                opacity: opacity,
                 amplitude: model.waveform.amplitude,
                 verticalRange: model.waveform.verticalRange,
-                lineWidth: model.waveform.lineWidth,
+                lineWidth: max(model.waveform.lineWidth, opacityOverride == nil ? model.waveform.lineWidth : 1.8),
                 smoothing: model.waveform.smoothing,
                 density: model.waveform.density,
                 style: model.waveform.style,
@@ -402,12 +431,12 @@ struct IslandContentView: View {
                 mirrored: model.orbit.mirrored,
                 color: (model.orbit.customColor ?? model.appearance.color).swiftUI,
                 strokeColor: stroke,
-                drawsStroke: model.orbit.stroke,
-                opacity: model.appearance.opacity,
-                amplitude: model.orbit.amplitude,
-                lineWidth: model.orbit.lineWidth,
-                innerRatio: model.orbit.inner,
-                outerScale: model.orbit.outerScale,
+                drawsStroke: model.orbit.stroke || orbitBoost,
+                opacity: opacity,
+                amplitude: orbitBoost ? max(model.orbit.amplitude, 1.05) : model.orbit.amplitude,
+                lineWidth: orbitBoost ? max(model.orbit.lineWidth, 2) : model.orbit.lineWidth,
+                innerRatio: orbitBoost ? min(model.orbit.inner, 0.48) : model.orbit.inner,
+                outerScale: orbitBoost ? max(model.orbit.outerScale, 0.96) : model.orbit.outerScale,
                 gapDegrees: model.orbit.gapDegrees,
                 layerMode: model.orbit.layerMode,
                 pulseStrength: model.orbit.pulseStrength
