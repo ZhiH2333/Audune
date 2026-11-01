@@ -213,9 +213,7 @@ struct IslandContentView: View {
         let geometry = model.geometry
         let notchWidth = geometry?.notchRect.width ?? 184
         let notchHeight = max(geometry?.notchRect.height ?? 32, 28)
-        let windowFrame = geometry.map {
-            $0.expandedFrame(nowPlayingEnabled: model.prefs.nowPlayingEnabled)
-        }
+        let windowFrame = geometry.map { $0.expandedPlayerFrame() }
         let sideClearance = windowFrame.flatMap { frame in
             geometry?.expandedSideClearance(in: frame)
         }
@@ -240,13 +238,26 @@ struct IslandContentView: View {
                 }
                 .frame(height: notchHeight)
 
-                if model.prefs.nowPlayingEnabled {
-                    ZStack {
-                        nowPlayingBackdrop
+                ZStack {
+                    if model.prefs.nowPlayingLayout.showVisualization {
+                        if model.prefs.nowPlayingEnabled {
+                            nowPlayingBackdrop
+                                .allowsHitTesting(false)
+                        } else {
+                            softEdgedVisualization(
+                                expandedVisualization
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            )
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
                             .allowsHitTesting(false)
+                        }
+                    }
 
+                    if model.prefs.nowPlayingEnabled {
                         IslandExpandedNowPlayingView(
                             snapshot: model.nowPlaying,
+                            layout: model.prefs.nowPlayingLayout,
                             onTogglePlay: toggleNowPlaying,
                             onPrevious: previousTrack,
                             onNext: nextTrack,
@@ -256,16 +267,8 @@ struct IslandContentView: View {
                         .padding(.top, 2)
                         .padding(.bottom, 8)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    softEdgedVisualization(
-                        expandedVisualization
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    )
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .allowsHitTesting(false)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .clipShape(shape)

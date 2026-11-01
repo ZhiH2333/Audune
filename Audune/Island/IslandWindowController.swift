@@ -288,8 +288,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.prefs.nowPlayingEnabled = enabled
         savePreferences()
         syncNowPlayingListening()
+        // Expanded size no longer depends on Now Playing; only listening/chrome change.
         if let geometry = model.geometry, stateContext.state.isExpandedOrPinned {
-            let target = geometry.expandedFrame(nowPlayingEnabled: enabled)
+            let target = geometry.expandedPlayerFrame()
             updatePanelFrame(
                 target,
                 expanding: false,
@@ -558,7 +559,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
         let targetFrame: NSRect
         if stateContext.state.isExpandedOrPinned {
-            targetFrame = geometry.expandedFrame(nowPlayingEnabled: model.prefs.nowPlayingEnabled)
+            targetFrame = geometry.expandedPlayerFrame()
         } else {
             targetFrame = geometry.compactFrame
         }

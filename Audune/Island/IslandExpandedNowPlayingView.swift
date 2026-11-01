@@ -4,6 +4,7 @@ import SwiftUI
 
 struct IslandExpandedNowPlayingView: View {
     var snapshot: NowPlayingSnapshot
+    var layout: IslandNowPlayingLayout = .standard
     var onTogglePlay: () -> Void
     var onPrevious: () -> Void
     var onNext: () -> Void
@@ -14,23 +15,27 @@ struct IslandExpandedNowPlayingView: View {
 
     var body: some View {
         Group {
-            switch snapshot.availability {
-            case .unavailable:
-                statusMessage(String(localized: "Now Playing unavailable"))
-            case .empty, .idle:
-                statusMessage(String(localized: "Nothing playing"))
-            case .listening:
-                if snapshot.hasTrack {
-                    if snapshot.isPlaying && isScrubbing == false {
-                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                            playerBody(at: timeline.date)
+            if layout.showsAnyChrome == false {
+                Color.clear.frame(minHeight: 8)
+            } else {
+                switch snapshot.availability {
+                case .unavailable:
+                    statusMessage(String(localized: "Now Playing unavailable"))
+                case .empty, .idle:
+                    statusMessage(String(localized: "Nothing playing"))
+                case .listening:
+                    if snapshot.hasTrack {
+                        if snapshot.isPlaying && isScrubbing == false {
+                            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                                playerBody(at: timeline.date)
+                            }
+                        } else {
+                            // Paused / scrubbing: no animation clock — freezes the scrubber visually.
+                            playerBody(at: .now)
                         }
                     } else {
-                        // Paused / scrubbing: no animation clock — freezes the scrubber visually.
-                        playerBody(at: .now)
+                        statusMessage(String(localized: "Nothing playing"))
                     }
-                } else {
-                    statusMessage(String(localized: "Nothing playing"))
                 }
             }
         }
@@ -46,42 +51,50 @@ struct IslandExpandedNowPlayingView: View {
         let progress = duration > 0 ? min(max(displayed / duration, 0), 1) : 0
 
         return HStack(alignment: .center, spacing: 14) {
-            artworkView
+            if layout.showArtwork {
+                artworkView
+            }
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(snapshot.title.isEmpty ? String(localized: "Unknown Title") : snapshot.title)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.96))
-                            .lineLimit(1)
-                        Text(snapshot.artist.isEmpty ? String(localized: "Unknown Artist") : snapshot.artist)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.62))
-                            .lineLimit(1)
+                if layout.showTitleArtist {
+                    HStack(alignment: .center, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(snapshot.title.isEmpty ? String(localized: "Unknown Title") : snapshot.title)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.white.opacity(0.96))
+                                .lineLimit(1)
+                            Text(snapshot.artist.isEmpty ? String(localized: "Unknown Artist") : snapshot.artist)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(Color.white.opacity(0.62))
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        sourceBadge
                     }
-                    Spacer(minLength: 8)
-                    sourceBadge
                 }
 
-                IslandNowPlayingScrubber(
-                    progress: progress,
-                    displayedSeconds: displayed,
-                    durationSeconds: duration,
-                    seekSupported: snapshot.seekSupported,
-                    isScrubbing: $isScrubbing,
-                    onScrubChanged: { fraction in
-                        guard duration > 0 else { return }
-                        scrubValue = fraction * duration
-                    },
-                    onScrubEnded: { fraction in
-                        guard duration > 0, snapshot.seekSupported else { return }
-                        let seconds = fraction * duration
-                        scrubValue = seconds
-                        onSeek(seconds)
-                    }
-                )
+                if layout.showProgress {
+                    IslandNowPlayingScrubber(
+                        progress: progress,
+                        displayedSeconds: displayed,
+                        durationSeconds: duration,
+                        seekSupported: snapshot.seekSupported,
+                        isScrubbing: $isScrubbing,
+                        onScrubChanged: { fraction in
+                            guard duration > 0 else { return }
+                            scrubValue = fraction * duration
+                        },
+                        onScrubEnded: { fraction in
+                            guard duration > 0, snapshot.seekSupported else { return }
+                            let seconds = fraction * duration
+                            scrubValue = seconds
+                            onSeek(seconds)
+                        }
+                    )
+                }
 
-                transportRow
+                if layout.showTransport {
+                    transportRow
+                }
             }
         }
         .padding(.horizontal, 2)

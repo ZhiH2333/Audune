@@ -38,6 +38,22 @@ struct NowPlayingSnapshot: Equatable {
         lastUpdated: .distantPast
     )
 
+    /// Fixed demo track for Settings Island layout preview when nothing is listening.
+    static let previewDemo = NowPlayingSnapshot(
+        availability: .listening,
+        title: "Tenki no Ko",
+        artist: "RADWIMPS",
+        album: "Weathering With You",
+        isPlaying: true,
+        elapsedSeconds: 79,
+        durationSeconds: 231,
+        playbackRate: 0,
+        bundleIdentifier: "com.apple.Music",
+        artwork: nil,
+        seekSupported: true,
+        lastUpdated: Date()
+    )
+
     var hasTrack: Bool {
         title.isEmpty == false || artist.isEmpty == false || artwork != nil
     }

@@ -64,27 +64,29 @@ final class IslandGeometryTests: XCTestCase {
         XCTAssertTrue(screen.frame.contains(geometry.expandedFrame))
     }
 
-    func testNowPlayingExpandedFrameGrowsWiderAndTallerWithoutChangingCompact() throws {
+    func testExpandedPlayerFrameIsLargeRegardlessOfNowPlayingSwitch() throws {
         let screen = notchedMacBookScreen() // notch ~184 pt, matching 14" class
         let geometry = try IslandGeometry.analyze(screen: screen).get()
         let withNowPlaying = geometry.expandedFrame(nowPlayingEnabled: true)
         let without = geometry.expandedFrame(nowPlayingEnabled: false)
+        let player = geometry.expandedPlayerFrame()
 
-        XCTAssertEqual(without, geometry.expandedFrame)
-        XCTAssertEqual(withNowPlaying.maxY, geometry.expandedFrame.maxY, accuracy: 0.001)
+        XCTAssertEqual(withNowPlaying, without)
+        XCTAssertEqual(withNowPlaying, player)
+        XCTAssertEqual(player.maxY, geometry.expandedFrame.maxY, accuracy: 0.001)
         XCTAssertEqual(
-            withNowPlaying.height,
+            player.height,
             geometry.expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight,
             accuracy: 0.001
         )
-        XCTAssertGreaterThanOrEqual(withNowPlaying.width, IslandGeometry.nowPlayingMinExpandedWidth - 0.5)
-        XCTAssertGreaterThan(withNowPlaying.width, geometry.expandedFrame.width)
-        let sides = geometry.expandedSideClearance(in: withNowPlaying)
+        XCTAssertGreaterThanOrEqual(player.width, IslandGeometry.nowPlayingMinExpandedWidth - 0.5)
+        XCTAssertGreaterThan(player.width, geometry.expandedFrame.width)
+        let sides = geometry.expandedSideClearance(in: player)
         XCTAssertGreaterThanOrEqual(sides.left, IslandGeometry.nowPlayingMinSideClearance - 1)
         XCTAssertGreaterThanOrEqual(sides.right, IslandGeometry.nowPlayingMinSideClearance - 1)
         XCTAssertEqual(geometry.compactFrame, try IslandGeometry.analyze(screen: screen).get().compactFrame)
-        XCTAssertTrue(withNowPlaying.contains(geometry.compactFrame))
-        XCTAssertTrue(screen.frame.contains(withNowPlaying))
+        XCTAssertTrue(player.contains(geometry.compactFrame))
+        XCTAssertTrue(screen.frame.contains(player))
     }
 
     func testSafeAreaTopAloneWithoutAuxiliaryAreasIsRejected() {

@@ -42,6 +42,7 @@ struct SettingsView: View {
     @State private var launchAtLogin = SystemLaunchAtLoginService()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var layoutPreviewEnergy = LayoutPreviewEnergyState()
+    @State private var islandPreviewEnergy = IslandLayoutPreviewEnergyState()
 
     init(studio: StudioWindowController, island: IslandWindowController) {
         self.studio = studio
@@ -98,6 +99,9 @@ struct SettingsView: View {
             if oldCategory == .studio && newCategory != .studio {
                 pauseLayoutPreview()
             }
+            if oldCategory == .island && newCategory != .island {
+                pauseIslandPreview()
+            }
             if newCategory == .island {
                 island.evaluateScreensAndApply(animated: false)
             }
@@ -115,8 +119,12 @@ struct SettingsView: View {
             launchAtLogin.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            guard model.settingsCategory == .studio else { return }
-            pauseLayoutPreview()
+            if model.settingsCategory == .studio {
+                pauseLayoutPreview()
+            }
+            if model.settingsCategory == .island {
+                pauseIslandPreview()
+            }
         }
     }
 
@@ -573,12 +581,22 @@ struct SettingsView: View {
             }
             .pickerStyle(.segmented)
         }
+        Section("Preview") {
+            IslandLayoutPreview(
+                islandModel: islandModel,
+                studioModel: model,
+                energySaving: islandPreviewEnergy.isEnergySaving,
+                frozen: islandPreviewEnergy.snapshot,
+                onPause: pauseIslandPreview,
+                onResume: { islandPreviewEnergy.resume() }
+            )
+        }
         Section("Experimental Now Playing") {
             Toggle("Show Now Playing when expanded", isOn: Binding(
                 get: { islandModel.prefs.nowPlayingEnabled },
                 set: { island.setNowPlayingEnabled($0) }
             ))
-            Text("Uses a private MediaRemote helper (mediaremote-adapter). Default off. Not App Store–ready; may break after macOS updates. Does not start or stop audio capture. Compact wings stay spectrum-only.")
+            Text("Uses a private MediaRemote helper (mediaremote-adapter). Default off. Not App Store–ready; may break after macOS updates. Does not start or stop audio capture. Compact wings stay spectrum-only. Expanded Island size stays the same whether this is on or off.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if islandModel.prefs.nowPlayingEnabled {
@@ -595,6 +613,16 @@ struct SettingsView: View {
                     EmptyView()
                 }
             }
+        }
+        Section("Now Playing layout") {
+            Toggle("Artwork", isOn: $islandModel.prefs.nowPlayingLayout.showArtwork)
+            Toggle("Title & Artist", isOn: $islandModel.prefs.nowPlayingLayout.showTitleArtist)
+            Toggle("Progress", isOn: $islandModel.prefs.nowPlayingLayout.showProgress)
+            Toggle("Controls", isOn: $islandModel.prefs.nowPlayingLayout.showTransport)
+            Toggle("Visualization", isOn: $islandModel.prefs.nowPlayingLayout.showVisualization)
+            Text("Layout toggles apply to Expanded Island when Now Playing is on. The preview above always reflects them. Compact wings stay spectrum-only.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
@@ -719,6 +747,10 @@ struct SettingsView: View {
         layoutPreviewEnergy.enterEnergySaving(capturing: .live(from: model))
     }
 
+    private func pauseIslandPreview() {
+        islandPreviewEnergy.enterEnergySaving(capturing: .live(from: islandModel, studio: model))
+    }
+
     private var presetBinding: Binding<StudioAccent?> {
         Binding(
             get: {
@@ -764,6 +796,115 @@ struct SettingsView: View {
 
     private var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+}
+
+/// Mini Expanded Island: chrome + viz follow Now Playing layout toggles (Studio-style pause/resume).
+private struct IslandLayoutPreview: View {
+    @Bindable var islandModel: IslandModel
+    @Bindable var studioModel: StudioModel
+    var energySaving: Bool
+    var frozen: IslandLayoutPreviewSnapshot?
+    var onPause: () -> Void
+    var onResume: () -> Void
+
+    private let previewSize = CGSize(width: 360, height: 148)
+
+    var body: some View {
+        let shape = IslandShape(bottomRadius: IslandChrome.expandedBottomRadius)
+        let frame = displayFrame
+        let layout = islandModel.prefs.nowPlayingLayout
+        ZStack {
+            shape.fill(Color.black)
+            shape.stroke(Color.white.opacity(0.1), lineWidth: 0.6)
+
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    ForEach(StudioVisualMode.allCases) { mode in
+                        Image(systemName: mode.symbol)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(islandModel.prefs.mode == mode ? 0.95 : 0.35))
+                            .frame(width: 18, height: 18)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+
+                ZStack {
+                    if layout.showVisualization {
+                        StudioVisualizationView(
+                            prefs: studioModel.prefs,
+                            spectrum: frame.spectrum,
+                            peaks: frame.peaks,
+                            waveform: frame.waveform,
+                            drawsBars: frame.drawsBars
+                        )
+                        .opacity(0.45)
+                        .blur(radius: energySaving ? 6 : 1.5)
+                        .mask {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .inset(by: 6)
+                                .fill(Color.white)
+                                .blur(radius: 8)
+                        }
+                    }
+
+                    if layout.showsAnyChrome {
+                        IslandExpandedNowPlayingView(
+                            snapshot: frame.nowPlaying,
+                            layout: layout,
+                            onTogglePlay: {},
+                            onPrevious: {},
+                            onNext: {},
+                            onSeek: { _ in }
+                        )
+                        .padding(.horizontal, 14)
+                        .allowsHitTesting(false)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            if energySaving {
+                shape.fill(.regularMaterial.opacity(0.92))
+                VStack(spacing: 10) {
+                    Text("Preview is in energy-saving mode")
+                        .font(.callout.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                    Button("Resume Preview", action: onResume)
+                        .buttonStyle(.glass)
+                }
+                .padding(12)
+            } else {
+                Button(action: onPause) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .controlSize(.small)
+                .help("Pause Preview")
+                .accessibilityLabel("Pause Preview")
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
+        }
+        .clipShape(shape)
+        .frame(width: previewSize.width, height: previewSize.height)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("Island layout preview")
+        .accessibilityValue(energySaving
+            ? String(localized: "Preview is in energy-saving mode")
+            : String(localized: "Expanded Island layout preview"))
+    }
+
+    private var displayFrame: IslandLayoutPreviewSnapshot {
+        if energySaving, let frozen {
+            return frozen
+        }
+        return .live(from: islandModel, studio: studioModel)
     }
 }
 

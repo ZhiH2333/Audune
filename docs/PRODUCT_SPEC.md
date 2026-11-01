@@ -252,9 +252,10 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 仅在启用 Island 时显示，不强制常驻。
 
 **Expanded（展开）**
-- 平滑展开，容器尺寸适度；显示更大的实时视觉、当前捕获状态和可用快捷操作。
-- 当 `island.nowPlayingEnabled` 为真时，中部显示系统 Now Playing 完整播放器（封面、标题、歌手、可拖进度、transport）；下方保留缩小可视化与模式切换。关闭该开关或 Now Playing 不可用时，布局回退为大可视化 + 模式行。
-- 展开状态下可以切换可视化模式、打开 Studio 或收起。
+- 平滑展开；Expanded/Pinned 使用统一的大尺寸 frame（约 520–580 pt 宽，含额外高度），**不**随 `island.nowPlayingEnabled` 改变。
+- 左翼为频谱 / 波形 / 环形图标切换；右翼为 Pin / Studio / Settings / 收起。
+- 当 `island.nowPlayingEnabled` 为真时，按 `island.nowPlayingLayout.*` 显隐封面、标题与歌手、进度条、transport；氛围可视化由 `showVisualization` 控制。关闭 Now Playing 时不画播放器条，仅保留模式图标与可视化（若开启）。
+- Settings → Notch Island 提供 Expanded 布局预览（对照 Studio Layout 预览：可 Pause / Resume）与上述显隐开关。
 
 #### 交互与实现细节（Notch Island v1）
 
@@ -265,7 +266,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - **动画速度**：默认 1.0×，范围 0.5×–2.0×，步长 0.1×（`island.animationSpeed`）。展开基准 200ms、收起基准 180ms，实际时长为基准除以速度。展开用控制点 `(0.22, 0.90, 0.20, 1)` 的缓出，四个分量都在 0...1，窗口 frame 不会越过目标；收起用 ease-in。系统 Reduce Motion 且“Follow system Reduce Motion”打开时，时长为 0，速度设置不能把它改回动画。预反馈同样在 Reduce Motion 下取消缩放。
 - **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。从 Compact 直接 Pin 不经过悬停展开，也不触发触觉。
 - **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 或 Now Playing **绝不**擅自启动或停止系统音频捕获。
-- **Experimental Now Playing**：偏好键 `island.nowPlayingEnabled`（默认 `false`）。仅在 Island 已启用且刘海几何有效时启动 adapter 监听；禁用 Island、关闭开关、无刘海降级或 app shutdown 时立即停止。Seek 对不支持的 `bundleIdentifier` 降级为只读进度条，transport 仍尽量可用。
+- **Experimental Now Playing**：偏好键 `island.nowPlayingEnabled`（默认 `false`）只控制是否监听 MediaRemote / 是否显示播放器条，**不**改变 Expanded frame。布局键 `island.nowPlayingLayout.showArtwork|showTitleArtist|showProgress|showTransport|showVisualization`（默认均为 `true`）。仅在 Island 已启用且刘海几何有效时启动 adapter 监听；禁用 Island、关闭开关、无刘海降级或 app shutdown 时立即停止。Seek 对不支持的 `bundleIdentifier` 降级为只读进度条，transport 仍尽量可用。
 
 #### 验收
 
@@ -366,7 +367,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### Island / Magnet 上线后的设置
 
-- Island 开启/关闭、目标屏幕、悬停展开开关、展开延迟（默认 0.35 秒，0.1–1.0 秒）、收起延迟、触觉反馈（默认关闭；Light / Medium / Strong 只选择系统触感模式）、动画速度（默认 1.0×，0.5×–2.0×；Reduce Motion 优先于速度）、默认展开行为、**Show Now Playing when expanded**（`island.nowPlayingEnabled`，默认关闭，实验性说明文案）。
+- Island 开启/关闭、目标屏幕、悬停展开开关、展开延迟（默认 0.35 秒，0.1–1.0 秒）、收起延迟、触觉反馈（默认关闭；Light / Medium / Strong 只选择系统触感模式）、动画速度（默认 1.0×，0.5×–2.0×；Reduce Motion 优先于速度）、默认展开行为、**Show Now Playing when expanded**（`island.nowPlayingEnabled`，默认关闭，实验性说明文案）、**Now Playing layout** 显隐（封面 / 标题歌手 / 进度 / 控件 / 可视化）与 Notch Island 布局预览（Pause / Resume）。
 - Magnet 开启/关闭、显示器选择（若多屏需求明确）、透明度、位置恢复。
 - 每个 surface 独立保存视觉模式、尺寸和局部显示状态。
 - 全局设置与 surface 设置要分开，避免一个窗口改尺寸影响其他窗口。

@@ -79,10 +79,9 @@ nonisolated struct IslandNotchGeometry: Equatable, Sendable {
     /// Expanded window frame in AppKit bottom-left screen coordinates. Always contains `compactFrame`.
     var expandedFrame: CGRect
 
-    /// Expanded frame grown wider + taller for Experimental Now Playing. Compact unchanged.
-    func expandedFrame(nowPlayingEnabled: Bool) -> CGRect {
-        guard nowPlayingEnabled else { return expandedFrame }
-
+    /// Expanded/Pinned frame used for all Expanded sessions (same size whether Now Playing is on or off).
+    /// Compact unchanged.
+    func expandedPlayerFrame() -> CGRect {
         let proposedHeight = expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight
         let height = min(proposedHeight, screenFrame.height * 0.55, screenFrame.maxY - screenFrame.minY - 8)
 
@@ -112,6 +111,12 @@ nonisolated struct IslandNotchGeometry: Equatable, Sendable {
             return expandedFrame
         }
         return frame
+    }
+
+    /// Backward-compatible alias; `nowPlayingEnabled` no longer changes the frame.
+    func expandedFrame(nowPlayingEnabled: Bool) -> CGRect {
+        _ = nowPlayingEnabled
+        return expandedPlayerFrame()
     }
 
     /// Clear content width to the left/right of the notch inside an Expanded window frame.
@@ -185,10 +190,9 @@ nonisolated enum IslandGeometry {
     static let minExpandedWidth: CGFloat = 320
     static let maxExpandedWidth: CGFloat = 420
     static let defaultExpandedHeight: CGFloat = 132
-    /// Extra Expanded/Pinned height when Experimental Now Playing is enabled.
-    /// Visualizer is a backdrop behind the player; mode icons live in the left wing.
+    /// Extra Expanded/Pinned height for the unified player-sized Island (independent of Now Playing on/off).
     static let nowPlayingExpandedExtraHeight: CGFloat = 72
-    /// Physical notch is ~185–220 pt (14"/16" MacBook). Now Playing needs much wider wings
+    /// Physical notch is ~185–220 pt (14"/16" MacBook). Expanded needs wide wings
     /// so Pin/Settings sit clear of the camera housing (~160+ pt per side).
     static let nowPlayingExpandedWidthPadding: CGFloat = 340
     static let nowPlayingMinExpandedWidth: CGFloat = 520

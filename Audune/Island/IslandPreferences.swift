@@ -13,6 +13,33 @@ nonisolated enum IslandPreferenceKey {
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
     static let nowPlayingEnabled = "island.nowPlayingEnabled"
+    static let showArtwork = "island.nowPlayingLayout.showArtwork"
+    static let showTitleArtist = "island.nowPlayingLayout.showTitleArtist"
+    static let showProgress = "island.nowPlayingLayout.showProgress"
+    static let showTransport = "island.nowPlayingLayout.showTransport"
+    static let showVisualization = "island.nowPlayingLayout.showVisualization"
+}
+
+/// Expanded Now Playing chrome visibility. Does not change Compact wings.
+nonisolated struct IslandNowPlayingLayout: Equatable, Sendable {
+    var showArtwork: Bool
+    var showTitleArtist: Bool
+    var showProgress: Bool
+    var showTransport: Bool
+    var showVisualization: Bool
+
+    static let standard = IslandNowPlayingLayout(
+        showArtwork: true,
+        showTitleArtist: true,
+        showProgress: true,
+        showTransport: true,
+        showVisualization: true
+    )
+
+    /// True when at least one player-chrome element is visible.
+    var showsAnyChrome: Bool {
+        showArtwork || showTitleArtist || showProgress || showTransport
+    }
 }
 
 nonisolated struct IslandPreferences: Equatable, Sendable {
@@ -27,8 +54,10 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var compactBarCountPerSide: Int
     var showsInFullScreen: Bool
     var followsReduceMotion: Bool
-    /// Experimental system Now Playing in Expanded/Pinned. Default off.
+    /// Experimental system Now Playing in Expanded/Pinned. Default off. Does not change Expanded frame size.
     var nowPlayingEnabled: Bool
+    /// Which Expanded Now Playing chrome pieces are shown when listening.
+    var nowPlayingLayout: IslandNowPlayingLayout
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
     static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
@@ -47,7 +76,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         compactBarCountPerSide: 5,
         showsInFullScreen: false,
         followsReduceMotion: true,
-        nowPlayingEnabled: false
+        nowPlayingEnabled: false,
+        nowPlayingLayout: .standard
     )
 
     var targetScreenMode: IslandTargetScreenMode {
@@ -114,6 +144,23 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         let nowPlayingEnabled = defaults.object(forKey: IslandPreferenceKey.nowPlayingEnabled) == nil
             ? standard.nowPlayingEnabled
             : defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled)
+        let nowPlayingLayout = IslandNowPlayingLayout(
+            showArtwork: defaults.object(forKey: IslandPreferenceKey.showArtwork) == nil
+                ? standard.nowPlayingLayout.showArtwork
+                : defaults.bool(forKey: IslandPreferenceKey.showArtwork),
+            showTitleArtist: defaults.object(forKey: IslandPreferenceKey.showTitleArtist) == nil
+                ? standard.nowPlayingLayout.showTitleArtist
+                : defaults.bool(forKey: IslandPreferenceKey.showTitleArtist),
+            showProgress: defaults.object(forKey: IslandPreferenceKey.showProgress) == nil
+                ? standard.nowPlayingLayout.showProgress
+                : defaults.bool(forKey: IslandPreferenceKey.showProgress),
+            showTransport: defaults.object(forKey: IslandPreferenceKey.showTransport) == nil
+                ? standard.nowPlayingLayout.showTransport
+                : defaults.bool(forKey: IslandPreferenceKey.showTransport),
+            showVisualization: defaults.object(forKey: IslandPreferenceKey.showVisualization) == nil
+                ? standard.nowPlayingLayout.showVisualization
+                : defaults.bool(forKey: IslandPreferenceKey.showVisualization)
+        )
 
         return IslandPreferences(
             isEnabled: isEnabled,
@@ -127,7 +174,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             compactBarCountPerSide: compactBarCount,
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion,
-            nowPlayingEnabled: nowPlayingEnabled
+            nowPlayingEnabled: nowPlayingEnabled,
+            nowPlayingLayout: nowPlayingLayout
         ).normalized()
     }
 
@@ -174,6 +222,11 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
         defaults.set(normalized.nowPlayingEnabled, forKey: IslandPreferenceKey.nowPlayingEnabled)
+        defaults.set(normalized.nowPlayingLayout.showArtwork, forKey: IslandPreferenceKey.showArtwork)
+        defaults.set(normalized.nowPlayingLayout.showTitleArtist, forKey: IslandPreferenceKey.showTitleArtist)
+        defaults.set(normalized.nowPlayingLayout.showProgress, forKey: IslandPreferenceKey.showProgress)
+        defaults.set(normalized.nowPlayingLayout.showTransport, forKey: IslandPreferenceKey.showTransport)
+        defaults.set(normalized.nowPlayingLayout.showVisualization, forKey: IslandPreferenceKey.showVisualization)
     }
 
     static func reset(in defaults: UserDefaults = .standard) {

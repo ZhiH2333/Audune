@@ -29,6 +29,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.showsInFullScreen)
         XCTAssertTrue(loaded.followsReduceMotion)
         XCTAssertFalse(loaded.nowPlayingEnabled)
+        XCTAssertEqual(loaded.nowPlayingLayout, .standard)
     }
 
     func testSaveAndLoadRoundTrip() {
@@ -44,13 +45,23 @@ final class IslandPreferencesTests: XCTestCase {
             compactBarCountPerSide: 6,
             showsInFullScreen: true,
             followsReduceMotion: false,
-            nowPlayingEnabled: true
+            nowPlayingEnabled: true,
+            nowPlayingLayout: IslandNowPlayingLayout(
+                showArtwork: false,
+                showTitleArtist: true,
+                showProgress: false,
+                showTransport: true,
+                showVisualization: false
+            )
         )
         custom.save(to: defaults)
 
         let loaded = IslandPreferences.load(from: defaults)
         XCTAssertEqual(loaded, custom)
         XCTAssertEqual(loaded.targetScreenMode, .screenID("display-2"))
+        XCTAssertFalse(loaded.nowPlayingLayout.showArtwork)
+        XCTAssertFalse(loaded.nowPlayingLayout.showProgress)
+        XCTAssertFalse(loaded.nowPlayingLayout.showVisualization)
     }
 
     func testInvalidValuesClampAndNormalize() {
