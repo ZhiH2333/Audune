@@ -23,6 +23,8 @@ final class IslandModel {
     var pointerDown = false
     /// Compact-only anticipation. The window frame stays on the compact geometry while this is true.
     var hoverArmed = false
+    /// Drives Compact/Expanded chrome. Stays expanded through collapse frame animation so content doesn't pop early.
+    var showsExpandedChrome = false
     /// Experimental Now Playing snapshot mirrored from `NowPlayingService` for Expanded UI.
     var nowPlaying = NowPlayingSnapshot.idle
 
@@ -81,35 +83,34 @@ final class IslandModel {
 }
 
 /// Top-flush, bottom-rounded silhouette that merges with the top screen edge and physical camera housing.
+nonisolated enum IslandChrome {
+    static let compactBottomRadius: CGFloat = 18
+    static let expandedBottomRadius: CGFloat = 28
+}
+
 nonisolated struct IslandShape: Shape {
     var bottomRadius: CGFloat
+
+    var animatableData: CGFloat {
+        get { bottomRadius }
+        set { bottomRadius = newValue }
+    }
 
     func path(in rect: CGRect) -> Path {
         guard rect.width.isFinite, rect.height.isFinite, rect.width > 0, rect.height > 0 else {
             return Path()
         }
         let radius = min(max(bottomRadius.isFinite ? bottomRadius : 0, 0), rect.width / 2, rect.height / 2)
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - radius))
-        path.addArc(
-            center: CGPoint(x: rect.maxX - radius, y: rect.maxY - radius),
-            radius: radius,
-            startAngle: .degrees(0),
-            endAngle: .degrees(90),
-            clockwise: false
+        return Path(
+            roundedRect: rect,
+            cornerRadii: RectangleCornerRadii(
+                topLeading: 0,
+                bottomLeading: radius,
+                bottomTrailing: radius,
+                topTrailing: 0
+            ),
+            style: .continuous
         )
-        path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
-        path.addArc(
-            center: CGPoint(x: rect.minX + radius, y: rect.maxY - radius),
-            radius: radius,
-            startAngle: .degrees(90),
-            endAngle: .degrees(180),
-            clockwise: false
-        )
-        path.closeSubpath()
-        return path
     }
 }
 
@@ -165,7 +166,7 @@ struct IslandContentView: View {
 
     var body: some View {
         Group {
-            if model.state.isExpandedOrPinned {
+            if model.showsExpandedChrome {
                 expandedBody
             } else {
                 compactBody
@@ -177,7 +178,7 @@ struct IslandContentView: View {
     }
 
     private var compactBody: some View {
-        let shape = IslandShape(bottomRadius: 12)
+        let shape = IslandShape(bottomRadius: IslandChrome.compactBottomRadius)
         let armedScale = IslandMotion.prefeedbackScale(
             hoverArmed: model.hoverArmed,
             reduceMotion: reduceMotion,
@@ -221,11 +222,10 @@ struct IslandContentView: View {
         let leftWing = max(sideClearance?.left ?? 120, 120) - 16
         let rightWing = max(sideClearance?.right ?? 120, 120) - 16
 
+        let shape = IslandShape(bottomRadius: IslandChrome.expandedBottomRadius)
         return ZStack {
-            IslandShape(bottomRadius: 18)
-                .fill(Color.black)
-            IslandShape(bottomRadius: 18)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+            shape.fill(Color.black)
+            shape.stroke(Color.white.opacity(0.08), lineWidth: 0.5)
 
             VStack(spacing: 4) {
                 HStack(spacing: 0) {
@@ -241,37 +241,28 @@ struct IslandContentView: View {
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
-                    // Visualizer as ambient backdrop; chrome + mode picker sit on top so the stack isn't cramped.
+                    // Player stays on solid black; soft viz only in a bottom ambient band under the mode chips.
                     ZStack(alignment: .bottom) {
-                        expandedVisualization
-                            .opacity(0.48)
-                            .blur(radius: 0.4)
-                            .mask(
-                                LinearGradient(
-                                    colors: [
-                                        Color.black.opacity(0.18),
-                                        Color.black.opacity(0.55),
-                                        Color.black.opacity(0.85),
-                                        Color.black
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            expandedVisualization
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 64)
+                                .opacity(0.38)
+                                .mask(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.black.opacity(0),
+                                            Color.black.opacity(0.55),
+                                            Color.black
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
                                 )
-                            )
-                            .padding(.horizontal, 10)
-                            .padding(.top, 8)
-                            .allowsHitTesting(false)
-
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.55),
-                                Color.black.opacity(0.12),
-                                Color.black.opacity(0.55)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .allowsHitTesting(false)
+                                .allowsHitTesting(false)
+                        }
+                        .padding(.horizontal, 14)
 
                         VStack(spacing: 0) {
                             IslandExpandedNowPlayingView(
@@ -284,11 +275,11 @@ struct IslandContentView: View {
                             .padding(.horizontal, 18)
                             .padding(.top, 2)
 
-                            Spacer(minLength: 6)
+                            Spacer(minLength: 8)
 
                             modePickerRow
                                 .padding(.horizontal, 14)
-                                .padding(.bottom, 8)
+                                .padding(.bottom, 10)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -302,12 +293,13 @@ struct IslandContentView: View {
 
                         modePickerRow
                             .padding(.horizontal, 14)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, 10)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
+        .clipShape(shape)
     }
 
     private var statusHeader: some View {

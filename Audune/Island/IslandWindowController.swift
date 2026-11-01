@@ -99,6 +99,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
+    /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
+    private var frameAnimationGeneration = 0
     /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
     private(set) var allowsLaunchPresentation = true
 
@@ -288,7 +290,15 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         syncNowPlayingListening()
         if let geometry = model.geometry, stateContext.state.isExpandedOrPinned {
             let target = geometry.expandedFrame(nowPlayingEnabled: enabled)
-            updatePanelFrame(target, expanding: false, animated: false, hapticPattern: nil, hapticToken: hapticToken)
+            updatePanelFrame(
+                target,
+                expanding: false,
+                collapsing: false,
+                targetExpandedChrome: true,
+                animated: false,
+                hapticPattern: nil,
+                hapticToken: hapticToken
+            )
         }
     }
 
@@ -538,6 +548,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         scheduleExpandTimerIfNeeded()
 
         guard stateContext.state != .disabled, let geometry = model.geometry else {
+            frameAnimationGeneration += 1
+            model.showsExpandedChrome = false
             stopDisplayTimer()
             updateKeyMonitor(active: false)
             panel.orderOut(nil)
@@ -564,6 +576,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         updatePanelFrame(
             targetFrame,
             expanding: expanding,
+            collapsing: collapsing,
+            targetExpandedChrome: stateContext.state.isExpandedOrPinned,
             animated: shouldAnimate,
             hapticPattern: hapticPattern,
             hapticToken: hapticToken
@@ -649,16 +663,22 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private func updatePanelFrame(
         _ targetFrame: CGRect,
         expanding: Bool,
+        collapsing: Bool = false,
+        targetExpandedChrome: Bool,
         animated: Bool,
         hapticPattern: NSHapticFeedbackManager.FeedbackPattern?,
         hapticToken token: Int
     ) {
+        frameAnimationGeneration += 1
+        let generation = frameAnimationGeneration
+
         guard panel.frame != targetFrame else {
+            model.showsExpandedChrome = targetExpandedChrome
             performHaptic(hapticPattern, token: token)
             return
         }
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let duration = animated
+        var duration = animated
             ? IslandMotion.transitionSeconds(
                 expanding: expanding,
                 reduceMotion: reduceMotion,
@@ -666,18 +686,32 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 speed: model.prefs.animationSpeed
             )
             : 0
+        // Now Playing expands much wider; give the morph a touch more time so it doesn't feel snapped.
+        if duration > 0, model.prefs.nowPlayingEnabled, expanding || collapsing {
+            duration *= 1.25
+        }
+
+        if expanding || collapsing == false {
+            model.showsExpandedChrome = targetExpandedChrome
+        }
+        // Collapsing: keep Expanded chrome until the frame finishes shrinking.
+
         if duration > 0 {
             let pace = IslandMotion.framePace(expanding: expanding, duration: duration)
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = duration
                 context.timingFunction = Self.timingFunction(for: pace)
+                context.allowsImplicitAnimation = true
                 panel.animator().setFrame(targetFrame, display: panel.isVisible)
             } completionHandler: { [weak self] in
                 MainActor.assumeIsolated {
-                    self?.performHaptic(hapticPattern, token: token)
+                    guard let self, self.frameAnimationGeneration == generation else { return }
+                    self.model.showsExpandedChrome = targetExpandedChrome
+                    self.performHaptic(hapticPattern, token: token)
                 }
             }
         } else {
+            model.showsExpandedChrome = targetExpandedChrome
             panel.setFrame(targetFrame, display: panel.isVisible)
             performHaptic(hapticPattern, token: token)
         }

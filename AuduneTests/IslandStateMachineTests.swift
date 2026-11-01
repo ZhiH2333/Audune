@@ -258,11 +258,12 @@ final class IslandStateMachineTests: XCTestCase {
         model.compactLevels = [0, 0, 0, 0]
         XCTAssertFalse(model.drawsActiveVisuals(phase: .running), "settled silent baseline")
 
-        let shape = IslandShape(bottomRadius: 16)
+        let shape = IslandShape(bottomRadius: IslandChrome.expandedBottomRadius)
         let rect = CGRect(x: 0, y: 0, width: 320, height: 132)
         let path = shape.path(in: rect)
         XCTAssertFalse(path.isEmpty)
         XCTAssertTrue(rect.insetBy(dx: -0.01, dy: -0.01).contains(path.boundingRect))
-        XCTAssertTrue(IslandShape(bottomRadius: 16).path(in: .zero).isEmpty)
+        XCTAssertTrue(IslandShape(bottomRadius: IslandChrome.expandedBottomRadius).path(in: .zero).isEmpty)
+        XCTAssertGreaterThan(IslandChrome.expandedBottomRadius, IslandChrome.compactBottomRadius)
     }
 }
