@@ -284,6 +284,18 @@ Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook P
 - [ ] `NOT TESTED` — Haptic feedback off does nothing. Light, Medium, and Strong each fire once when a hover expand finishes, and not again on a cancelled hover, a repeated enter, or an island that is already expanded. A Mac without Force Touch does not vibrate. The three settings are system patterns, not an amplitude slider.
 - [ ] `NOT TESTED` — Animation speed changes both expand and collapse. Expand eases out without passing the target frame; collapse eases in. Reduce Motion still removes the frame animation when its follow setting is on, at every speed, including 2.0×.
 
+### Experimental Island Now Playing (AUD-NP-01)
+
+Requires a real macOS GUI session, preferably **15.4+**. Unit tests cover preferences, geometry height, and service state mapping only; they do **not** prove MediaRemote or the Perl adapter. Mark rows `PASS` / `FAIL` / `NOT TESTED` honestly. CI must not claim these passed.
+
+- [ ] `NOT TESTED` — With the preference default (off), Expanded Island matches the prior visualization-only layout; no mediaremote-adapter process is running.
+- [ ] `NOT TESTED` — Settings → Notch Island → Show Now Playing when expanded shows an Experimental note; enabling it does not start or stop Process Tap.
+- [ ] `NOT TESTED` — With Now Playing on and Music / Spotify / Safari (or another Now Playing client) active, Expanded shows artwork (when available), title, artist, scrubber, and previous / play-pause / next; Compact wings still show spectrum only (no title text).
+- [ ] `NOT TESTED` — Transport controls affect the system Now Playing client; scrubber seek works where MediaRemote supports it, and becomes display-only for sources that silently ignore seek without blocking transport.
+- [ ] `NOT TESTED` — Turning the preference off, disabling Island, losing notch geometry, or quitting Audune stops the adapter listener; Expanded returns to the visualization-only layout when the preference is off.
+- [ ] `NOT TESTED` — Empty (nothing reporting Now Playing) and unavailable (adapter failure) states show clear copy and do not crash or misplace the island.
+- [ ] `NOT TESTED` — Sleep/wake and display reconfiguration leave Now Playing usable again or show unavailable cleanly without a second Process Tap.
+
 ## G. Desktop Magnet (only after the Magnet milestone)
 
 - [ ] `NOT TESTED` — Magnet can be dragged and resized.

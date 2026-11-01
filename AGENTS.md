@@ -21,8 +21,8 @@ Read `docs/PRODUCT_SPEC.md` and `docs/GITHUB_ISSUES.md` before changing code. Th
 3. Keep every stage buildable. Run the relevant build/tests and report exactly what ran and what did not.
 4. Never claim that a test passed unless it actually ran successfully. System audio permission and notch/window behaviors may require a real macOS user session and must be listed as manual tests if CI cannot verify them.
 5. Do not replace real system capture with random/demo data. Any demo mode must be explicitly labelled, off by default, and must not be confused with actual capture.
-6. Use public Apple APIs. No private APIs, code injection, undocumented WindowServer manipulation, microphone fallback, or system-file modification.
-7. Avoid adding dependencies or frameworks without a clear need and license review. Prefer Swift, SwiftUI, AppKit, Core Audio, Accelerate/vDSP, XCTest, and UserDefaults.
+6. Use public Apple APIs. No private APIs, code injection, undocumented WindowServer manipulation, microphone fallback, or system-file modification — **except** the scoped Experimental Island Now Playing path documented in `docs/PRODUCT_SPEC.md` (MediaRemote via `mediaremote-adapter`, user-gated, default off). That exception does **not** authorize SkyLight, CGSSpace, WindowServer injection, Accessibility masquerading, microphone use, or telemetry.
+7. Avoid adding dependencies or frameworks without a clear need and license review. Prefer Swift, SwiftUI, AppKit, Core Audio, Accelerate/vDSP, XCTest, and UserDefaults. The Experimental Now Playing feature may depend on `ejbills/mediaremote-adapter` only as specified.
 8. Preserve existing user work. Do not use destructive commands or broad formatting/refactoring unrelated to the issue.
 
 ## Product invariants
@@ -34,6 +34,7 @@ Read `docs/PRODUCT_SPEC.md` and `docs/GITHUB_ISSUES.md` before changing code. Th
 - Core visualizations are Spectrum, Waveform, and Orbit. They must respond to real analyzed audio, not random movement.
 - Menu Bar and Studio belong to Core MVP. Island and Desktop Magnet are later staged features defined by the product spec; do not silently scope-creep.
 - Island must use public screen geometry and degrade safely where notch positioning cannot be supported.
+- Experimental Island Now Playing (Expanded/Pinned only, default off) may use MediaRemote through `mediaremote-adapter`. It must never start/stop Process Tap, must not appear in Compact wings, and must degrade to a clear unavailable/empty state without crashing Island.
 - Desktop Magnet uses normal window level and can be covered by regular app windows; it must not be implemented as an always-on-top overlay or a private desktop-layer hack.
 - Maintain truthful product docs and manual acceptance records.
 

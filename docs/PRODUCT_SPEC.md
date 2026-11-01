@@ -45,7 +45,7 @@
 - 尽量使用 Apple 原生 API；不添加第三方依赖，除非能说明其必要性、许可证与维护成本。
 - 不以伪造数据、随机波形或持续播放的假动画替代系统音频采集。若提供 Demo Mode，必须显式标记为 Demo，且默认关闭。
 - 不请求麦克风权限，不保存或上传原始音频，不引入遥测、广告、登录或网络分析 SDK。
-- UI、窗口层级、刘海定位及音频采集必须遵循公开 API；不得依赖私有 API、代码注入、无障碍权限滥用或系统文件修改。
+- UI、窗口层级、刘海定位及音频采集必须遵循公开 API；不得依赖私有 API、代码注入、无障碍权限滥用或系统文件修改——**唯一例外**为文档化的 Experimental Island Now Playing（MediaRemote / mediaremote-adapter，用户开关，默认关闭）。
 - 发生构建错误时先读取完整错误并定位根因；不能靠关闭警告、删除测试或注释核心功能“修复”构建。
 - 修改音频生命周期、权限、窗口层级或偏好键时，必须补充相应测试或手动验证说明。
 
@@ -132,15 +132,25 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 默认不置顶，能被其他常规应用窗口覆盖。
 - 多显示器变化后恢复到可见区域。
 
-### v0.4+ — Player Integrations
+### Experimental — Island Now Playing（可选，默认关闭）
 
-- （已取消）外部播放器控制与系统 Now Playing 元数据：公开 API 无法统一读取「系统正在播放」；分源 Apple Events 方案已从产品中移除。
-- 专辑封面取色、更多预设、歌词、录制、动态桌面和高级视觉均不属于 Core MVP。
+- **不属于 Core MVP。** 用户可在 Settings → Notch Island 开启「Show Now Playing when expanded」。
+- Expanded / Pinned 显示系统 Now Playing：歌名、歌手、封面、可拖动进度条、上一曲 / 播放暂停 / 下一曲。
+- Compact 仍只显示频谱侧翼，不显示曲名或封面。
+- 技术路径：私有 `MediaRemote` 经 `mediaremote-adapter`（系统 `/usr/bin/perl` 旁路）读取；**不**使用分源 Apple Events / Automation。
+- 明确限制：实验性；不可承诺 Mac App Store；系统升级可能导致短暂不可用；个别播放器 seek 可能降级为只读进度条。
+- 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
+- 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
+
+### v0.4+ — 其他播放器 / 视觉扩展
+
+- 分源 Apple Events（Music/Spotify Automation）方案已从产品中移除；不以此替代上述 Experimental Now Playing。
+- 专辑封面取色主题、歌词、录制、动态桌面和高级视觉均不属于 Core MVP。
 
 ### 首版明确不做
 
 - 独立音乐播放器、播放列表或媒体库。
-- Apple Music / Spotify 数据集成、歌词与专辑封面联动。
+- 歌词与专辑封面联动主题（Now Playing 仅展示系统已提供的封面字节，不做取色主题）。
 - 桌面壁纸层、屏幕边缘灯效、屏幕保护程序。
 - AI 功能、云服务、账号登录、远程配置、广告、遥测。
 - 音频录制、直播、视频导出、听歌历史统计。
@@ -209,7 +219,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - Waveform 使用真实 PCM。Maximum display height（默认 0.70，范围 0.30–1.0）只作为占用高度的增益比例；Visual amplitude 默认 0.55（范围 0.1–2）决定信号在该比例内的填充强度。两者都不改系统音量或共享 PCM，也不制造远离 Canvas 边的内部裁切框。绘制仅按描边半宽内缩 `safeBounds`，路径与控制点钳在该安全区内，Canvas 外缘 `clip` 作最后防线。Fine Line / Soft Fill / Mirror 共用同一套边界。默认 Layout 为 Fixed 时可视化可不等于窗口（见 Layout）；Fill window 可贴窗绘制。Motion smoothing（0–1）按真实时间差做指数跟随，与 Spectrum Attack/Release 语义分离；空间邻点 soften 取平滑值的一小部分。默认形态是居中平滑曲线加淡基线，两端约 12% 渐隐；Fill strength 只影响 Soft Fill / Mirror。样本密度可选 32、64、128，是对快照里 128 个真实点按峰值降采样，绝不插值出更多点。线条颜色默认跟随 Appearance，可单独指定。旧 `"filled"` 样式解码为 Soft Fill；旧预设缺少 `verticalRange` 时回落默认 0.70，不 bump preset schema。
 - Orbit 使用同一份真实频带，画成一圈从内环向外的圆角径向条；默认 48 根、内半径约 0.55、角间距 2.5°，并左右镜像（读取一半数量的真实频带，各画两次，低频在顶部、高频在底部，可关闭）。Layers 可选 Single 或 Dual Band（低频半带内环、高频半带外环）。Pulse strength（0–0.35，默认 0）用平均带能量轻微加长条。显示平滑按真实时间差计算。静音时停在一圈圆点和细环上，不自转。可设置柱数、内外半径、角间距、描边、颜色、线宽、振幅和平滑。
 - `studio.backgroundOpacity` 仍保存在 0.35–1，默认 0.92。它只乘到 Studio 三种可视化的颜色上，不填充窗口，菜单栏频谱也不读取它。
-- Audune **不**控制外部播放器（无 Music/Spotify 分源、无 Play/Pause、无 Now Playing 元数据）。不请求 Automation / Apple Events 权限；`Info.plist` 仅保留系统音频捕获用途说明。可视化只跟随系统输出音频。
+- Studio **不**控制外部播放器（无 Music/Spotify 分源、无 Play/Pause、无 Now Playing 元数据）。不请求 Automation / Apple Events 权限；`Info.plist` 仅保留系统音频捕获用途说明。Studio 可视化只跟随系统输出音频。系统 Now Playing 仅出现在可选的 Experimental Island 功能中（见 §3 Experimental 与 §4.3）。
 - 拖动、缩放、多桌面、全屏、窗口是否真正透明，必须在真实 Mac 上看到后才算通过。单元测试里的坐标计算、窗口标志和合成鼠标事件不能代替这些验收。
 
 #### 验收
@@ -228,7 +238,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 仅在确认带摄像头外壳/刘海的屏幕上默认启用该布局；支持用户选择目标屏幕。
 - 优先使用公开 AppKit 屏幕几何信息，例如 `NSScreen.safeAreaInsets`、`auxiliaryTopLeftArea`、`auxiliaryTopRightArea` 以及屏幕可见区域，按实际屏幕布局计算可放置范围。
 - 不把刘海宽度、高度或位置写死为单一硬编码数值；不同机型和屏幕缩放模式需验证。
-- 不调用私有 API，不注入 WindowServer，不通过无障碍权限伪装系统 UI。
+- Island 窗口几何与命中仍只用公开 API，不注入 WindowServer，不通过无障碍权限伪装系统 UI。
+- **唯一例外：** 可选 Experimental Now Playing 经 `mediaremote-adapter` 访问私有 MediaRemote（默认关闭）。该例外不扩展到 SkyLight / CGSSpace 或其他私有窗口 API。
 - 不得长期遮挡菜单栏可点击区域；若某种屏幕或系统版本无法做到可靠定位，禁用 Island 并说明原因，不影响其他显示形态。
 - 没有刘海的显示器上，第一版可以不提供 Island，或显示为禁用项并解释原因；不强制覆盖菜单栏中间区域。
 
@@ -237,11 +248,12 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 **Collapsed（收起）**
 - 紧凑黑色/深色胶囊或圆角条。
 - 可显示迷你 Spectrum / Waveform，不能显示复杂长文本。
+- **不**显示 Now Playing 曲名或封面。
 - 仅在启用 Island 时显示，不强制常驻。
 
 **Expanded（展开）**
 - 平滑展开，容器尺寸适度；显示更大的实时视觉、当前捕获状态和可用快捷操作。
-- Core MVP 不依赖歌曲标题或专辑封面；这些信息等播放器集成阶段再显示。
+- 当 `island.nowPlayingEnabled` 为真时，中部显示系统 Now Playing 完整播放器（封面、标题、歌手、可拖进度、transport）；下方保留缩小可视化与模式切换。关闭该开关或 Now Playing 不可用时，布局回退为大可视化 + 模式行。
 - 展开状态下可以切换可视化模式、打开 Studio 或收起。
 
 #### 交互与实现细节（Notch Island v1）
@@ -252,7 +264,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - **触觉反馈**：默认关闭（`island.hapticStrength`）。Light、Medium、Strong 分别映射到公开 `NSHapticFeedbackManager` 的 Alignment、Generic、Level Change。这是三种系统触感模式，不是硬件振幅。只在一次真正完成的 Compact → Expanded 后触发一次；悬停、取消、重复进入、Pin，或已经处于 Expanded，都不触发。没有 Force Touch 触控板时调用安全空操作。
 - **动画速度**：默认 1.0×，范围 0.5×–2.0×，步长 0.1×（`island.animationSpeed`）。展开基准 200ms、收起基准 180ms，实际时长为基准除以速度。展开用控制点 `(0.22, 0.90, 0.20, 1)` 的缓出，四个分量都在 0...1，窗口 frame 不会越过目标；收起用 ease-in。系统 Reduce Motion 且“Follow system Reduce Motion”打开时，时长为 0，速度设置不能把它改回动画。预反馈同样在 Reduce Motion 下取消缩放。
 - **固定与快捷键**：点击固定按钮（Pin）进入 `pinned` 状态，鼠标离开不自动收起；再次点击取消固定或按 `Escape` 键立即收起。从 Compact 直接 Pin 不经过悬停展开，也不触发触觉。
-- **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 绝不擅自启动或停止系统音频捕获。
+- **可视化与共享数据**：复用同一个 `ProcessTapSpike` 和 `AudioSnapshot`。Compact 左右侧翼绘制对称实时频谱（可选每侧 4、5、6 根柱，静音回归静态基线点）；Expanded 支持切换 Spectrum、Waveform、Orbit，并复用全局 Appearance 颜色。开启/关闭 Island 或 Now Playing **绝不**擅自启动或停止系统音频捕获。
+- **Experimental Now Playing**：偏好键 `island.nowPlayingEnabled`（默认 `false`）。仅在 Island 已启用且刘海几何有效时启动 adapter 监听；禁用 Island、关闭开关、无刘海降级或 app shutdown 时立即停止。Seek 对不支持的 `bundleIdentifier` 降级为只读进度条，transport 仍尽量可用。
 
 #### 验收
 
@@ -353,7 +366,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### Island / Magnet 上线后的设置
 
-- Island 开启/关闭、目标屏幕、悬停展开开关、展开延迟（默认 0.35 秒，0.1–1.0 秒）、收起延迟、触觉反馈（默认关闭；Light / Medium / Strong 只选择系统触感模式）、动画速度（默认 1.0×，0.5×–2.0×；Reduce Motion 优先于速度）、默认展开行为。
+- Island 开启/关闭、目标屏幕、悬停展开开关、展开延迟（默认 0.35 秒，0.1–1.0 秒）、收起延迟、触觉反馈（默认关闭；Light / Medium / Strong 只选择系统触感模式）、动画速度（默认 1.0×，0.5×–2.0×；Reduce Motion 优先于速度）、默认展开行为、**Show Now Playing when expanded**（`island.nowPlayingEnabled`，默认关闭，实验性说明文案）。
 - Magnet 开启/关闭、显示器选择（若多屏需求明确）、透明度、位置恢复。
 - 每个 surface 独立保存视觉模式、尺寸和局部显示状态。
 - 全局设置与 surface 设置要分开，避免一个窗口改尺寸影响其他窗口。
@@ -368,7 +381,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### Startup Behavior & Launch at Login v1
 
-- Settings → Startup 配置进程启动时的行为，以及是否随 macOS 登录自动启动。不包含 Now Playing。
+- Settings → Startup 配置进程启动时的行为，以及是否随 macOS 登录自动启动。Now Playing 开关在 Notch Island 分类，不在 Startup。
 - **Show at launch（独立复选框）**：`startup.openStudioAtLaunch`（默认 `false`）、`startup.showIslandAtLaunch`（默认 `true`）、`startup.openSettingsAtLaunch`（默认 `false`）。可同时勾选；全部不勾选时只保留菜单栏入口。缺省值与升级前一致：Studio/Settings 不自动打开，Island 跟随已保存的 `island.isEnabled` 与刘海支持。旧键 `startup.destination` 在首次加载时迁移为上述布尔组合后删除。不提供 “恢复上次会话”（Studio 可见性未持久化）。
 - **Notch Island 边界**：启动复选框不静默改写 `island.isEnabled`；用进程内 `allowsLaunchPresentation` 门控本次是否呈现。Island 总开关关闭时，即使勾选启动显示也不会强制开启，Settings 提供启用入口。无刘海时安全降级，不创建错位窗口。
 - **Launch at Login**：Settings → Startup 的独立开关，通过公开 API `SMAppService.mainApp` 注册/取消注册；UI 只读系统 `status`（`.enabled` / `.notRegistered` / `.requiresApproval` / `.notFound`），不在 UserDefaults 伪造注册状态。登录启动与手动启动共用同一套窗口复选框；不创建 helper、不写 LaunchAgents。
@@ -747,7 +760,7 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 4. **Phase 3 — Island**：先做窗口/屏幕几何 spike，再交付交互。
 5. **Phase 4 — Desktop Magnet**：普通层级的桌面磁贴和位置恢复。
 6. **Phase 5 — Release Readiness**：隐私说明、文档、CI、人工回归与测试包。
-7. **Future — Music Providers**：已从当前产品路径移除；若 Apple 提供公开的系统 Now Playing API，再重新评估。
+7. **Experimental — Island Now Playing**：可选完整播放器（AUD-NP-01）；默认关闭；不计入 Core MVP。若 Apple 日后提供公开系统 Now Playing API，再评估替换私有旁路。
 
 ### Definition of Done（每个 Issue）
 
@@ -775,6 +788,7 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 - CodeIsland — [GitHub](https://github.com/wxtsky/CodeIsland)：刘海区域状态面板的交互参考。
 - Stats — [GitHub](https://github.com/exelban/stats)：菜单栏指标模块和控制面板参考。
 - Nowsee — [GitHub](https://github.com/Sergio-prog/Nowsee)：开源系统音频可视化实现参考；使用前重新核对其当前许可证与代码范围。
+- mediaremote-adapter — [ungive](https://github.com/ungive/mediaremote-adapter) / [ejbills SPM fork](https://github.com/ejbills/mediaremote-adapter)：Experimental Island Now Playing 运行时依赖（私有 MediaRemote 旁路）；pin revision 并在第三方许可说明中标注。
 
 ### 关键技术提醒
 

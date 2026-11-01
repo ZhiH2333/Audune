@@ -14,7 +14,8 @@
 4. `Phase 3 — Island`
 5. `Phase 4 — Desktop Magnet`
 6. `Phase 5 — Release Readiness`
-7. `Future — Music Providers`
+7. `Experimental — Island Now Playing`
+8. `Future — Music Providers`
 
 ---
 
@@ -550,17 +551,46 @@ AUD-02, AUD-14, AUD-21.
 
 ---
 
-## AUD-23 — [CANCELLED] Apple Music metadata and controls
+## AUD-NP-01 — [EXPERIMENTAL] Island Now Playing (optional full player)
 
-**Labels:** `P2`, `audio`
-**Status:** Cancelled — removed from product path. No public system-wide Now Playing API; per-app Apple Events Play/Pause and Settings → Playback were deleted from Audune.
+**Labels:** `P2`, `island`, `experimental`
+**Milestone:** Experimental — Island Now Playing
+
+### Goal
+Optional system Now Playing on Notch Island Expanded/Pinned: artwork, title, artist, scrubber, previous / play-pause / next. Default off. Compact wings unchanged. Does not count toward Core MVP.
+
+### Tasks
+- [ ] Document the scoped private-API exception (MediaRemote via mediaremote-adapter only) in PRODUCT_SPEC / AGENTS / MANUAL_TESTS.
+- [ ] Add `ejbills/mediaremote-adapter` SPM; implement `NowPlayingService` lifecycle gated by `island.nowPlayingEnabled`.
+- [ ] Expanded/Pinned UI + geometry height bump; Compact zero change; never start/stop Process Tap.
+- [ ] Seek-unsupported per-bundle fallback to display-only scrubber; empty/unavailable states; unit tests + manual matrix.
+
+### Acceptance criteria
+- [ ] Default off: Expanded Island matches prior layout.
+- [ ] When enabled on a notched display: metadata and transport work for system Now Playing clients; Compact shows spectrum only.
+- [ ] Toggle off / disable Island / no-notch / shutdown stops the adapter listener.
+- [ ] Capture pipeline is unaffected by Now Playing toggles.
+- [ ] Unavailable/empty states are explicit; no App Store claim; 15.4+ manual tests recorded honestly.
+
+### Dependencies
+AUD-17 (Island collapsed/expanded).
+
+### Out of scope
+Compact mini Now Playing, lyrics, art color themes, AppleScript Automation, Accessibility, media-key hijack, Studio/Menu Bar Now Playing, SkyLight/CGS.
 
 ---
 
-## AUD-24 — [CANCELLED] Spotify metadata and controls
+## AUD-23 — [CANCELLED] Apple Music metadata and controls (Apple Events)
 
 **Labels:** `P2`, `audio`
-**Status:** Cancelled — same as AUD-23. Audune does not integrate Spotify Automation or metadata.
+**Status:** Cancelled — per-app Apple Events Play/Pause removed. System-wide Experimental Now Playing is AUD-NP-01 (mediaremote-adapter), not Music Automation.
+
+---
+
+## AUD-24 — [CANCELLED] Spotify metadata and controls (Apple Events)
+
+**Labels:** `P2`, `audio`
+**Status:** Cancelled — same as AUD-23. Spotify Automation is not used; AUD-NP-01 covers system Now Playing when enabled.
 
 ---
 
