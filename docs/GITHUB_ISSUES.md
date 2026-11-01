@@ -560,17 +560,17 @@ AUD-02, AUD-14, AUD-21.
 Optional system Now Playing on Notch Island Expanded/Pinned: artwork, title, artist, scrubber, previous / play-pause / next. Default off. Compact wings unchanged. Does not count toward Core MVP.
 
 ### Tasks
-- [ ] Document the scoped private-API exception (MediaRemote via mediaremote-adapter only) in PRODUCT_SPEC / AGENTS / MANUAL_TESTS.
-- [ ] Add `ejbills/mediaremote-adapter` SPM; implement `NowPlayingService` lifecycle gated by `island.nowPlayingEnabled`.
-- [ ] Expanded/Pinned UI + geometry height bump; Compact zero change; never start/stop Process Tap.
-- [ ] Seek-unsupported per-bundle fallback to display-only scrubber; empty/unavailable states; unit tests + manual matrix.
+- [x] Document the scoped private-API exception (MediaRemote via mediaremote-adapter only) in PRODUCT_SPEC / AGENTS / MANUAL_TESTS.
+- [x] Add `ejbills/mediaremote-adapter` SPM; implement `NowPlayingService` lifecycle gated by `island.nowPlayingEnabled`.
+- [x] Expanded/Pinned UI + geometry height bump; Compact zero change; never start/stop Process Tap.
+- [x] Seek-unsupported per-bundle fallback to display-only scrubber; empty/unavailable states; unit tests + manual matrix.
 
 ### Acceptance criteria
-- [ ] Default off: Expanded Island matches prior layout.
-- [ ] When enabled on a notched display: metadata and transport work for system Now Playing clients; Compact shows spectrum only.
-- [ ] Toggle off / disable Island / no-notch / shutdown stops the adapter listener.
-- [ ] Capture pipeline is unaffected by Now Playing toggles.
-- [ ] Unavailable/empty states are explicit; no App Store claim; 15.4+ manual tests recorded honestly.
+- [x] Default off: Expanded Island matches prior layout (preference + UI gated).
+- [ ] When enabled on a notched display: metadata and transport work for system Now Playing clients; Compact shows spectrum only. *(manual — see MANUAL_TESTS)*
+- [x] Toggle off / disable Island / no-notch / shutdown stops the adapter listener. *(unit-covered for service stop; Island wiring in controller)*
+- [x] Capture pipeline is unaffected by Now Playing toggles. *(NowPlayingService never touches ProcessTapSpike)*
+- [ ] Unavailable/empty states are explicit; no App Store claim; 15.4+ manual tests recorded honestly. *(empty/unavailable unit-covered; GUI rows remain NOT TESTED)*
 
 ### Dependencies
 AUD-17 (Island collapsed/expanded).

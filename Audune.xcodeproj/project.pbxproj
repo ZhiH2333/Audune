@@ -11,6 +11,28 @@
 		A10000000000000000000003 /* MediaRemoteAdapter in Embed Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000002 /* MediaRemoteAdapter */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		000000000000000221000000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000100000000;
+			remoteInfo = Audune;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000000000000000000004 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = Frameworks;
+			files = (
+				A10000000000000000000003 /* MediaRemoteAdapter in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* Audune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Audune.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000220 /* AuduneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AuduneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,26 +51,16 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-
-/* Begin PBXCopyFilesBuildPhase section */
-		A10000000000000000000004 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				A10000000000000000000003 /* MediaRemoteAdapter in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				A10000000000000000000001 /* MediaRemoteAdapter in Frameworks */,
+			);
+		};
+		000000000000000231000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -120,24 +132,6 @@
 		};
 /* End PBXNativeTarget section */
 
-/* Begin PBXContainerItemProxy section */
-		000000000000000221000000 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 000000000000000000000000 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 000000000000000100000000;
-			remoteInfo = Audune;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXTargetDependency section */
-		000000000000000220000000 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 000000000000000100000000 /* Audune */;
-			targetProxy = 000000000000000221000000 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin PBXProject section */
 		000000000000000000000000 /* Project object */ = {
 			isa = PBXProject;
@@ -180,6 +174,11 @@
 			files = (
 			);
 		};
+		000000000000000232000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -195,21 +194,13 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		000000000000000231000000 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			files = (
-			);
+/* Begin PBXTargetDependency section */
+		000000000000000220000000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000100000000 /* Audune */;
+			targetProxy = 000000000000000221000000 /* PBXContainerItemProxy */;
 		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		000000000000000232000000 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			files = (
-			);
-		};
-/* End PBXResourcesBuildPhase section */
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		000000000000000011000000 /* Debug configuration for PBXProject "Audune" */ = {

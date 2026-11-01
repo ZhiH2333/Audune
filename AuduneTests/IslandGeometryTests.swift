@@ -64,6 +64,24 @@ final class IslandGeometryTests: XCTestCase {
         XCTAssertTrue(screen.frame.contains(geometry.expandedFrame))
     }
 
+    func testNowPlayingExpandedFrameGrowsDownwardWithoutChangingCompact() throws {
+        let screen = notchedMacBookScreen()
+        let geometry = try IslandGeometry.analyze(screen: screen).get()
+        let withNowPlaying = geometry.expandedFrame(nowPlayingEnabled: true)
+        let without = geometry.expandedFrame(nowPlayingEnabled: false)
+
+        XCTAssertEqual(without, geometry.expandedFrame)
+        XCTAssertEqual(withNowPlaying.maxY, geometry.expandedFrame.maxY, accuracy: 0.001)
+        XCTAssertEqual(
+            withNowPlaying.height,
+            geometry.expandedFrame.height + IslandGeometry.nowPlayingExpandedExtraHeight,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(geometry.compactFrame, try IslandGeometry.analyze(screen: screen).get().compactFrame)
+        XCTAssertTrue(withNowPlaying.contains(geometry.compactFrame))
+        XCTAssertTrue(screen.frame.contains(withNowPlaying))
+    }
+
     func testSafeAreaTopAloneWithoutAuxiliaryAreasIsRejected() {
         var screen = notchedMacBookScreen()
         screen.auxiliaryTopLeft = nil

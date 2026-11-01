@@ -286,7 +286,7 @@ Static build facts recorded on 2026-10-25 (macOS 27.0.1, Apple Silicon MacBook P
 
 ### Experimental Island Now Playing (AUD-NP-01)
 
-Requires a real macOS GUI session, preferably **15.4+**. Unit tests cover preferences, geometry height, and service state mapping only; they do **not** prove MediaRemote or the Perl adapter. Mark rows `PASS` / `FAIL` / `NOT TESTED` honestly. CI must not claim these passed.
+Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests`, `IslandGeometryTests.testNowPlayingExpandedFrameGrowsDownwardWithoutChangingCompact`, and `NowPlayingServiceTests` cover preference defaults, Expanded height bump, start/stop, empty/unavailable mapping, and seek-unsupported fallback with a fake controller. They do **not** prove MediaRemote or the Perl adapter on a live desktop. Mark rows `PASS` / `FAIL` / `NOT TESTED` honestly. CI must not claim these passed.
 
 - [ ] `NOT TESTED` — With the preference default (off), Expanded Island matches the prior visualization-only layout; no mediaremote-adapter process is running.
 - [ ] `NOT TESTED` — Settings → Notch Island → Show Now Playing when expanded shows an Experimental note; enabling it does not start or stop Process Tap.
