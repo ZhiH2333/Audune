@@ -185,7 +185,8 @@ struct IslandContentView: View {
             followsReduceMotion: model.prefs.followsReduceMotion
         )
         return ZStack {
-            shape.fill(Color.black.opacity(0.92))
+            shape.fill(Color.black)
+            shape.stroke(Color.white.opacity(model.hoverArmed ? 0.16 : 0.08), lineWidth: 0.5)
             IslandCompactSpectrumCanvas(
                 levels: model.compactLevels,
                 geometry: model.geometry,
@@ -196,10 +197,8 @@ struct IslandContentView: View {
             )
             .scaleEffect(armedScale)
             .allowsHitTesting(false)
-            islandGlassRim(shape: shape, armed: model.hoverArmed)
         }
         .clipShape(shape)
-        .glassEffect(.regular.tint(Color.black.opacity(0.2)), in: shape)
         .animation(prefeedbackAnimation, value: model.hoverArmed)
         .contentShape(shape)
         .onTapGesture {
@@ -225,7 +224,8 @@ struct IslandContentView: View {
 
         let shape = IslandShape(bottomRadius: IslandChrome.expandedBottomRadius)
         return ZStack {
-            shape.fill(Color.black.opacity(0.88))
+            shape.fill(Color.black)
+            shape.stroke(Color.white.opacity(0.08), lineWidth: 0.5)
 
             VStack(spacing: 4) {
                 HStack(spacing: 0) {
@@ -258,18 +258,18 @@ struct IslandContentView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    expandedVisualization
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .allowsHitTesting(false)
+                    ZStack {
+                        expandedVisualization
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                        visualizationEdgePress
+                    }
+                    .allowsHitTesting(false)
                 }
             }
-
-            islandGlassRim(shape: shape, armed: false)
         }
         .clipShape(shape)
-        .glassEffect(.regular.tint(Color.black.opacity(0.18)), in: shape)
     }
 
     /// Icon-only Spectrum / Waveform / Orbit switcher in the left wing (replaces status text).
@@ -315,61 +315,48 @@ struct IslandContentView: View {
         }
     }
 
-    /// Specular rim that reads like liquid-glass edge refraction.
-    private func islandGlassRim(shape: IslandShape, armed: Bool) -> some View {
+    /// Soft edge vignette so the viz fades into the Island chrome (very light press).
+    private var visualizationEdgePress: some View {
         ZStack {
-            shape.stroke(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(armed ? 0.55 : 0.38),
-                        Color.white.opacity(0.06),
-                        Color.white.opacity(armed ? 0.32 : 0.22)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1.15
+            LinearGradient(
+                stops: [
+                    .init(color: Color.black.opacity(0.28), location: 0),
+                    .init(color: Color.clear, location: 0.14),
+                    .init(color: Color.clear, location: 0.86),
+                    .init(color: Color.black.opacity(0.32), location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
             )
-            shape.stroke(Color.white.opacity(armed ? 0.28 : 0.16), lineWidth: 0.7)
-                .blur(radius: 1.1)
-                .blendMode(.screen)
+            LinearGradient(
+                stops: [
+                    .init(color: Color.black.opacity(0.22), location: 0),
+                    .init(color: Color.clear, location: 0.16),
+                    .init(color: Color.clear, location: 0.78),
+                    .init(color: Color.black.opacity(0.36), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
         .allowsHitTesting(false)
     }
 
-    /// Sharp viz with bottom→top progressive blur + press darkening (not a full muddy blur).
+    /// Backdrop viz: mostly sharp, light bottom press + tiny edge darkening.
     private var nowPlayingBackdrop: some View {
         ZStack {
             nowPlayingAmbientVisualization
-                .scaleEffect(1.03)
-                .opacity(0.9)
+                .opacity(0.88)
 
             if reduceMotion == false {
                 nowPlayingAmbientVisualization
-                    .scaleEffect(1.03)
-                    .blur(radius: 2.5)
+                    .blur(radius: 3)
                     .mask(
                         LinearGradient(
                             stops: [
                                 .init(color: .clear, location: 0),
-                                .init(color: .clear, location: 0.4),
-                                .init(color: .black.opacity(0.45), location: 0.72),
-                                .init(color: .black, location: 1)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                nowPlayingAmbientVisualization
-                    .scaleEffect(1.03)
-                    .blur(radius: 8)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .clear, location: 0.58),
-                                .init(color: .black.opacity(0.35), location: 0.82),
+                                .init(color: .clear, location: 0.55),
+                                .init(color: .black.opacity(0.4), location: 0.82),
                                 .init(color: .black, location: 1)
                             ],
                             startPoint: .top,
@@ -380,15 +367,16 @@ struct IslandContentView: View {
 
             LinearGradient(
                 stops: [
-                    .init(color: Color.black.opacity(0.38), location: 0),
-                    .init(color: Color.black.opacity(0.1), location: 0.32),
-                    .init(color: Color.black.opacity(0.16), location: 0.58),
-                    .init(color: Color.black.opacity(0.48), location: 0.82),
-                    .init(color: Color.black.opacity(0.7), location: 1)
+                    .init(color: Color.black.opacity(0.28), location: 0),
+                    .init(color: Color.black.opacity(0.08), location: 0.35),
+                    .init(color: Color.black.opacity(0.12), location: 0.65),
+                    .init(color: Color.black.opacity(0.42), location: 1)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
+
+            visualizationEdgePress
         }
     }
 
