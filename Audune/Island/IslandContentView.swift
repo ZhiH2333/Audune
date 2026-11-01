@@ -241,32 +241,71 @@ struct IslandContentView: View {
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
-                    IslandExpandedNowPlayingView(
-                        snapshot: model.nowPlaying,
-                        onTogglePlay: toggleNowPlaying,
-                        onPrevious: previousTrack,
-                        onNext: nextTrack,
-                        onSeek: seekNowPlaying
-                    )
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 104)
+                    // Visualizer as ambient backdrop; chrome + mode picker sit on top so the stack isn't cramped.
+                    ZStack(alignment: .bottom) {
+                        expandedVisualization
+                            .opacity(0.48)
+                            .blur(radius: 0.4)
+                            .mask(
+                                LinearGradient(
+                                    colors: [
+                                        Color.black.opacity(0.18),
+                                        Color.black.opacity(0.55),
+                                        Color.black.opacity(0.85),
+                                        Color.black
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .padding(.horizontal, 10)
+                            .padding(.top, 8)
+                            .allowsHitTesting(false)
 
-                    expandedVisualization
-                        .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 44)
-                        .padding(.horizontal, 18)
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.55),
+                                Color.black.opacity(0.12),
+                                Color.black.opacity(0.55)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                         .allowsHitTesting(false)
+
+                        VStack(spacing: 0) {
+                            IslandExpandedNowPlayingView(
+                                snapshot: model.nowPlaying,
+                                onTogglePlay: toggleNowPlaying,
+                                onPrevious: previousTrack,
+                                onNext: nextTrack,
+                                onSeek: seekNowPlaying
+                            )
+                            .padding(.horizontal, 18)
+                            .padding(.top, 2)
+
+                            Spacer(minLength: 6)
+
+                            modePickerRow
+                                .padding(.horizontal, 14)
+                                .padding(.bottom, 8)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    expandedVisualization
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 2)
-                        .allowsHitTesting(false)
-                }
+                    VStack(spacing: 4) {
+                        expandedVisualization
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 2)
+                            .allowsHitTesting(false)
 
-                modePickerRow
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
+                        modePickerRow
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 8)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
     }
