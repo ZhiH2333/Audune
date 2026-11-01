@@ -185,8 +185,7 @@ struct IslandContentView: View {
             followsReduceMotion: model.prefs.followsReduceMotion
         )
         return ZStack {
-            shape.fill(Color.black)
-            shape.stroke(Color.white.opacity(model.hoverArmed ? 0.16 : 0), lineWidth: 0.5)
+            shape.fill(Color.black.opacity(0.92))
             IslandCompactSpectrumCanvas(
                 levels: model.compactLevels,
                 geometry: model.geometry,
@@ -197,8 +196,10 @@ struct IslandContentView: View {
             )
             .scaleEffect(armedScale)
             .allowsHitTesting(false)
+            islandGlassRim(shape: shape, armed: model.hoverArmed)
         }
         .clipShape(shape)
+        .glassEffect(.regular.tint(Color.black.opacity(0.2)), in: shape)
         .animation(prefeedbackAnimation, value: model.hoverArmed)
         .contentShape(shape)
         .onTapGesture {
@@ -224,14 +225,13 @@ struct IslandContentView: View {
 
         let shape = IslandShape(bottomRadius: IslandChrome.expandedBottomRadius)
         return ZStack {
-            shape.fill(Color.black)
-            shape.stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+            shape.fill(Color.black.opacity(0.88))
 
             VStack(spacing: 4) {
                 HStack(spacing: 0) {
-                    statusHeader
+                    modeIconRow
                         .frame(width: max(leftWing, 1), alignment: .leading)
-                        .padding(.leading, 14)
+                        .padding(.leading, 12)
                     Spacer(minLength: 0)
                         .frame(width: notchWidth)
                     actionButtons
@@ -241,77 +241,49 @@ struct IslandContentView: View {
                 .frame(height: notchHeight)
 
                 if model.prefs.nowPlayingEnabled {
-                    // Viz as soft backdrop; chrome sits on top with press/darken gradients for contrast.
                     ZStack {
-                        nowPlayingAmbientVisualization
-                            .scaleEffect(1.06)
-                            .blur(radius: reduceMotion ? 0 : 6)
-                            .opacity(0.78)
+                        nowPlayingBackdrop
                             .allowsHitTesting(false)
 
-                        LinearGradient(
-                            stops: [
-                                .init(color: Color.black.opacity(0.82), location: 0),
-                                .init(color: Color.black.opacity(0.42), location: 0.28),
-                                .init(color: Color.black.opacity(0.18), location: 0.55),
-                                .init(color: Color.black.opacity(0.28), location: 0.72),
-                                .init(color: Color.black.opacity(0.72), location: 1)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                        IslandExpandedNowPlayingView(
+                            snapshot: model.nowPlaying,
+                            onTogglePlay: toggleNowPlaying,
+                            onPrevious: previousTrack,
+                            onNext: nextTrack,
+                            onSeek: seekNowPlaying
                         )
-                        .allowsHitTesting(false)
-
-                        VStack(spacing: 0) {
-                            IslandExpandedNowPlayingView(
-                                snapshot: model.nowPlaying,
-                                onTogglePlay: toggleNowPlaying,
-                                onPrevious: previousTrack,
-                                onNext: nextTrack,
-                                onSeek: seekNowPlaying
-                            )
-                            .padding(.horizontal, 18)
-                            .padding(.top, 2)
-
-                            Spacer(minLength: 8)
-
-                            modePickerRow
-                                .padding(.horizontal, 14)
-                                .padding(.bottom, 10)
-                        }
+                        .padding(.horizontal, 18)
+                        .padding(.top, 2)
+                        .padding(.bottom, 12)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    VStack(spacing: 4) {
-                        expandedVisualization
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 2)
-                            .allowsHitTesting(false)
-
-                        modePickerRow
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 10)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    expandedVisualization
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .allowsHitTesting(false)
                 }
             }
+
+            islandGlassRim(shape: shape, armed: false)
         }
         .clipShape(shape)
+        .glassEffect(.regular.tint(Color.black.opacity(0.18)), in: shape)
     }
 
-    private var statusHeader: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(statusDotColor)
-                .frame(width: 6, height: 6)
-            Text(model.captureLabel(phase: spike.phase))
-                .font(.system(size: model.prefs.nowPlayingEnabled ? 11 : 10, weight: .medium))
-                .foregroundStyle(warmWhite.opacity(0.78))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+    /// Icon-only Spectrum / Waveform / Orbit switcher in the left wing (replaces status text).
+    private var modeIconRow: some View {
+        HStack(spacing: 2) {
+            ForEach(StudioVisualMode.allCases) { mode in
+                IslandIconButton(
+                    symbol: mode.symbol,
+                    label: mode.title,
+                    selected: model.prefs.mode == mode,
+                    action: { selectMode(mode) }
+                )
+            }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var actionButtons: some View {
@@ -343,18 +315,81 @@ struct IslandContentView: View {
         }
     }
 
-    private var modePickerRow: some View {
-        HStack(spacing: 6) {
-            ForEach(StudioVisualMode.allCases) { mode in
-                IslandModeButton(
-                    mode: mode,
-                    selected: model.prefs.mode == mode
-                ) {
-                    selectMode(mode)
-                }
-            }
+    /// Specular rim that reads like liquid-glass edge refraction.
+    private func islandGlassRim(shape: IslandShape, armed: Bool) -> some View {
+        ZStack {
+            shape.stroke(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(armed ? 0.55 : 0.38),
+                        Color.white.opacity(0.06),
+                        Color.white.opacity(armed ? 0.32 : 0.22)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.15
+            )
+            shape.stroke(Color.white.opacity(armed ? 0.28 : 0.16), lineWidth: 0.7)
+                .blur(radius: 1.1)
+                .blendMode(.screen)
         }
-        .frame(height: 22)
+        .allowsHitTesting(false)
+    }
+
+    /// Sharp viz with bottom→top progressive blur + press darkening (not a full muddy blur).
+    private var nowPlayingBackdrop: some View {
+        ZStack {
+            nowPlayingAmbientVisualization
+                .scaleEffect(1.03)
+                .opacity(0.9)
+
+            if reduceMotion == false {
+                nowPlayingAmbientVisualization
+                    .scaleEffect(1.03)
+                    .blur(radius: 2.5)
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .clear, location: 0.4),
+                                .init(color: .black.opacity(0.45), location: 0.72),
+                                .init(color: .black, location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                nowPlayingAmbientVisualization
+                    .scaleEffect(1.03)
+                    .blur(radius: 8)
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .clear, location: 0.58),
+                                .init(color: .black.opacity(0.35), location: 0.82),
+                                .init(color: .black, location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+
+            LinearGradient(
+                stops: [
+                    .init(color: Color.black.opacity(0.38), location: 0),
+                    .init(color: Color.black.opacity(0.1), location: 0.32),
+                    .init(color: Color.black.opacity(0.16), location: 0.58),
+                    .init(color: Color.black.opacity(0.48), location: 0.82),
+                    .init(color: Color.black.opacity(0.7), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
     }
 
     /// Full-bleed Now Playing backdrop (blur + press gradients applied by the caller).
@@ -456,17 +491,6 @@ struct IslandContentView: View {
         model.drawsActiveVisuals(phase: spike.phase)
     }
 
-    private var statusDotColor: Color {
-        switch spike.phase {
-        case .idle, .starting:
-            return warmWhite.opacity(0.35)
-        case .failed:
-            return Color(red: 0.93, green: 0.55, blue: 0.48)
-        case .running:
-            return model.snapshot.isSilent ? warmWhite.opacity(0.45) : model.appearance.color.swiftUI
-        }
-    }
-
     private var warmWhite: Color {
         Color(red: 0.96, green: 0.94, blue: 0.90)
     }
@@ -499,33 +523,4 @@ private struct IslandIconButton: View {
     }
 }
 
-private struct IslandModeButton: View {
-    var mode: StudioVisualMode
-    var selected: Bool
-    var action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: mode.symbol)
-                    .font(.system(size: 10, weight: .medium))
-                Text(mode.title)
-                    .font(.system(size: 10, weight: .medium))
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background {
-                if hovering || selected {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.white.opacity(selected ? 0.20 : 0.12))
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityLabel(mode.title)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
 #endif
