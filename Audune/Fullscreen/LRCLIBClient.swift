@@ -21,6 +21,7 @@ nonisolated enum LyricsFetchError: Error, Equatable, Sendable {
     case disabled
     case emptyQuery
     case notFound
+    case sourceUnavailable
     case invalidResponse
     case transport(String)
 }

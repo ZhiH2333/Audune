@@ -709,7 +709,13 @@ struct SettingsView: View {
         Section("Lyrics") {
             Toggle("Search lyrics online", isOn: $fullscreenPrefs.lyricsNetworkEnabled)
                 .disabled(fullscreenPrefs.isEnabled == false)
-            Text("When enabled, Audune searches LRCLIB (international) plus NetEase / QQ Music / Kugou (domestic) in parallel using song title and artist only, then picks the best synced match. Artwork and audio are never uploaded. Default is off.")
+            Picker("Lyrics source", selection: $fullscreenPrefs.lyricsSource) {
+                ForEach(LyricsSourceSelection.allCases) { selection in
+                    Text(selection.title).tag(selection)
+                }
+            }
+            .disabled(fullscreenPrefs.isEnabled == false || fullscreenPrefs.lyricsNetworkEnabled == false)
+            Text("Automatic checks enabled sources in parallel and uses the first good result. Choose a source to query it alone. Searches use song metadata only; artwork and audio are never uploaded. Default is off.")
                 .foregroundStyle(.secondary)
                 .font(.caption)
         }

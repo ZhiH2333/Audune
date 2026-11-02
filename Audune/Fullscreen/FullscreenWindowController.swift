@@ -228,7 +228,8 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         }
         lyrics.sync(
             snapshot: model.nowPlaying,
-            networkEnabled: model.prefs.lyricsNetworkEnabled
+            networkEnabled: model.prefs.lyricsNetworkEnabled,
+            sourceSelection: model.prefs.lyricsSource
         )
         publishLyrics()
     }

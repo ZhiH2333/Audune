@@ -47,7 +47,11 @@ final class LyricsService {
     }
 
     /// Update lyrics for the current Now Playing snapshot. No network when `networkEnabled` is false.
-    func sync(snapshot: NowPlayingSnapshot, networkEnabled: Bool) {
+    func sync(
+        snapshot: NowPlayingSnapshot,
+        networkEnabled: Bool,
+        sourceSelection: LyricsSourceSelection = .automatic
+    ) {
         guard networkEnabled else {
             inFlight?.cancel()
             inFlight = nil
@@ -77,7 +81,7 @@ final class LyricsService {
             album: snapshot.album,
             durationSeconds: snapshot.durationSeconds
         )
-        let key = query.cacheKey
+        let key = "\(query.cacheKey)|\(sourceSelection.rawValue)"
         if key == activeTrackKey {
             if status == .ready || status == .loading {
                 return
@@ -111,13 +115,19 @@ final class LyricsService {
             guard let self else { return }
             do {
                 if let group {
-                    let hit = try await group.searchBest(for: LyricsSearchRequest(query))
+                    let hit = try await group.search(
+                        for: LyricsSearchRequest(query),
+                        selection: sourceSelection
+                    )
                     guard Task.isCancelled == false else { return }
                     await MainActor.run {
                         guard self.activeTrackKey == trackKey else { return }
                         self.apply(hit: hit, cacheKey: trackKey)
                     }
                 } else {
+                    guard sourceSelection == .automatic else {
+                        throw LyricsFetchError.sourceUnavailable
+                    }
                     let raw = try await fetcher.fetchSyncedLyrics(for: query)
                     guard Task.isCancelled == false else { return }
                     let parsed = LRCParser.parse(raw)
@@ -148,6 +158,8 @@ final class LyricsService {
                         self.status = .disabled
                     case .emptyQuery, .notFound:
                         self.status = .empty
+                    case .sourceUnavailable:
+                        self.status = .failed(String(localized: "Selected lyrics source is unavailable"))
                     case .invalidResponse:
                         self.status = .failed(String(localized: "Couldn’t read lyrics"))
                     case .transport:

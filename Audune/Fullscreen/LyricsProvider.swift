@@ -52,6 +52,30 @@ nonisolated enum LyricsSourceID: String, Equatable, Sendable, CaseIterable {
     }
 }
 
+nonisolated enum LyricsSourceSelection: String, Equatable, Sendable, CaseIterable, Identifiable {
+    case automatic
+    case lrclib
+    case netease
+    case qq
+    case kugou
+
+    var id: String { rawValue }
+
+    var sourceID: LyricsSourceID? {
+        LyricsSourceID(rawValue: rawValue)
+    }
+
+    var title: String {
+        switch self {
+        case .automatic: return String(localized: "Automatic (fastest)")
+        case .lrclib: return LyricsSourceID.lrclib.displayName
+        case .netease: return LyricsSourceID.netease.displayName
+        case .qq: return LyricsSourceID.qq.displayName
+        case .kugou: return LyricsSourceID.kugou.displayName
+        }
+    }
+}
+
 nonisolated struct LyricsHit: Equatable, Sendable {
     var source: LyricsSourceID
     var matchedTitle: String
@@ -171,5 +195,48 @@ nonisolated struct LyricsProviderGroup: LyricsFetching {
             throw LyricsFetchError.notFound
         }
         return best
+    }
+
+    func search(
+        for request: LyricsSearchRequest,
+        selection: LyricsSourceSelection
+    ) async throws -> LyricsHit {
+        guard request.isSearchable else { throw LyricsFetchError.emptyQuery }
+
+        if let sourceID = selection.sourceID {
+            guard let provider = providers.first(where: { $0.id == sourceID }) else {
+                throw LyricsFetchError.sourceUnavailable
+            }
+            guard let hit = await provider.search(request: request), hit.quality >= minimumQuality else {
+                throw LyricsFetchError.notFound
+            }
+            return hit
+        }
+
+        let fastestHit = await withTaskGroup(of: LyricsHit?.self, returning: LyricsHit?.self) { group in
+            for provider in providers {
+                group.addTask {
+                    await provider.search(request: request)
+                }
+            }
+
+            var bestFallback: LyricsHit?
+            for await hit in group {
+                guard let hit else { continue }
+                if hit.quality >= minimumQuality {
+                    group.cancelAll()
+                    return hit
+                }
+                if bestFallback == nil || hit.quality > bestFallback!.quality {
+                    bestFallback = hit
+                }
+            }
+            return bestFallback
+        }
+
+        guard let fastestHit, fastestHit.quality >= minimumQuality else {
+            throw LyricsFetchError.notFound
+        }
+        return fastestHit
     }
 }

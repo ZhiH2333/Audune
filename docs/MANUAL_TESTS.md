@@ -305,6 +305,7 @@ Unit coverage: Fullscreen preferences, LRC parse, lyrics network gate (zero requ
 - [ ] `NOT TESTED` — Opening Fullscreen (Settings or Island Expanded) shows blurred artwork backdrop, title/artist, transport; Esc / close exits; Process Tap is unaffected.
 - [ ] `NOT TESTED` — Enabling Search lyrics online with a known track loads synced lines from a hybrid source (LRCLIB and/or NetEase/QQ/Kugou), shows the winning Source label, and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
 - [ ] `NOT TESTED` — Changing tracks cancels the previous lyrics request; Reduce Motion removes Fullscreen motion while keeping controls usable.
+- [ ] `NOT TESTED` — Automatic source selection returns the first acceptable provider on the current network; manually selecting LRCLIB / NetEase / QQ Music / Kugou queries only that provider and persists across relaunch.
 - [ ] `NOT TESTED` — Chinese and English Fullscreen / lyrics Settings copy fits the Settings window.
 
 ## G. Desktop Magnet (only after the Magnet milestone)

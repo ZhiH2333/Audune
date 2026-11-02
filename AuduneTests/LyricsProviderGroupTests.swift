@@ -110,6 +110,55 @@ final class LyricsProviderGroupTests: XCTestCase {
             XCTFail("unexpected \(error)")
         }
     }
+
+    func testAutomaticSelectionReturnsFirstAcceptableSource() async throws {
+        let slow = DelayedLyricsProvider(
+            id: .lrclib,
+            delayMilliseconds: 150,
+            hit: lyricsHit(source: .lrclib, quality: 1.1)
+        )
+        let fast = DelayedLyricsProvider(
+            id: .netease,
+            delayMilliseconds: 10,
+            hit: lyricsHit(source: .netease, quality: 0.8)
+        )
+        let group = LyricsProviderGroup(providers: [slow, fast])
+
+        let hit = try await group.search(
+            for: LyricsSearchRequest(title: "Song", artist: "Artist", album: "", durationSeconds: 180),
+            selection: .automatic
+        )
+        XCTAssertEqual(hit.source, .netease)
+    }
+
+    func testManualSelectionQueriesOnlyTheChosenProvider() async throws {
+        let chosen = StaticLyricsProvider(
+            id: .qq,
+            hit: lyricsHit(source: .qq, quality: 0.8)
+        )
+        let group = LyricsProviderGroup(providers: [
+            StaticLyricsProvider(id: .lrclib, hit: lyricsHit(source: .lrclib, quality: 1.1)),
+            chosen
+        ])
+
+        let hit = try await group.search(
+            for: LyricsSearchRequest(title: "Song", artist: "Artist", album: "", durationSeconds: 180),
+            selection: .qq
+        )
+        XCTAssertEqual(hit.source, .qq)
+    }
+
+    private func lyricsHit(source: LyricsSourceID, quality: Double) -> LyricsHit {
+        LyricsHit(
+            source: source,
+            matchedTitle: "Song",
+            matchedArtist: "Artist",
+            durationSeconds: 180,
+            rawLRC: "[00:01.00]Line",
+            lines: [LyricLine(timeSeconds: 1, text: "Line")],
+            quality: quality
+        )
+    }
 }
 
 nonisolated struct StaticLyricsProvider: LyricsProvider {
@@ -118,6 +167,18 @@ nonisolated struct StaticLyricsProvider: LyricsProvider {
 
     func search(request: LyricsSearchRequest) async -> LyricsHit? {
         _ = request
+        return hit
+    }
+}
+
+nonisolated struct DelayedLyricsProvider: LyricsProvider {
+    var id: LyricsSourceID
+    var delayMilliseconds: Int
+    var hit: LyricsHit?
+
+    func search(request: LyricsSearchRequest) async -> LyricsHit? {
+        _ = request
+        try? await Task.sleep(for: .milliseconds(delayMilliseconds))
         return hit
     }
 }

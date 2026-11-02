@@ -23,14 +23,27 @@ final class FullscreenPreferencesTests: XCTestCase {
     }
 
     func testSaveAndLoadRoundTrip() {
-        let stored = FullscreenPreferences(isEnabled: true, lyricsNetworkEnabled: true)
+        let stored = FullscreenPreferences(
+            isEnabled: true,
+            lyricsNetworkEnabled: true,
+            lyricsSource: .netease
+        )
         stored.save(to: defaults)
         XCTAssertEqual(FullscreenPreferences.load(from: defaults), stored)
     }
 
     func testResetRestoresDefaults() {
-        FullscreenPreferences(isEnabled: true, lyricsNetworkEnabled: true).save(to: defaults)
+        FullscreenPreferences(
+            isEnabled: true,
+            lyricsNetworkEnabled: true,
+            lyricsSource: .kugou
+        ).save(to: defaults)
         FullscreenPreferences.reset(in: defaults)
         XCTAssertEqual(FullscreenPreferences.load(from: defaults), .standard)
+    }
+
+    func testInvalidLyricsSourceFallsBackToAutomatic() {
+        defaults.set("unknown-source", forKey: FullscreenPreferenceKey.lyricsSource)
+        XCTAssertEqual(FullscreenPreferences.load(from: defaults).lyricsSource, .automatic)
     }
 }
