@@ -2,6 +2,8 @@
 import AppKit
 import SwiftUI
 
+/// 1:1 Apple Music Fullscreen Now Playing experience with fluid ambient background,
+/// responsive artwork bounce, precise scrubber, transport controls, and rich synced lyrics.
 struct FullscreenContentView: View {
     @Bindable var model: FullscreenModel
     @Bindable var spike: ProcessTapSpike
@@ -11,123 +13,140 @@ struct FullscreenContentView: View {
     var seek: (Double) -> Void
     var close: () -> Void
     var openSettings: () -> Void
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var palette = FullscreenPalette.defaultAppleMusic
+    @State private var controlsVisible = true
+    @State private var hideControlsTask: Task<Void, Never>?
+    @State private var isShuffle = false
+    @State private var isRepeat = false
 
     var body: some View {
-        ZStack {
-            FullscreenBackgroundView(
-                artwork: model.nowPlaying.artwork,
-                reduceMotion: reduceMotion
-            )
-            StudioVisualizationView(
-                prefs: studioPrefsForViz,
-                spectrum: vizSpectrum,
-                peaks: [],
-                waveform: model.snapshot.waveform,
-                drawsBars: model.snapshot.isSilent == false
-            )
-            .opacity(0.28)
-            .allowsHitTesting(false)
-            VStack(spacing: 0) {
+        GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                // 1. Dynamic Fluid Ambient Aurora / Liquid Background
+                AppleMusicFluidBackground(
+                    palette: palette,
+                    artwork: model.nowPlaying.artwork,
+                    reduceMotion: reduceMotion
+                )
+
+                // 2. Shared Low-Opacity Visualizer (MVP AudioSnapshot integration)
+                StudioVisualizationView(
+                    prefs: studioPrefsForViz,
+                    spectrum: vizSpectrum,
+                    peaks: [],
+                    waveform: model.snapshot.waveform,
+                    drawsBars: model.snapshot.isSilent == false
+                )
+                .opacity(0.18)
+                .allowsHitTesting(false)
+                .blendMode(.screen)
+
+                // 3. Apple Music Top Pill Grabber (Centered at top)
+                VStack(spacing: 0) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.28))
+                        .frame(width: 40, height: 4.5)
+                        .padding(.top, 16)
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+
+                // 4. Two-Column Layout (Left: Player / Artwork & Controls, Right: Apple Music Lyrics)
+                let horizontalPadding = max(44, geometry.size.width * 0.055)
+                let spacing = max(44, geometry.size.width * 0.05)
+
+                HStack(alignment: .center, spacing: spacing) {
+                    // Left Column: Player Pane
+                    AppleMusicPlayerPane(
+                        snapshot: model.nowPlaying,
+                        containerSize: geometry.size,
+                        isShuffle: $isShuffle,
+                        isRepeat: $isRepeat,
+                        togglePlayPause: togglePlayPause,
+                        previousTrack: previousTrack,
+                        nextTrack: nextTrack,
+                        seek: seek
+                    )
+                    .frame(maxWidth: min(geometry.size.width * 0.42, 480))
+
+                    // Right Column: Apple Music Synced Lyrics
+                    AppleMusicLyricsPane(
+                        model: model,
+                        onSeek: seek,
+                        openSettings: openSettings
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, 40)
+                .padding(.bottom, 36)
+
+                // 5. Floating Controls Overlay (Top Right: Settings & Close - Auto-hiding)
                 HStack {
                     Spacer()
-                    Button(action: openSettings) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .padding(10)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(String(localized: "Fullscreen Settings"))
-                    Button(action: close) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .padding(10)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(String(localized: "Close Fullscreen"))
-                    .keyboardShortcut(.cancelAction)
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 20)
+                    HStack(spacing: 12) {
+                        Button(action: openSettings) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Color.white.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(String(localized: "Fullscreen Settings"))
 
-                Spacer(minLength: 24)
-
-                HStack(alignment: .bottom, spacing: 36) {
-                    artworkHero
-                    VStack(alignment: .leading, spacing: 18) {
-                        trackText
-                        FullscreenTransportBar(
-                            snapshot: model.nowPlaying,
-                            togglePlayPause: togglePlayPause,
-                            previousTrack: previousTrack,
-                            nextTrack: nextTrack,
-                            seek: seek
-                        )
-                        FullscreenLyricsPane(model: model)
+                        Button(action: close) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Color.white.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(String(localized: "Close Fullscreen"))
+                        .keyboardShortcut(.cancelAction)
                     }
-                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(.top, 18)
+                    .padding(.trailing, 28)
                 }
-                .padding(.horizontal, 56)
-                .padding(.bottom, 64)
+                .opacity(controlsVisible ? 1.0 : 0.0)
+                .animation(.easeInOut(duration: 0.3), value: controlsVisible)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .focusable()
         .onExitCommand(perform: close)
-    }
-
-    @ViewBuilder
-    private var artworkHero: some View {
-        let side: CGFloat = 280
-        Group {
-            if let artwork = model.nowPlaying.artwork {
-                Image(nsImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .font(.system(size: 48, weight: .light))
-                            .foregroundStyle(.white.opacity(0.35))
-                    }
-            }
+        .onContinuousHover { _ in
+            revealControlsBriefly()
         }
-        .frame(width: side, height: side)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.45), radius: reduceMotion ? 0 : 28, y: 14)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: model.nowPlaying.trackIdentity)
-    }
-
-    private var trackText: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if model.nowPlaying.hasTrack {
-                Text(model.nowPlaying.title.isEmpty ? String(localized: "Unknown Title") : model.nowPlaying.title)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                Text(model.nowPlaying.artist.isEmpty ? String(localized: "Unknown Artist") : model.nowPlaying.artist)
-                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
-            } else {
-                Text(emptyCopy)
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
+        .task(id: model.nowPlaying.trackIdentity) {
+            updatePalette()
+        }
+        .onAppear {
+            updatePalette()
+            revealControlsBriefly()
         }
     }
 
-    private var emptyCopy: String {
-        switch model.nowPlaying.availability {
-        case .unavailable:
-            return String(localized: "Now Playing unavailable")
-        case .empty, .idle, .listening:
-            return String(localized: "Nothing playing")
+    private func updatePalette() {
+        let newPalette = FullscreenPalette.extract(from: model.nowPlaying.artwork)
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.75)) {
+            palette = newPalette
+        }
+    }
+
+    private func revealControlsBriefly() {
+        controlsVisible = true
+        hideControlsTask?.cancel()
+        hideControlsTask = Task {
+            try? await Task.sleep(for: .seconds(3.5))
+            guard Task.isCancelled == false else { return }
+            withAnimation(.easeInOut(duration: 0.35)) {
+                controlsVisible = false
+            }
         }
     }
 
@@ -162,80 +181,281 @@ struct FullscreenContentView: View {
     }
 }
 
-struct FullscreenBackgroundView: View {
+// MARK: - Fluid Apple Music Animated Aurora Background
+
+struct AppleMusicFluidBackground: View {
+    var palette: FullscreenPalette
     var artwork: NSImage?
     var reduceMotion: Bool
 
     var body: some View {
         GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+
             ZStack {
+                // Base deep dark tone
                 Color.black
+
+                // Blurred ambient artwork texture
                 if let artwork {
                     Image(nsImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .blur(radius: reduceMotion ? 8 : 48)
-                        .scaleEffect(reduceMotion ? 1.05 : 1.18)
-                        .opacity(0.55)
+                        .frame(width: w, height: h)
+                        .blur(radius: reduceMotion ? 20 : 64)
+                        .scaleEffect(reduceMotion ? 1.05 : 1.25)
+                        .opacity(0.42)
                 }
+
+                // Fluid animated color orbs / liquid mesh
+                if reduceMotion {
+                    LinearGradient(
+                        colors: palette.allColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .opacity(0.65)
+                } else {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                        let t = timeline.date.timeIntervalSinceReferenceDate
+                        let colors = palette.allColors
+
+                        ZStack {
+                            // Blob 1 (Top Left / Center)
+                            RadialGradient(
+                                colors: [colors[0].opacity(0.85), colors[0].opacity(0)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: w * 0.55
+                            )
+                            .frame(width: w * 1.15, height: w * 1.15)
+                            .position(
+                                x: w * (0.32 + 0.12 * sin(t * 0.32)),
+                                y: h * (0.32 + 0.10 * cos(t * 0.40))
+                            )
+                            .blur(radius: 65)
+
+                            // Blob 2 (Top Right)
+                            RadialGradient(
+                                colors: [colors[1].opacity(0.80), colors[1].opacity(0)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: w * 0.50
+                            )
+                            .frame(width: w * 1.05, height: w * 1.05)
+                            .position(
+                                x: w * (0.75 + 0.10 * cos(t * 0.28)),
+                                y: h * (0.28 + 0.12 * sin(t * 0.35))
+                            )
+                            .blur(radius: 60)
+
+                            // Blob 3 (Bottom Left)
+                            RadialGradient(
+                                colors: [colors[2].opacity(0.80), colors[2].opacity(0)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: w * 0.60
+                            )
+                            .frame(width: w * 1.25, height: w * 1.25)
+                            .position(
+                                x: w * (0.22 + 0.14 * cos(t * 0.42)),
+                                y: h * (0.76 + 0.10 * sin(t * 0.30))
+                            )
+                            .blur(radius: 70)
+
+                            // Blob 4 (Bottom Right)
+                            RadialGradient(
+                                colors: [colors[3].opacity(0.85), colors[3].opacity(0)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: w * 0.55
+                            )
+                            .frame(width: w * 1.15, height: w * 1.15)
+                            .position(
+                                x: w * (0.72 + 0.12 * sin(t * 0.38)),
+                                y: h * (0.74 + 0.12 * cos(t * 0.44))
+                            )
+                            .blur(radius: 65)
+                        }
+                    }
+                }
+
+                // Apple Music Vignette & Dark Overlay for contrast
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.35),
-                        Color.black.opacity(0.72),
-                        Color.black.opacity(0.92)
+                        Color.black.opacity(0.32),
+                        Color.black.opacity(0.48),
+                        Color.black.opacity(0.72)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
+
+                RadialGradient(
+                    colors: [
+                        Color.clear,
+                        Color.black.opacity(0.42)
+                    ],
+                    center: .center,
+                    startRadius: 150,
+                    endRadius: max(w, h) * 0.8
+                )
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: w, height: h)
             .clipped()
         }
         .ignoresSafeArea()
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: artwork != nil)
     }
 }
 
-struct FullscreenTransportBar: View {
+// MARK: - Left Column: Apple Music Player (Artwork, Scrubber, Controls)
+
+struct AppleMusicPlayerPane: View {
     var snapshot: NowPlayingSnapshot
+    var containerSize: CGSize
+    @Binding var isShuffle: Bool
+    @Binding var isRepeat: Bool
     var togglePlayPause: () -> Void
     var previousTrack: () -> Void
     var nextTrack: () -> Void
     var seek: (Double) -> Void
+
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
+    @State private var isShowingMenu = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if snapshot.hasTrack {
-                progressRow
-                HStack(spacing: 22) {
-                    transportButton(symbol: "backward.fill", label: String(localized: "Previous Track"), action: previousTrack)
-                    transportButton(
-                        symbol: snapshot.isPlaying ? "pause.fill" : "play.fill",
-                        label: snapshot.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
-                        action: togglePlayPause
-                    )
-                    transportButton(symbol: "forward.fill", label: String(localized: "Next Track"), action: nextTrack)
+        let artworkSide = min(
+            min(containerSize.width * 0.34, 380),
+            max(220, containerSize.height * 0.46)
+        )
+
+        VStack(alignment: .leading, spacing: 22) {
+            // Artwork Hero
+            artworkHero(side: artworkSide)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 18) {
+                // Title, Artist and More Button
+                metadataRow
+
+                // Apple Music Scrubber Bar
+                scrubberBar
+
+                // 5-Icon Transport Controls
+                transportRow
+            }
+            .frame(width: artworkSide)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func artworkHero(side: CGFloat) -> some View {
+        Group {
+            if let artwork = snapshot.artwork {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 56, weight: .light))
+                            .foregroundStyle(.white.opacity(0.35))
+                    }
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+        )
+        // Multi-tier soft Apple Music shadow
+        .shadow(
+            color: Color.black.opacity(snapshot.isPlaying ? 0.45 : 0.28),
+            radius: reduceMotion ? 0 : (snapshot.isPlaying ? 32 : 18),
+            x: 0,
+            y: snapshot.isPlaying ? 16 : 8
+        )
+        // Signature Apple Music subtle pause scale effect
+        .scaleEffect(reduceMotion ? 1.0 : (snapshot.isPlaying ? 1.0 : 0.94))
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.75),
+            value: snapshot.isPlaying
+        )
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.35),
+            value: snapshot.trackIdentity
+        )
+    }
+
+    private var metadataRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                if snapshot.hasTrack {
+                    Text(snapshot.title.isEmpty ? String(localized: "Unknown Title") : snapshot.title)
+                        .font(.system(size: 21, weight: .bold, design: .default))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(snapshot.artist.isEmpty ? String(localized: "Unknown Artist") : snapshot.artist)
+                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .foregroundStyle(.white.opacity(0.68))
+                        .lineLimit(1)
+                } else {
+                    Text(emptyTitleCopy)
+                        .font(.system(size: 20, weight: .bold, design: .default))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Text(emptySubtitleCopy)
+                        .font(.system(size: 14, weight: .medium, design: .default))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
+            }
+
+            Spacer(minLength: 4)
+
+            // "..." More Button
+            if snapshot.hasTrack {
+                Button(action: copyTrackInfo) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.white.opacity(0.16)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "More Options"))
             }
         }
     }
 
-    private var progressRow: some View {
+    private func copyTrackInfo() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let info = "\(snapshot.title) - \(snapshot.artist)"
+        pasteboard.setString(info, forType: .string)
+    }
+
+    private var scrubberBar: some View {
         let duration = max(snapshot.durationSeconds, 0)
         let displayed: Double = {
             if scrubbing { return scrubValue }
             return snapshot.displayElapsed()
         }()
         let progress = duration > 0 ? min(max(displayed / duration, 0), 1) : 0
-        return VStack(alignment: .leading, spacing: 4) {
+
+        return VStack(spacing: 6) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.18))
                     Capsule()
-                        .fill(Color.white.opacity(0.85))
+                        .fill(Color.white.opacity(0.22))
+                    Capsule()
+                        .fill(Color.white.opacity(0.92))
                         .frame(width: max(4, geo.size.width * progress))
                 }
                 .contentShape(Rectangle())
@@ -257,81 +477,206 @@ struct FullscreenTransportBar: View {
                         }
                 )
             }
-            .frame(height: 6)
+            .frame(height: 5)
+
+            // Timers: Left is elapsed (2:27), Right is remaining (-0:45)
             HStack {
-                Text(formatTime(displayed))
+                Text(formatElapsed(displayed))
                 Spacer()
-                Text(duration > 0 ? formatTime(duration) : "--:--")
+                Text(formatRemaining(elapsed: displayed, duration: duration))
             }
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .font(.system(size: 12, weight: .medium, design: .default).monospacedDigit())
             .foregroundStyle(.white.opacity(0.55))
         }
         .opacity(snapshot.seekSupported ? 1 : 0.7)
     }
 
-    private func transportButton(symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
+    private var transportRow: some View {
+        HStack(spacing: 0) {
+            // 1. Shuffle
+            Button(action: { isShuffle.toggle() }) {
+                Image(systemName: "shuffle")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(isShuffle ? .white : .white.opacity(0.55))
+                    .frame(width: 42, height: 42)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Shuffle"))
+
+            Spacer()
+
+            // 2. Previous
+            Button(action: previousTrack) {
+                Image(systemName: "backward.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .disabled(snapshot.hasTrack == false)
+            .accessibilityLabel(String(localized: "Previous Track"))
+
+            Spacer()
+
+            // 3. Play / Pause (Large & Prominent Apple Music Style)
+            Button(action: togglePlayPause) {
+                Image(systemName: snapshot.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 52, height: 52)
+            }
+            .buttonStyle(.plain)
+            .disabled(snapshot.hasTrack == false)
+            .accessibilityLabel(snapshot.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
+
+            Spacer()
+
+            // 4. Next
+            Button(action: nextTrack) {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .disabled(snapshot.hasTrack == false)
+            .accessibilityLabel(String(localized: "Next Track"))
+
+            Spacer()
+
+            // 5. Repeat
+            Button(action: { isRepeat.toggle() }) {
+                Image(systemName: "repeat")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(isRepeat ? .white : .white.opacity(0.55))
+                    .frame(width: 42, height: 42)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Repeat"))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .disabled(snapshot.hasTrack == false)
+        .padding(.top, 4)
     }
 
-    private func formatTime(_ seconds: Double) -> String {
+    private func formatElapsed(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded(.down)))
         let m = total / 60
         let s = total % 60
         return String(format: "%d:%02d", m, s)
     }
+
+    private func formatRemaining(elapsed: Double, duration: Double) -> String {
+        guard duration > 0 else { return "--:--" }
+        let remaining = max(0, duration - elapsed)
+        let total = Int(remaining.rounded(.down))
+        let m = total / 60
+        let s = total % 60
+        return String(format: "-%d:%02d", m, s)
+    }
+
+    private var emptyTitleCopy: String {
+        switch snapshot.availability {
+        case .unavailable:
+            return String(localized: "Now Playing unavailable")
+        case .empty, .idle, .listening:
+            return String(localized: "Nothing playing")
+        }
+    }
+
+    private var emptySubtitleCopy: String {
+        switch snapshot.availability {
+        case .unavailable:
+            return String(localized: "MediaRemote adapter is not responding.")
+        case .empty, .idle, .listening:
+            return String(localized: "Play a song in Music, Spotify, or any player.")
+        }
+    }
 }
 
-struct FullscreenLyricsPane: View {
+// MARK: - Right Column: Apple Music Fluid Synced Lyrics
+
+struct AppleMusicLyricsPane: View {
     @Bindable var model: FullscreenModel
+    var onSeek: (Double) -> Void
+    var openSettings: () -> Void
 
     var body: some View {
         Group {
             switch model.lyricsStatus {
             case .idle:
                 EmptyView()
+
             case .disabled:
-                Text(String(localized: "Turn on Search lyrics online in Settings to fetch synced lyrics from lrclib.net."))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 14) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 32, weight: .light))
+                        .foregroundStyle(.white.opacity(0.45))
+                    Text(String(localized: "Search lyrics online is off"))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(String(localized: "Turn on Search lyrics online in Settings to display synced bilingual lyrics."))
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(action: openSettings) {
+                        Text(String(localized: "Open Settings"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color.white.opacity(0.18)))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 6)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+
             case .loading:
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(.white)
+                // Pulsing Apple Music lyrics skeleton placeholders
+                VStack(alignment: .leading, spacing: 22) {
+                    Capsule().fill(Color.white.opacity(0.14)).frame(width: 320, height: 32)
+                    Capsule().fill(Color.white.opacity(0.24)).frame(width: 440, height: 42)
+                    Capsule().fill(Color.white.opacity(0.18)).frame(width: 260, height: 26)
+                    Capsule().fill(Color.white.opacity(0.12)).frame(width: 380, height: 32)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+
             case .empty:
-                Text(String(localized: "No synced lyrics found — will retry shortly"))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
+                VStack(alignment: .leading, spacing: 12) {
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: 32, weight: .light))
+                        .foregroundStyle(.white.opacity(0.4))
+                    Text(String(localized: "No synced lyrics found"))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Text(String(localized: "Audune will automatically search again when the track changes."))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+
             case .failed(let message):
-                Text(message)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(message)
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+
             case .ready:
-                VStack(alignment: .leading, spacing: 8) {
-                    if model.lyricsSourceLabel.isEmpty == false {
-                        Text(String(format: String(localized: "Source: %@"), model.lyricsSourceLabel))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.4))
+                if model.nowPlaying.isPlaying {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                        lyricsScroller(at: timeline.date)
                     }
-                    if model.nowPlaying.isPlaying {
-                        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
-                            lyricsScroller(at: timeline.date)
-                        }
-                    } else {
-                        lyricsScroller(at: .now)
-                    }
+                } else {
+                    lyricsScroller(at: .now)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Lyrics"))
     }
@@ -339,31 +684,134 @@ struct FullscreenLyricsPane: View {
     private func lyricsScroller(at date: Date) -> some View {
         let elapsed = model.nowPlaying.displayElapsed(at: date)
         let active = LRCParser.activeIndex(in: model.lyricsLines, at: elapsed)
+
         return ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 26) {
+                    // Top breathing space
+                    Color.clear.frame(height: 60)
+
                     ForEach(Array(model.lyricsLines.enumerated()), id: \.element.id) { index, line in
-                        Text(line.text)
-                            .font(.system(
-                                size: index == active ? 22 : 16,
-                                weight: index == active ? .semibold : .regular,
-                                design: .rounded
-                            ))
-                            .foregroundStyle(.white.opacity(index == active ? 1 : 0.42))
-                            .id(index)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        AppleMusicLyricLineView(
+                            line: line,
+                            index: index,
+                            activeIndex: active,
+                            onSeek: onSeek
+                        )
+                        .id(index)
                     }
+
+                    // Bottom breathing space
+                    Color.clear.frame(height: 120)
                 }
-                .padding(.vertical, 4)
+                .padding(.horizontal, 20)
             }
-            .frame(maxHeight: 220)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.12),
+                        .init(color: .black, location: 0.88),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .onChange(of: active) { _, newValue in
                 guard let newValue else { return }
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(newValue, anchor: .center)
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                    proxy.scrollTo(newValue, anchor: UnitPoint(x: 0.5, y: 0.38))
                 }
             }
         }
+    }
+}
+
+// MARK: - Apple Music Lyric Line Item View
+
+struct AppleMusicLyricLineView: View {
+    let line: LyricLine
+    let index: Int
+    let activeIndex: Int?
+    let onSeek: (Double) -> Void
+
+    @State private var isHovered = false
+
+    var isActive: Bool {
+        index == activeIndex
+    }
+
+    var distance: Int {
+        guard let activeIndex else { return 0 }
+        return abs(index - activeIndex)
+    }
+
+    var blurRadius: CGFloat {
+        guard activeIndex != nil else { return 0 }
+        if isActive { return 0 }
+        if distance <= 1 { return 0.5 }
+        return min(CGFloat(distance - 1) * 0.9, 3.2)
+    }
+
+    var textOpacity: Double {
+        if isActive { return 1.0 }
+        if isHovered { return 0.78 }
+        return 0.40
+    }
+
+    var translationOpacity: Double {
+        if isActive { return 0.88 }
+        if isHovered { return 0.65 }
+        return 0.30
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Main lyric line
+            Text(line.text)
+                .font(.system(
+                    size: isActive ? 40 : 28,
+                    weight: isActive ? .heavy : .bold,
+                    design: .rounded
+                ))
+                .foregroundStyle(Color.white.opacity(textOpacity))
+                .fixedSize(horizontal: false, vertical: true)
+                .shadow(
+                    color: Color.black.opacity(isActive ? 0.35 : 0),
+                    radius: 12,
+                    x: 0,
+                    y: 4
+                )
+
+            // Sub-translation (if present)
+            if let translation = line.translation, translation.isEmpty == false {
+                Text(translation)
+                    .font(.system(
+                        size: isActive ? 21 : 16,
+                        weight: isActive ? .bold : .semibold,
+                        design: .rounded
+                    ))
+                    .foregroundStyle(Color.white.opacity(translationOpacity))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .blur(radius: blurRadius)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSeek(line.timeSeconds)
+        }
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
+        .animation(.easeInOut(duration: 0.2), value: isHovered)
     }
 }
 #endif
