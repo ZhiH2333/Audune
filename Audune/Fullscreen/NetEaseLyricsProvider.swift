@@ -46,11 +46,35 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
     }
 
     private func searchSong(_ request: LyricsSearchRequest) async throws -> SongHit? {
+        let queries = [request.keyword, request.title].filter { $0.isEmpty == false }
+        var best: (SongHit, Double)?
+        for query in queries {
+            guard let songs = try await searchList(query: query) else { continue }
+            for song in songs {
+                let score = LyricsQuality.score(
+                    request: request,
+                    title: song.name,
+                    artist: song.artist,
+                    durationSeconds: song.durationSeconds,
+                    lineCount: 8
+                )
+                if let current = best {
+                    if score > current.1 { best = (song, score) }
+                } else {
+                    best = (song, score)
+                }
+            }
+        }
+        guard let best, best.1 >= 0.55 else { return nil }
+        return best.0
+    }
+
+    private func searchList(query: String) async throws -> [SongHit]? {
         var components = URLComponents(string: "http://music.163.com/api/search/pc")
         components?.queryItems = [
-            URLQueryItem(name: "s", value: request.keyword),
+            URLQueryItem(name: "s", value: query),
             URLQueryItem(name: "offset", value: "0"),
-            URLQueryItem(name: "limit", value: "8"),
+            URLQueryItem(name: "limit", value: "10"),
             URLQueryItem(name: "type", value: "1")
         ]
         guard let url = components?.url else { return nil }
@@ -74,11 +98,16 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
         return parseSearch(data)
     }
 
-    private func parseSearch(_ data: Data) -> SongHit? {
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+    private func parseSearch(_ data: Data) -> [SongHit] {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        // NetEase anti-bot responses use code != 200 and no songs.
+        if let code = root["code"] as? Int, code != 200, root["result"] == nil {
+            return []
+        }
         let songs = (root["result"] as? [String: Any])?["songs"] as? [[String: Any]]
             ?? root["songs"] as? [[String: Any]]
             ?? []
+        var hits: [SongHit] = []
         for song in songs {
             guard let id = song["id"] as? Int else { continue }
             let name = (song["name"] as? String) ?? ""
@@ -86,9 +115,9 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
             let artist = artists.compactMap { $0["name"] as? String }.joined(separator: "/")
             let durationMs = (song["duration"] as? Int) ?? (song["duration"] as? Double).map(Int.init)
             let durationSeconds = durationMs.map { Double($0) / 1000 }
-            return SongHit(id: id, name: name, artist: artist, durationSeconds: durationSeconds)
+            hits.append(SongHit(id: id, name: name, artist: artist, durationSeconds: durationSeconds))
         }
-        return nil
+        return hits
     }
 
     private func fetchLyric(songID: Int) async throws -> String? {

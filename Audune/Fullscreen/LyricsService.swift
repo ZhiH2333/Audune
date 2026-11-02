@@ -16,8 +16,11 @@ final class LyricsService {
     private let fetcher: any LyricsFetching
     private let group: LyricsProviderGroup?
     private var cache: [String: CachedHit] = [:]
+    private var lastAttemptAt: [String: Date] = [:]
     private var inFlight: Task<Void, Never>?
     private let maxCacheEntries = 32
+    /// Empty/failure is not permanent — providers like LRCLIB 503 should be retried.
+    private let retryCooldown: TimeInterval = 3
 
     private struct CachedHit {
         var lines: [LyricLine]
@@ -75,17 +78,24 @@ final class LyricsService {
             durationSeconds: snapshot.durationSeconds
         )
         let key = query.cacheKey
-        if key == activeTrackKey, status == .ready || status == .loading || status == .empty || status.isFailure {
-            return
+        if key == activeTrackKey {
+            if status == .ready || status == .loading {
+                return
+            }
+            if (status == .empty || status.isFailure),
+               let last = lastAttemptAt[key],
+               Date().timeIntervalSince(last) < retryCooldown {
+                return
+            }
         }
         activeTrackKey = key
 
-        if let cached = cache[key] {
+        if let cached = cache[key], cached.lines.isEmpty == false {
             lines = cached.lines
             sourceID = cached.sourceID
             matchedTitle = cached.matchedTitle
             matchedArtist = cached.matchedArtist
-            status = cached.lines.isEmpty ? .empty : .ready
+            status = .ready
             return
         }
 
@@ -95,6 +105,7 @@ final class LyricsService {
         sourceID = nil
         matchedTitle = ""
         matchedArtist = ""
+        lastAttemptAt[key] = Date()
         let trackKey = key
         inFlight = Task { [weak self] in
             guard let self else { return }

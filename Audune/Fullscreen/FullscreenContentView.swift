@@ -307,7 +307,7 @@ struct FullscreenLyricsPane: View {
                     .controlSize(.small)
                     .tint(.white)
             case .empty:
-                Text(String(localized: "No synced lyrics found"))
+                Text(String(localized: "No synced lyrics found — will retry shortly"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.55))
             case .failed(let message):

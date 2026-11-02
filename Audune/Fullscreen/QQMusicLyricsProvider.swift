@@ -11,7 +11,7 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
 
     func search(request: LyricsSearchRequest) async -> LyricsHit? {
         do {
-            guard let song = try await searchSong(request) else { return nil }
+            guard let song = try await bestSong(for: request) else { return nil }
             guard let raw = try await fetchLyric(songmid: song.songmid) else { return nil }
             let lines = LRCParser.parse(raw)
             guard lines.isEmpty == false else { return nil }
@@ -22,6 +22,7 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
                 durationSeconds: song.durationSeconds,
                 lineCount: lines.count
             )
+            guard quality >= 0.55 else { return nil }
             return LyricsHit(
                 source: .qq,
                 matchedTitle: song.name,
@@ -43,20 +44,58 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
         var durationSeconds: Double?
     }
 
-    private func searchSong(_ request: LyricsSearchRequest) async throws -> SongHit? {
+    /// Score every candidate across a few query shapes — never blindly take list[0].
+    private func bestSong(for request: LyricsSearchRequest) async throws -> SongHit? {
+        var queries: [String] = []
+        let keyword = request.keyword
+        if keyword.isEmpty == false { queries.append(keyword) }
+        if request.title.isEmpty == false { queries.append(request.title) }
+        if request.title.isEmpty == false, request.artist.isEmpty == false {
+            queries.append("\(request.title) \(request.artist)")
+        }
+        var seen = Set<String>()
+        queries = queries.filter { seen.insert($0).inserted }
+
+        var best: (song: SongHit, score: Double)?
+        for query in queries {
+            let songs = try await searchList(query: query)
+            for song in songs {
+                let score = LyricsQuality.score(
+                    request: request,
+                    title: song.name,
+                    artist: song.artist,
+                    durationSeconds: song.durationSeconds,
+                    lineCount: 8
+                )
+                if let current = best {
+                    if score > current.score {
+                        best = (song, score)
+                    }
+                } else {
+                    best = (song, score)
+                }
+            }
+        }
+        guard let best, best.score >= 0.55 else { return nil }
+        return best.song
+    }
+
+    private func searchList(query: String) async throws -> [SongHit] {
         var components = URLComponents(string: "https://c.y.qq.com/soso/fcgi-bin/client_search_cp")
         components?.queryItems = [
-            URLQueryItem(name: "w", value: request.keyword),
+            URLQueryItem(name: "w", value: query),
             URLQueryItem(name: "format", value: "json"),
-            URLQueryItem(name: "n", value: "8")
+            URLQueryItem(name: "n", value: "10")
         ]
-        guard let url = components?.url else { return nil }
+        guard let url = components?.url else { return [] }
         let (data, _) = try await session.data(from: url)
         let jsonData = unwrapJSONP(data) ?? data
         guard let root = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
               let list = ((root["data"] as? [String: Any])?["song"] as? [String: Any])?["list"] as? [[String: Any]]
-        else { return nil }
+        else { return [] }
 
+        var songs: [SongHit] = []
+        songs.reserveCapacity(list.count)
         for item in list {
             guard let songmid = item["songmid"] as? String, songmid.isEmpty == false else { continue }
             let name = (item["songname"] as? String) ?? ""
@@ -64,9 +103,9 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
             let artist = singers.compactMap { $0["name"] as? String }.joined(separator: "/")
             let interval = (item["interval"] as? Int).map(Double.init)
                 ?? (item["interval"] as? Double)
-            return SongHit(songmid: songmid, name: name, artist: artist, durationSeconds: interval)
+            songs.append(SongHit(songmid: songmid, name: name, artist: artist, durationSeconds: interval))
         }
-        return nil
+        return songs
     }
 
     private func fetchLyric(songmid: String) async throws -> String? {

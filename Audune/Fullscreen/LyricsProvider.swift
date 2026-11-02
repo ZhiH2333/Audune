@@ -63,6 +63,7 @@ nonisolated struct LyricsHit: Equatable, Sendable {
 }
 
 /// Quality scoring inspired by LyricsKit: prefer title/artist/duration match and timed lines.
+/// Title + duration can carry a hit when artist is romanized differently (e.g. kakizaki vs 柿崎).
 nonisolated enum LyricsQuality {
     static func score(
         request: LyricsSearchRequest,
@@ -71,13 +72,23 @@ nonisolated enum LyricsQuality {
         durationSeconds: Double?,
         lineCount: Int
     ) -> Double {
-        var quality = 0.4
-        if fuzzyMatch(title, request.title) { quality += 0.35 }
-        if fuzzyMatch(artist, request.artist) { quality += 0.30 }
+        var quality = 0.35
+        let titleNorm = normalize(title)
+        let requestTitle = normalize(request.title)
+        if titleNorm.isEmpty == false, requestTitle.isEmpty == false {
+            if titleNorm == requestTitle {
+                quality += 0.45
+            } else if fuzzyMatch(title, request.title) {
+                quality += 0.28
+            }
+        }
+        if fuzzyMatch(artist, request.artist) {
+            quality += 0.28
+        }
         if let durationSeconds, request.durationSeconds > 0 {
             let delta = abs(durationSeconds - request.durationSeconds)
-            if delta <= 2 { quality += 0.15 }
-            else if delta <= 5 { quality += 0.08 }
+            if delta <= 2 { quality += 0.18 }
+            else if delta <= 5 { quality += 0.10 }
         }
         if lineCount >= 8 { quality += 0.12 }
         else if lineCount >= 3 { quality += 0.08 }
@@ -92,7 +103,7 @@ nonisolated enum LyricsQuality {
         return a == b || a.contains(b) || b.contains(a)
     }
 
-    private static func normalize(_ value: String) -> String {
+    static func normalize(_ value: String) -> String {
         value
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .trimmingCharacters(in: .whitespacesAndNewlines)

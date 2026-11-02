@@ -27,6 +27,31 @@ final class LyricsProviderGroupTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(strong, 0.55)
     }
 
+    func testQualityAcceptsExactTitleWhenArtistIsRomanizedDifferently() {
+        let request = LyricsSearchRequest(
+            title: "衛星",
+            artist: "kakizaki yuta",
+            album: "",
+            durationSeconds: 142
+        )
+        let japaneseArtist = LyricsQuality.score(
+            request: request,
+            title: "衛星",
+            artist: "柿崎ユウタ",
+            durationSeconds: 141,
+            lineCount: 20
+        )
+        let wrongFirstHit = LyricsQuality.score(
+            request: request,
+            title: "留给明天 (The Rainy Night)",
+            artist: "NCT 127",
+            durationSeconds: 199,
+            lineCount: 20
+        )
+        XCTAssertGreaterThanOrEqual(japaneseArtist, 0.55)
+        XCTAssertGreaterThan(japaneseArtist, wrongFirstHit)
+    }
+
     func testGroupPicksHighestQualityProvider() async throws {
         let low = StaticLyricsProvider(
             id: .lrclib,
