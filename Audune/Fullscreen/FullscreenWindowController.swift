@@ -123,8 +123,19 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     }
 
     func refreshNowPlayingSnapshot() {
-        model.nowPlaying = wantsNowPlayingListening ? nowPlaying.snapshot : .idle
-        refreshLyrics()
+        let latest = wantsNowPlayingListening ? nowPlaying.snapshot : .idle
+        let trackChanged = latest.trackIdentity != model.nowPlaying.trackIdentity
+        let statusChanged = latest.availability != model.nowPlaying.availability
+        let playingChanged = latest.isPlaying != model.nowPlaying.isPlaying
+        let elapsedDelta = abs(latest.elapsedSeconds - model.nowPlaying.elapsedSeconds)
+
+        if trackChanged || statusChanged || playingChanged || elapsedDelta > 0.05 || model.nowPlaying.hasTrack != latest.hasTrack {
+            model.nowPlaying = latest
+        }
+
+        if trackChanged || (model.lyricsStatus == .idle && latest.hasTrack) {
+            refreshLyrics()
+        }
     }
 
     func shutdown() {
@@ -223,12 +234,15 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     }
 
     private func publishLyrics() {
-        model.lyricsStatus = lyrics.status
-        model.lyricsLines = lyrics.lines
-        if let source = lyrics.sourceID {
-            model.lyricsSourceLabel = source.displayName
-        } else {
-            model.lyricsSourceLabel = ""
+        if model.lyricsStatus != lyrics.status {
+            model.lyricsStatus = lyrics.status
+        }
+        if model.lyricsLines != lyrics.lines {
+            model.lyricsLines = lyrics.lines
+        }
+        let label = lyrics.sourceID?.displayName ?? ""
+        if model.lyricsSourceLabel != label {
+            model.lyricsSourceLabel = label
         }
     }
 }
