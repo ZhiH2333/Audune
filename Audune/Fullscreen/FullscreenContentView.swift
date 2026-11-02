@@ -187,6 +187,7 @@ struct AppleMusicFluidBackground: View {
     var palette: FullscreenPalette
     var artwork: NSImage?
     var reduceMotion: Bool
+    @State private var animated = false
 
     var body: some View {
         GeometryReader { geo in
@@ -203,9 +204,9 @@ struct AppleMusicFluidBackground: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: w, height: h)
-                        .blur(radius: reduceMotion ? 20 : 64)
-                        .scaleEffect(reduceMotion ? 1.05 : 1.25)
-                        .opacity(0.42)
+                        .blur(radius: reduceMotion ? 20 : 52)
+                        .scaleEffect(reduceMotion ? 1.05 : 1.2)
+                        .opacity(0.38)
                 }
 
                 // Fluid animated color orbs / liquid mesh
@@ -217,66 +218,53 @@ struct AppleMusicFluidBackground: View {
                     )
                     .opacity(0.65)
                 } else {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                        let t = timeline.date.timeIntervalSinceReferenceDate
-                        let colors = palette.allColors
+                    let colors = palette.allColors
 
-                        ZStack {
-                            // Blob 1 (Top Left / Center)
-                            RadialGradient(
-                                colors: [colors[0].opacity(0.85), colors[0].opacity(0)],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: w * 0.55
+                    ZStack {
+                        // Blob 1 (Top Left / Center)
+                        Circle()
+                            .fill(colors[0].opacity(0.85))
+                            .frame(width: w * 0.78, height: w * 0.78)
+                            .offset(
+                                x: animated ? -w * 0.16 : -w * 0.04,
+                                y: animated ? -h * 0.14 : -h * 0.04
                             )
-                            .frame(width: w * 1.15, height: w * 1.15)
-                            .position(
-                                x: w * (0.32 + 0.12 * sin(t * 0.32)),
-                                y: h * (0.32 + 0.10 * cos(t * 0.40))
-                            )
-                            .blur(radius: 65)
 
-                            // Blob 2 (Top Right)
-                            RadialGradient(
-                                colors: [colors[1].opacity(0.80), colors[1].opacity(0)],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: w * 0.50
+                        // Blob 2 (Top Right)
+                        Circle()
+                            .fill(colors[1].opacity(0.80))
+                            .frame(width: w * 0.72, height: w * 0.72)
+                            .offset(
+                                x: animated ? w * 0.24 : w * 0.12,
+                                y: animated ? -h * 0.12 : -h * 0.22
                             )
-                            .frame(width: w * 1.05, height: w * 1.05)
-                            .position(
-                                x: w * (0.75 + 0.10 * cos(t * 0.28)),
-                                y: h * (0.28 + 0.12 * sin(t * 0.35))
-                            )
-                            .blur(radius: 60)
 
-                            // Blob 3 (Bottom Left)
-                            RadialGradient(
-                                colors: [colors[2].opacity(0.80), colors[2].opacity(0)],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: w * 0.60
+                        // Blob 3 (Bottom Left)
+                        Circle()
+                            .fill(colors[2].opacity(0.80))
+                            .frame(width: w * 0.84, height: w * 0.84)
+                            .offset(
+                                x: animated ? -w * 0.18 : -w * 0.08,
+                                y: animated ? h * 0.22 : h * 0.10
                             )
-                            .frame(width: w * 1.25, height: w * 1.25)
-                            .position(
-                                x: w * (0.22 + 0.14 * cos(t * 0.42)),
-                                y: h * (0.76 + 0.10 * sin(t * 0.30))
-                            )
-                            .blur(radius: 70)
 
-                            // Blob 4 (Bottom Right)
-                            RadialGradient(
-                                colors: [colors[3].opacity(0.85), colors[3].opacity(0)],
-                                center: .center,
-                                startRadius: 10,
-                                endRadius: w * 0.55
+                        // Blob 4 (Bottom Right)
+                        Circle()
+                            .fill(colors[3].opacity(0.85))
+                            .frame(width: w * 0.76, height: w * 0.76)
+                            .offset(
+                                x: animated ? w * 0.18 : w * 0.08,
+                                y: animated ? h * 0.14 : h * 0.24
                             )
-                            .frame(width: w * 1.15, height: w * 1.15)
-                            .position(
-                                x: w * (0.72 + 0.12 * sin(t * 0.38)),
-                                y: h * (0.74 + 0.12 * cos(t * 0.44))
-                            )
-                            .blur(radius: 65)
+                    }
+                    .blur(radius: 65)
+                    .drawingGroup()
+                    .onAppear {
+                        withAnimation(
+                            .easeInOut(duration: 8.5)
+                            .repeatForever(autoreverses: true)
+                        ) {
+                            animated = true
                         }
                     }
                 }
@@ -441,7 +429,18 @@ struct AppleMusicPlayerPane: View {
         pasteboard.setString(info, forType: .string)
     }
 
+    @ViewBuilder
     private var scrubberBar: some View {
+        if snapshot.isPlaying && scrubbing == false {
+            TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { _ in
+                scrubberBarContent
+            }
+        } else {
+            scrubberBarContent
+        }
+    }
+
+    private var scrubberBarContent: some View {
         let duration = max(snapshot.durationSeconds, 0)
         let displayed: Double = {
             if scrubbing { return scrubValue }
@@ -598,6 +597,7 @@ struct AppleMusicLyricsPane: View {
     @Bindable var model: FullscreenModel
     var onSeek: (Double) -> Void
     var openSettings: () -> Void
+    @State private var activeIndex: Int? = nil
 
     var body: some View {
         Group {
@@ -667,25 +667,35 @@ struct AppleMusicLyricsPane: View {
                 .padding(.horizontal, 24)
 
             case .ready:
-                if model.nowPlaying.isPlaying {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                        lyricsScroller(at: timeline.date)
-                    }
-                } else {
-                    lyricsScroller(at: .now)
-                }
+                lyricsScroller
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Lyrics"))
+        .task(id: model.nowPlaying.isPlaying) {
+            updateActiveIndex()
+            guard model.nowPlaying.isPlaying else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(90))
+                updateActiveIndex()
+            }
+        }
+        .task(id: model.nowPlaying.elapsedSeconds) {
+            updateActiveIndex()
+        }
     }
 
-    private func lyricsScroller(at date: Date) -> some View {
-        let elapsed = model.nowPlaying.displayElapsed(at: date)
-        let active = LRCParser.activeIndex(in: model.lyricsLines, at: elapsed)
+    private func updateActiveIndex() {
+        let elapsed = model.nowPlaying.displayElapsed()
+        let newActive = LRCParser.activeIndex(in: model.lyricsLines, at: elapsed)
+        if newActive != activeIndex {
+            activeIndex = newActive
+        }
+    }
 
-        return ScrollViewReader { proxy in
+    private var lyricsScroller: some View {
+        ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 26) {
                     // Top breathing space
@@ -695,7 +705,7 @@ struct AppleMusicLyricsPane: View {
                         AppleMusicLyricLineView(
                             line: line,
                             index: index,
-                            activeIndex: active,
+                            activeIndex: activeIndex,
                             onSeek: onSeek
                         )
                         .id(index)
@@ -718,7 +728,7 @@ struct AppleMusicLyricsPane: View {
                     endPoint: .bottom
                 )
             )
-            .onChange(of: active) { _, newValue in
+            .onChange(of: activeIndex) { _, newValue in
                 guard let newValue else { return }
                 withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
                     proxy.scrollTo(newValue, anchor: UnitPoint(x: 0.5, y: 0.38))
@@ -740,18 +750,6 @@ struct AppleMusicLyricLineView: View {
 
     var isActive: Bool {
         index == activeIndex
-    }
-
-    var distance: Int {
-        guard let activeIndex else { return 0 }
-        return abs(index - activeIndex)
-    }
-
-    var blurRadius: CGFloat {
-        guard activeIndex != nil else { return 0 }
-        if isActive { return 0 }
-        if distance <= 1 { return 0.5 }
-        return min(CGFloat(distance - 1) * 0.9, 3.2)
     }
 
     var textOpacity: Double {
@@ -779,7 +777,7 @@ struct AppleMusicLyricLineView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .shadow(
                     color: Color.black.opacity(isActive ? 0.35 : 0),
-                    radius: 12,
+                    radius: isActive ? 10 : 0,
                     x: 0,
                     y: 4
                 )
@@ -797,7 +795,6 @@ struct AppleMusicLyricLineView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .blur(radius: blurRadius)
         .contentShape(Rectangle())
         .onTapGesture {
             onSeek(line.timeSeconds)
