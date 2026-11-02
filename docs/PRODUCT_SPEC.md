@@ -145,7 +145,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 ### Experimental — Fullscreen Player + Network Lyrics（可选，默认关闭）
 
 - **不属于 Core MVP。** Settings → Fullscreen Player；也可从 Island Expanded 进入。
-- 全屏氛围窗：封面模糊底景、大封面、曲名/歌手、进度与 transport、低不透明度共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。
+- 全屏氛围窗：背景覆盖整个显示区域，封面柔和模糊底景、大封面、曲名/歌手、进度与 transport、克制且低不透明度的共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。优先使用静态/低频动画并限制渲染更新频率，避免全屏空闲时持续高功耗。
+- 全屏显示及原生退出转场期间临时隐藏 Island；退出动画完成后按原有设置恢复。全屏关闭必须等待 AppKit 退出转场结束再隐藏窗口。
 - **绝不** start/stop Process Tap；不用 SkyLight / CGSSpace。
 - **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration 查询。自动来源模式并行探测国际 **LRCLIB**（HTTPS）及国内 **NetEase / QQ Music / Kugou**（公开检索接口；Kugou 仅接受明文 LRC），使用首个达到匹配质量门槛的结果；Settings 也可手动固定单一来源。不上传封面或 PCM；切歌/切换来源取消 in-flight；无结果/失败显示明确空态。架构参考 [LyricsX](https://github.com/ddddxxx/LyricsX) / LyricsKit，运行时不嵌入该库。
 - 实验性；不可承诺 Mac App Store；匹配失败可接受；国内 HTTP 源通过 Info.plist ATS 例外限定域名。

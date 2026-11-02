@@ -162,6 +162,30 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testFullscreenTemporarilyHidesIslandAndStopsItsDisplayTimer() throws {
+        let screen = notchedScreen()
+        let spike = ProcessTapSpike()
+        let controller = IslandWindowController(
+            spike: spike,
+            defaults: defaults,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        XCTAssertTrue(controller.inspectWindowForTests().isVisible)
+        XCTAssertTrue(controller.inspectWindowForTests().isTimerRunning)
+
+        controller.setFullscreenPresentationActive(true)
+        XCTAssertFalse(controller.inspectWindowForTests().isVisible)
+        XCTAssertFalse(controller.inspectWindowForTests().isTimerRunning)
+
+        controller.setFullscreenPresentationActive(false)
+        XCTAssertTrue(controller.inspectWindowForTests().isVisible)
+        XCTAssertTrue(controller.inspectWindowForTests().isTimerRunning)
+    }
+
+    @MainActor
     func testDisablingAndScreenChangesRecalculateStateAndFrameCleanly() throws {
         let firstScreen = notchedScreen(id: "builtin-1", origin: .zero)
         let movedScreen = notchedScreen(id: "builtin-1", origin: CGPoint(x: 300, y: 120))

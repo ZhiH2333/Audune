@@ -13,10 +13,12 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     private let panel: NSPanel
     private var timer: Timer?
     private var didShutdown = false
+    private var isClosingForFullscreenExit = false
     private var saveTask: Task<Void, Never>?
 
     var reconcileNowPlayingListening: (() -> Void)?
     var openSettings: (() -> Void)?
+    var setIslandFullscreenPresentationActive: ((Bool) -> Void)?
 
     var wantsNowPlayingListening: Bool {
         didShutdown == false && model.isPresented && model.prefs.isEnabled
@@ -87,31 +89,34 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     func show() {
         guard didShutdown == false else { return }
         guard model.prefs.isEnabled else { return }
+        guard isClosingForFullscreenExit == false else { return }
+        setIslandFullscreenPresentationActive?(true)
         model.isPresented = true
+        model.snapshot = spike.snapshots.load()
         refreshNowPlayingSnapshot()
         reconcileNowPlayingListening?()
-        startDisplayTimer()
-        if let screen = NSScreen.main ?? NSScreen.screens.first {
-            panel.setFrame(screen.frame, display: true)
+        if panel.styleMask.contains(.fullScreen) == false,
+           let screen = NSScreen.main ?? NSScreen.screens.first {
+            panel.setFrame(screen.frame, display: false)
         }
         NSApp.activate()
         panel.makeKeyAndOrderFront(nil)
-        if panel.styleMask.contains(.fullScreen) == false {
+        if panel.styleMask.contains(.fullScreen) {
+            startDisplayTimer()
+        } else {
             panel.toggleFullScreen(nil)
         }
     }
 
     func hide() {
-        model.isPresented = false
-        model.nowPlaying = .idle
-        lyrics.reset()
-        publishLyrics()
+        guard model.isPresented, isClosingForFullscreenExit == false else { return }
+        isClosingForFullscreenExit = true
         stopDisplayTimer()
         if panel.styleMask.contains(.fullScreen) {
             panel.toggleFullScreen(nil)
+        } else {
+            finishHide()
         }
-        panel.orderOut(nil)
-        reconcileNowPlayingListening?()
     }
 
     func toggle() {
@@ -123,13 +128,15 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     }
 
     func refreshNowPlayingSnapshot() {
-        let latest = wantsNowPlayingListening ? nowPlaying.snapshot : .idle
+        let latest = isClosingForFullscreenExit
+            ? model.nowPlaying
+            : (wantsNowPlayingListening ? nowPlaying.snapshot : .idle)
         let trackChanged = latest.trackIdentity != model.nowPlaying.trackIdentity
         let statusChanged = latest.availability != model.nowPlaying.availability
         let playingChanged = latest.isPlaying != model.nowPlaying.isPlaying
         let elapsedDelta = abs(latest.elapsedSeconds - model.nowPlaying.elapsedSeconds)
 
-        if trackChanged || statusChanged || playingChanged || elapsedDelta > 0.05 || model.nowPlaying.hasTrack != latest.hasTrack {
+        if trackChanged || statusChanged || playingChanged || elapsedDelta > 0.20 || model.nowPlaying.hasTrack != latest.hasTrack {
             model.nowPlaying = latest
         }
 
@@ -141,6 +148,7 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     func shutdown() {
         guard didShutdown == false else { return }
         didShutdown = true
+        isClosingForFullscreenExit = false
         saveTask?.cancel()
         saveTask = nil
         model.isPresented = false
@@ -150,13 +158,21 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         stopDisplayTimer()
         panel.orderOut(nil)
         panel.delegate = nil
+        setIslandFullscreenPresentationActive?(false)
         reconcileNowPlayingListening?()
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
-        if model.isPresented == false {
-            panel.orderOut(nil)
+        if isClosingForFullscreenExit {
+            finishHide()
+        } else {
+            hide()
         }
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        guard model.isPresented, isClosingForFullscreenExit == false else { return }
+        startDisplayTimer()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -173,9 +189,9 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         panel.title = String(localized: "Audune Fullscreen")
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
-        panel.isOpaque = false
         panel.backgroundColor = .black
         panel.hasShadow = false
+        panel.isOpaque = true
         let root = FullscreenContentView(
             model: model,
             spike: spike,
@@ -200,7 +216,7 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
 
     private func startDisplayTimer() {
         guard timer == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.tick()
             }
@@ -232,6 +248,19 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
             sourceSelection: model.prefs.lyricsSource
         )
         publishLyrics()
+    }
+
+    private func finishHide() {
+        guard isClosingForFullscreenExit else { return }
+        isClosingForFullscreenExit = false
+        model.isPresented = false
+        model.nowPlaying = .idle
+        lyrics.reset()
+        publishLyrics()
+        stopDisplayTimer()
+        panel.orderOut(nil)
+        setIslandFullscreenPresentationActive?(false)
+        reconcileNowPlayingListening?()
     }
 
     private func publishLyrics() {

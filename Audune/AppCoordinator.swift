@@ -80,6 +80,9 @@ final class AppCoordinator {
         }
         island.reconcileNowPlayingListening = reconcile
         fullscreen.reconcileNowPlayingListening = reconcile
+        fullscreen.setIslandFullscreenPresentationActive = { [weak island] isActive in
+            island?.setFullscreenPresentationActive(isActive)
+        }
 
         startupApplicator.applyOnce(
             preferences: StartupPreferences.load(from: defaults),

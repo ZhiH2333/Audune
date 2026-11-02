@@ -102,6 +102,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
+    private var isFullscreenSuppressed = false
     /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
     private var frameAnimationGeneration = 0
     /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
@@ -181,7 +182,27 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     var isVisible: Bool {
-        panel.isVisible || (allowsOrderFront == false && model.state.isVisible && model.isSupported)
+        guard isFullscreenSuppressed == false else { return false }
+        return panel.isVisible || (allowsOrderFront == false && model.state.isVisible && model.isSupported)
+    }
+
+    func setFullscreenPresentationActive(_ isActive: Bool) {
+        guard isFullscreenSuppressed != isActive else { return }
+        if isActive {
+            isFullscreenSuppressed = true
+            timingGeneration += 1
+            collapseTask?.cancel()
+            collapseTask = nil
+            expandTask?.cancel()
+            expandTask = nil
+            stopDisplayTimer()
+            updateKeyMonitor(active: false)
+            panel.orderOut(nil)
+            return
+        }
+
+        isFullscreenSuppressed = false
+        evaluateScreensAndApply(animated: false)
     }
 
     func shutdown() {
@@ -570,6 +591,18 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.pointerDown = stateContext.pointerDown
         model.hoverArmed = stateContext.state == .compact && stateContext.expandArmedAt != nil
 
+        if isFullscreenSuppressed {
+            collapseTask?.cancel()
+            collapseTask = nil
+            expandTask?.cancel()
+            expandTask = nil
+            model.showsExpandedChrome = false
+            stopDisplayTimer()
+            updateKeyMonitor(active: false)
+            panel.orderOut(nil)
+            return
+        }
+
         scheduleCollapseTimerIfNeeded()
         scheduleExpandTimerIfNeeded()
 
@@ -673,7 +706,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func rearmHoverIfPointerStillInside() {
-        guard allowsOrderFront,
+        guard isFullscreenSuppressed == false,
+              allowsOrderFront,
               stateContext.state == .compact,
               model.prefs.hoverToExpand,
               IslandStateMachine.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation)

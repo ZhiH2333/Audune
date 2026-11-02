@@ -39,7 +39,7 @@ struct FullscreenContentView: View {
                     waveform: model.snapshot.waveform,
                     drawsBars: model.snapshot.isSilent == false
                 )
-                .opacity(0.18)
+                .opacity(0.10)
                 .allowsHitTesting(false)
                 .blendMode(.screen)
 
@@ -116,7 +116,7 @@ struct FullscreenContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
+        .background(Color.black.ignoresSafeArea())
         .focusable()
         .onExitCommand(perform: close)
         .onContinuousHover { _ in
@@ -154,9 +154,17 @@ struct FullscreenContentView: View {
         var prefs = StudioPreferences.standard
         prefs.mode = model.mode
         prefs.appearance = model.appearance
+        prefs.appearance.opacity = min(prefs.appearance.opacity, 0.35)
         prefs.spectrum = model.spectrum
+        prefs.spectrum.amplitude = min(prefs.spectrum.amplitude, 0.24)
         prefs.waveform = model.waveform
+        prefs.waveform.amplitude = min(prefs.waveform.amplitude, 0.14)
+        prefs.waveform.verticalRange = min(prefs.waveform.verticalRange, 0.35)
+        prefs.waveform.fillStrength = 0
         prefs.orbit = model.orbit
+        prefs.orbit.amplitude = min(prefs.orbit.amplitude, 0.20)
+        prefs.orbit.outerScale = min(prefs.orbit.outerScale, 0.72)
+        prefs.orbit.pulseStrength = 0
         return prefs
     }
 
@@ -181,13 +189,12 @@ struct FullscreenContentView: View {
     }
 }
 
-// MARK: - Fluid Apple Music Animated Aurora Background
+// MARK: - Full-Bleed Album Artwork Background
 
 struct AppleMusicFluidBackground: View {
     var palette: FullscreenPalette
     var artwork: NSImage?
     var reduceMotion: Bool
-    @State private var animated = false
 
     var body: some View {
         GeometryReader { geo in
@@ -195,99 +202,32 @@ struct AppleMusicFluidBackground: View {
             let h = geo.size.height
 
             ZStack {
-                // Base deep dark tone
                 Color.black
 
-                // Blurred ambient artwork texture
                 if let artwork {
                     Image(nsImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: w, height: h)
-                        .blur(radius: reduceMotion ? 20 : 52)
-                        .scaleEffect(reduceMotion ? 1.05 : 1.2)
-                        .opacity(0.38)
+                        .clipped()
+                        .blur(radius: reduceMotion ? 18 : 28)
+                        .scaleEffect(1.06)
+                        .opacity(0.28)
                 }
 
-                // Fluid animated color orbs / liquid mesh
-                if reduceMotion {
-                    LinearGradient(
-                        colors: palette.allColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .opacity(0.65)
-                } else {
-                    let colors = palette.allColors
-
-                    ZStack {
-                        // Blob 1 (Top Left / Center)
-                        Circle()
-                            .fill(colors[0].opacity(0.85))
-                            .frame(width: w * 0.78, height: w * 0.78)
-                            .offset(
-                                x: animated ? -w * 0.16 : -w * 0.04,
-                                y: animated ? -h * 0.14 : -h * 0.04
-                            )
-
-                        // Blob 2 (Top Right)
-                        Circle()
-                            .fill(colors[1].opacity(0.80))
-                            .frame(width: w * 0.72, height: w * 0.72)
-                            .offset(
-                                x: animated ? w * 0.24 : w * 0.12,
-                                y: animated ? -h * 0.12 : -h * 0.22
-                            )
-
-                        // Blob 3 (Bottom Left)
-                        Circle()
-                            .fill(colors[2].opacity(0.80))
-                            .frame(width: w * 0.84, height: w * 0.84)
-                            .offset(
-                                x: animated ? -w * 0.18 : -w * 0.08,
-                                y: animated ? h * 0.22 : h * 0.10
-                            )
-
-                        // Blob 4 (Bottom Right)
-                        Circle()
-                            .fill(colors[3].opacity(0.85))
-                            .frame(width: w * 0.76, height: w * 0.76)
-                            .offset(
-                                x: animated ? w * 0.18 : w * 0.08,
-                                y: animated ? h * 0.14 : h * 0.24
-                            )
-                    }
-                    .blur(radius: 65)
-                    .drawingGroup()
-                    .onAppear {
-                        withAnimation(
-                            .easeInOut(duration: 8.5)
-                            .repeatForever(autoreverses: true)
-                        ) {
-                            animated = true
-                        }
-                    }
-                }
-
-                // Apple Music Vignette & Dark Overlay for contrast
+                LinearGradient(
+                    colors: palette.allColors.map { $0.opacity(0.16) },
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.32),
-                        Color.black.opacity(0.48),
-                        Color.black.opacity(0.72)
+                        Color.black.opacity(0.28),
+                        Color.black.opacity(0.44),
+                        Color.black.opacity(0.66)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
-                )
-
-                RadialGradient(
-                    colors: [
-                        Color.clear,
-                        Color.black.opacity(0.42)
-                    ],
-                    center: .center,
-                    startRadius: 150,
-                    endRadius: max(w, h) * 0.8
                 )
             }
             .frame(width: w, height: h)
@@ -680,9 +620,6 @@ struct AppleMusicLyricsPane: View {
                 try? await Task.sleep(for: .milliseconds(90))
                 updateActiveIndex()
             }
-        }
-        .task(id: model.nowPlaying.elapsedSeconds) {
-            updateActiveIndex()
         }
     }
 
