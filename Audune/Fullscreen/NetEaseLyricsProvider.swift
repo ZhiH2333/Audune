@@ -6,7 +6,7 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
     var id: LyricsSourceID { .netease }
     var session: URLSession
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = LyricsHTTP.sharedSession) {
         self.session = session
     }
 
@@ -64,6 +64,9 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
                 } else {
                     best = (song, score)
                 }
+            }
+            if let best, best.1 >= 0.75 {
+                break
             }
         }
         guard let best, best.1 >= 0.55 else { return nil }

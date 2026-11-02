@@ -155,7 +155,15 @@ nonisolated struct LyricsProviderGroup: LyricsFetching {
             }
             var collected: [LyricsHit] = []
             for await hit in group {
-                if let hit { collected.append(hit) }
+                if let hit {
+                    collected.append(hit)
+                    // High-confidence short circuit: if exact/strong match is found,
+                    // cancel slower pending providers to return immediately.
+                    if hit.quality >= 0.85 {
+                        group.cancelAll()
+                        return [hit]
+                    }
+                }
             }
             return collected
         }

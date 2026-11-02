@@ -36,7 +36,7 @@ nonisolated struct LRCLIBProvider: LyricsProvider {
     var baseURL: URL
 
     init(
-        session: URLSession = .shared,
+        session: URLSession = LyricsHTTP.sharedSession,
         baseURL: URL = URL(string: "https://lrclib.net")!
     ) {
         self.session = session
@@ -164,6 +164,15 @@ nonisolated final class RecordingLyricsFetcher: LyricsFetching, @unchecked Senda
 }
 
 nonisolated enum LyricsHTTP {
+    static let sharedSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 4.0
+        config.timeoutIntervalForResource = 6.0
+        config.waitsForConnectivity = false
+        config.requestCachePolicy = .useProtocolCachePolicy
+        return URLSession(configuration: config)
+    }()
+
     static func queryString(_ items: [String: String]) -> String {
         items
             .map { key, value in

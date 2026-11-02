@@ -5,7 +5,7 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
     var id: LyricsSourceID { .qq }
     var session: URLSession
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = LyricsHTTP.sharedSession) {
         self.session = session
     }
 
@@ -74,6 +74,9 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
                 } else {
                     best = (song, score)
                 }
+            }
+            if let best, best.score >= 0.75 {
+                break
             }
         }
         guard let best, best.score >= 0.55 else { return nil }

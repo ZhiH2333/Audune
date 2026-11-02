@@ -6,7 +6,7 @@ nonisolated struct KugouLyricsProvider: LyricsProvider {
     var id: LyricsSourceID { .kugou }
     var session: URLSession
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = LyricsHTTP.sharedSession) {
         self.session = session
     }
 
