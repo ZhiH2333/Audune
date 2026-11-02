@@ -13,9 +13,10 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
     func search(request: LyricsSearchRequest) async -> LyricsHit? {
         do {
             guard let song = try await searchSong(request) else { return nil }
-            guard let raw = try await fetchLyric(songID: song.id) else { return nil }
-            let normalized = LyricsHTTP.normalizeNetEaseTimeTags(raw)
-            let lines = LRCParser.parse(normalized)
+            guard let payload = try await fetchLyric(songID: song.id) else { return nil }
+            let normalized = LyricsHTTP.normalizeNetEaseTimeTags(payload.lrc)
+            let transNormalized = payload.tlyric.map { LyricsHTTP.normalizeNetEaseTimeTags($0) }
+            let lines = LRCParser.parse(normalized, translationRaw: transNormalized)
             guard lines.isEmpty == false else { return nil }
             let quality = LyricsQuality.score(
                 request: request,
@@ -120,7 +121,7 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
         return hits
     }
 
-    private func fetchLyric(songID: Int) async throws -> String? {
+    private func fetchLyric(songID: Int) async throws -> (lrc: String, tlyric: String?)? {
         var components = URLComponents(string: "http://music.163.com/api/song/lyric")
         components?.queryItems = [
             URLQueryItem(name: "id", value: String(songID)),
@@ -133,12 +134,11 @@ nonisolated struct NetEaseLyricsProvider: LyricsProvider {
         req.setValue("http://music.163.com/", forHTTPHeaderField: "Referer")
         let (data, _) = try await session.data(for: req)
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        if let lrc = (root["lrc"] as? [String: Any])?["lyric"] as? String, lrc.isEmpty == false {
-            return lrc
-        }
-        if let klyric = (root["klyric"] as? [String: Any])?["lyric"] as? String, klyric.isEmpty == false {
-            return klyric
-        }
-        return nil
+        let lrc = (root["lrc"] as? [String: Any])?["lyric"] as? String
+        let klyric = (root["klyric"] as? [String: Any])?["lyric"] as? String
+        let tlyric = (root["tlyric"] as? [String: Any])?["lyric"] as? String
+        let primary = (lrc?.isEmpty == false ? lrc : nil) ?? (klyric?.isEmpty == false ? klyric : nil)
+        guard let primary else { return nil }
+        return (primary, tlyric?.isEmpty == false ? tlyric : nil)
     }
 }

@@ -12,8 +12,8 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
     func search(request: LyricsSearchRequest) async -> LyricsHit? {
         do {
             guard let song = try await bestSong(for: request) else { return nil }
-            guard let raw = try await fetchLyric(songmid: song.songmid) else { return nil }
-            let lines = LRCParser.parse(raw)
+            guard let payload = try await fetchLyric(songmid: song.songmid) else { return nil }
+            let lines = LRCParser.parse(payload.lrc, translationRaw: payload.trans)
             guard lines.isEmpty == false else { return nil }
             let quality = LyricsQuality.score(
                 request: request,
@@ -28,7 +28,7 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
                 matchedTitle: song.name,
                 matchedArtist: song.artist,
                 durationSeconds: song.durationSeconds,
-                rawLRC: raw,
+                rawLRC: payload.lrc,
                 lines: lines,
                 quality: quality
             )
@@ -108,7 +108,7 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
         return songs
     }
 
-    private func fetchLyric(songmid: String) async throws -> String? {
+    private func fetchLyric(songmid: String) async throws -> (lrc: String, trans: String?)? {
         var components = URLComponents(string: "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg")
         components?.queryItems = [
             URLQueryItem(name: "songmid", value: songmid),
@@ -127,7 +127,9 @@ nonisolated struct QQMusicLyricsProvider: LyricsProvider {
               let text = LyricsHTTP.decodeBase64Text(lyricB64),
               text.isEmpty == false
         else { return nil }
-        return text
+        let transB64 = root["trans"] as? String
+        let transText = transB64.flatMap { LyricsHTTP.decodeBase64Text($0) }
+        return (text, transText?.isEmpty == false ? transText : nil)
     }
 
     /// QQ often wraps payloads as `MusicJsonCallback(...)` / `callback(...)`.

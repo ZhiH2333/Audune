@@ -20,6 +20,38 @@ final class LyricsServiceTests: XCTestCase {
         XCTAssertEqual(LRCParser.activeIndex(in: lines, at: 90), 2)
     }
 
+    func testLRCParserMergesSeparateTranslation() {
+        let primary = """
+        [00:02.00]Baby that's the fun of me
+        [00:06.00]You're the only one of you
+        """
+        let translation = """
+        [00:02.05]宝贝 这就是我的魅力所在
+        [00:06.00]你也是这世间美好的唯一
+        """
+        let lines = LRCParser.parse(primary, translationRaw: translation)
+        XCTAssertEqual(lines.count, 2)
+        XCTAssertEqual(lines[0].text, "Baby that's the fun of me")
+        XCTAssertEqual(lines[0].translation, "宝贝 这就是我的魅力所在")
+        XCTAssertEqual(lines[1].text, "You're the only one of you")
+        XCTAssertEqual(lines[1].translation, "你也是这世间美好的唯一")
+    }
+
+    func testLRCParserDetectsInlineTranslations() {
+        let raw = """
+        [00:02.00]Baby that's the fun of me
+        [00:02.00]宝贝 这就是我的魅力所在
+        [00:06.00]You're the only one of you
+        [00:06.00]你也是这世间美好的唯一
+        """
+        let lines = LRCParser.parse(raw)
+        XCTAssertEqual(lines.count, 2)
+        XCTAssertEqual(lines[0].text, "Baby that's the fun of me")
+        XCTAssertEqual(lines[0].translation, "宝贝 这就是我的魅力所在")
+        XCTAssertEqual(lines[1].text, "You're the only one of you")
+        XCTAssertEqual(lines[1].translation, "你也是这世间美好的唯一")
+    }
+
     func testNetworkDisabledPerformsZeroFetches() async {
         let fetcher = RecordingLyricsFetcher()
         fetcher.result = .success("[00:01.00]Hello")
