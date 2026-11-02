@@ -709,7 +709,7 @@ struct SettingsView: View {
         Section("Lyrics") {
             Toggle("Search lyrics online", isOn: $fullscreenPrefs.lyricsNetworkEnabled)
                 .disabled(fullscreenPrefs.isEnabled == false)
-            Text("When enabled, Audune queries lrclib.net over HTTPS using song title and artist only. Artwork and audio are never uploaded. Default is off.")
+            Text("When enabled, Audune searches LRCLIB (international) plus NetEase / QQ Music / Kugou (domestic) in parallel using song title and artist only, then picks the best synced match. Artwork and audio are never uploaded. Default is off.")
                 .foregroundStyle(.secondary)
                 .font(.caption)
         }

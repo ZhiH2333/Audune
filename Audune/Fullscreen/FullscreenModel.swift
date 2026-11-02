@@ -15,4 +15,5 @@ final class FullscreenModel {
     var mode: StudioVisualMode = .orbit
     var lyricsStatus: LyricsLoadStatus = .idle
     var lyricsLines: [LyricLine] = []
+    var lyricsSourceLabel: String = ""
 }

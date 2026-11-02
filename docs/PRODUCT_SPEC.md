@@ -147,8 +147,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - **不属于 Core MVP。** Settings → Fullscreen Player；也可从 Island Expanded 进入。
 - 全屏氛围窗：封面模糊底景、大封面、曲名/歌手、进度与 transport、低不透明度共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。
 - **绝不** start/stop Process Tap；不用 SkyLight / CGSSpace。
-- **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration 向 **LRCLIB**（`https://lrclib.net`）HTTPS 查询 synced LRC；不上传封面或 PCM；切歌取消 in-flight；无结果/失败显示明确空态。
-- 实验性；不可承诺 Mac App Store；匹配失败可接受。
+- **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration，按 LyricsX 风格并行查询混合源并按质量选优：国际 **LRCLIB**（HTTPS），国内 **NetEase / QQ Music / Kugou**（公开检索接口；Kugou 仅接受明文 LRC）。不上传封面或 PCM；切歌取消 in-flight；无结果/失败显示明确空态。架构参考 [LyricsX](https://github.com/ddddxxx/LyricsX) / LyricsKit，运行时不嵌入该库。
+- 实验性；不可承诺 Mac App Store；匹配失败可接受；国内 HTTP 源通过 Info.plist ATS 例外限定域名。
 
 ### v0.4+ — 其他播放器 / 视觉扩展
 
@@ -160,7 +160,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 独立音乐播放器、播放列表或媒体库。
 - 专辑封面联动取色主题（Now Playing / Fullscreen 仅展示系统已提供的封面字节，不做取色主题）。
 - 桌面壁纸层、屏幕边缘灯效、屏幕保护程序。
-- AI 功能、账号登录、远程配置、广告、遥测（Fullscreen 联网歌词仅在用户显式开启时访问 lrclib.net）。
+- AI 功能、账号登录、远程配置、广告、遥测（Fullscreen 联网歌词仅在用户显式开启时访问 LRCLIB / NetEase / QQ / Kugou）。
 - 音频录制、直播、视频导出、听歌历史统计。
 - 插件市场、脚本执行系统、复杂可视化编辑器。
 - 要求用户安装虚拟音频驱动或第三方音频路由工具。

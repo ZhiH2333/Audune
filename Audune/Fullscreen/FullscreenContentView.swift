@@ -315,12 +315,19 @@ struct FullscreenLyricsPane: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.55))
             case .ready:
-                if model.nowPlaying.isPlaying {
-                    TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
-                        lyricsScroller(at: timeline.date)
+                VStack(alignment: .leading, spacing: 8) {
+                    if model.lyricsSourceLabel.isEmpty == false {
+                        Text(String(format: String(localized: "Source: %@"), model.lyricsSourceLabel))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.4))
                     }
-                } else {
-                    lyricsScroller(at: .now)
+                    if model.nowPlaying.isPlaying {
+                        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+                            lyricsScroller(at: timeline.date)
+                        }
+                    } else {
+                        lyricsScroller(at: .now)
+                    }
                 }
             }
         }

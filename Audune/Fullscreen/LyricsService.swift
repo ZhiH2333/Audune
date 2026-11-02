@@ -1,20 +1,35 @@
 import Foundation
 
-/// Loads synced lyrics when the user enables network search. Never uploads artwork or PCM.
+/// Loads synced lyrics when the user enables network search.
+/// Fan-out across LRCLIB + domestic providers (NetEase / QQ / Kugou), pick by quality.
+/// Never uploads artwork or PCM.
 @MainActor
 @Observable
 final class LyricsService {
     private(set) var status: LyricsLoadStatus = .idle
     private(set) var lines: [LyricLine] = []
     private(set) var activeTrackKey: String?
+    private(set) var sourceID: LyricsSourceID?
+    private(set) var matchedTitle: String = ""
+    private(set) var matchedArtist: String = ""
 
     private let fetcher: any LyricsFetching
-    private var cache: [String: [LyricLine]] = [:]
+    private let group: LyricsProviderGroup?
+    private var cache: [String: CachedHit] = [:]
     private var inFlight: Task<Void, Never>?
     private let maxCacheEntries = 32
 
-    init(fetcher: any LyricsFetching = LRCLIBClient()) {
+    private struct CachedHit {
+        var lines: [LyricLine]
+        var sourceID: LyricsSourceID?
+        var matchedTitle: String
+        var matchedArtist: String
+        var rawLRC: String
+    }
+
+    init(fetcher: any LyricsFetching = LyricsProviderGroup()) {
         self.fetcher = fetcher
+        self.group = fetcher as? LyricsProviderGroup
     }
 
     func reset() {
@@ -23,6 +38,9 @@ final class LyricsService {
         status = .idle
         lines = []
         activeTrackKey = nil
+        sourceID = nil
+        matchedTitle = ""
+        matchedArtist = ""
     }
 
     /// Update lyrics for the current Now Playing snapshot. No network when `networkEnabled` is false.
@@ -33,6 +51,9 @@ final class LyricsService {
             status = .disabled
             lines = []
             activeTrackKey = nil
+            sourceID = nil
+            matchedTitle = ""
+            matchedArtist = ""
             return
         }
         guard snapshot.hasTrack else {
@@ -41,6 +62,9 @@ final class LyricsService {
             status = .empty
             lines = []
             activeTrackKey = nil
+            sourceID = nil
+            matchedTitle = ""
+            matchedArtist = ""
             return
         }
 
@@ -57,32 +81,57 @@ final class LyricsService {
         activeTrackKey = key
 
         if let cached = cache[key] {
-            lines = cached
-            status = cached.isEmpty ? .empty : .ready
+            lines = cached.lines
+            sourceID = cached.sourceID
+            matchedTitle = cached.matchedTitle
+            matchedArtist = cached.matchedArtist
+            status = cached.lines.isEmpty ? .empty : .ready
             return
         }
 
         inFlight?.cancel()
         status = .loading
         lines = []
+        sourceID = nil
+        matchedTitle = ""
+        matchedArtist = ""
         let trackKey = key
         inFlight = Task { [weak self] in
             guard let self else { return }
             do {
-                let raw = try await fetcher.fetchSyncedLyrics(for: query)
-                guard Task.isCancelled == false else { return }
-                let parsed = LRCParser.parse(raw)
-                await MainActor.run {
-                    guard self.activeTrackKey == trackKey else { return }
-                    self.storeCache(parsed, for: trackKey)
-                    self.lines = parsed
-                    self.status = parsed.isEmpty ? .empty : .ready
+                if let group {
+                    let hit = try await group.searchBest(for: LyricsSearchRequest(query))
+                    guard Task.isCancelled == false else { return }
+                    await MainActor.run {
+                        guard self.activeTrackKey == trackKey else { return }
+                        self.apply(hit: hit, cacheKey: trackKey)
+                    }
+                } else {
+                    let raw = try await fetcher.fetchSyncedLyrics(for: query)
+                    guard Task.isCancelled == false else { return }
+                    let parsed = LRCParser.parse(raw)
+                    await MainActor.run {
+                        guard self.activeTrackKey == trackKey else { return }
+                        self.apply(
+                            hit: LyricsHit(
+                                source: .lrclib,
+                                matchedTitle: query.title,
+                                matchedArtist: query.artist,
+                                durationSeconds: query.durationSeconds,
+                                rawLRC: raw,
+                                lines: parsed,
+                                quality: 1
+                            ),
+                            cacheKey: trackKey
+                        )
+                    }
                 }
             } catch let error as LyricsFetchError {
                 guard Task.isCancelled == false else { return }
                 await MainActor.run {
                     guard self.activeTrackKey == trackKey else { return }
                     self.lines = []
+                    self.sourceID = nil
                     switch error {
                     case .disabled:
                         self.status = .disabled
@@ -99,18 +148,37 @@ final class LyricsService {
                 await MainActor.run {
                     guard self.activeTrackKey == trackKey else { return }
                     self.lines = []
+                    self.sourceID = nil
                     self.status = .failed(String(localized: "Lyrics network error"))
                 }
             }
         }
     }
 
-    private func storeCache(_ lines: [LyricLine], for key: String) {
+    private func apply(hit: LyricsHit, cacheKey: String) {
+        storeCache(
+            CachedHit(
+                lines: hit.lines,
+                sourceID: hit.source,
+                matchedTitle: hit.matchedTitle,
+                matchedArtist: hit.matchedArtist,
+                rawLRC: hit.rawLRC
+            ),
+            for: cacheKey
+        )
+        lines = hit.lines
+        sourceID = hit.source
+        matchedTitle = hit.matchedTitle
+        matchedArtist = hit.matchedArtist
+        status = hit.lines.isEmpty ? .empty : .ready
+    }
+
+    private func storeCache(_ hit: CachedHit, for key: String) {
         if cache.count >= maxCacheEntries, cache[key] == nil {
             if let first = cache.keys.first {
                 cache.removeValue(forKey: first)
             }
         }
-        cache[key] = lines
+        cache[key] = hit
     }
 }

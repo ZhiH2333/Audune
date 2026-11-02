@@ -303,7 +303,7 @@ Unit coverage: Fullscreen preferences, LRC parse, lyrics network gate (zero requ
 
 - [ ] `NOT TESTED` — Settings → Fullscreen Player enables the surface; Search lyrics online defaults off; with lyrics off, opening Fullscreen never contacts the network.
 - [ ] `NOT TESTED` — Opening Fullscreen (Settings or Island Expanded) shows blurred artwork backdrop, title/artist, transport; Esc / close exits; Process Tap is unaffected.
-- [ ] `NOT TESTED` — Enabling Search lyrics online with a known track loads synced lines from lrclib.net and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
+- [ ] `NOT TESTED` — Enabling Search lyrics online with a known track loads synced lines from a hybrid source (LRCLIB and/or NetEase/QQ/Kugou), shows the winning Source label, and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
 - [ ] `NOT TESTED` — Changing tracks cancels the previous lyrics request; Reduce Motion removes Fullscreen motion while keeping controls usable.
 - [ ] `NOT TESTED` — Chinese and English Fullscreen / lyrics Settings copy fits the Settings window.
 

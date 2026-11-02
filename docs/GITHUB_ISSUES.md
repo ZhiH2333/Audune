@@ -592,7 +592,7 @@ Optional fullscreen ambient player sharing Island Now Playing metadata and the s
 - [x] Document Experimental Fullscreen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
 - [x] Hoist `NowPlayingService` so Island and Fullscreen share one listener; reconcile when either surface wants metadata.
 - [x] Fullscreen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
-- [x] `LyricsService` + LRCLIB HTTPS client; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
+- [x] `LyricsService` + hybrid providers (LRCLIB + NetEase/QQ/Kugou) with LyricsX-style quality ranking; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
 
 ### Acceptance criteria
 - [x] Default: Fullscreen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*

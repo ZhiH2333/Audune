@@ -225,6 +225,11 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     private func publishLyrics() {
         model.lyricsStatus = lyrics.status
         model.lyricsLines = lyrics.lines
+        if let source = lyrics.sourceID {
+            model.lyricsSourceLabel = source.displayName
+        } else {
+            model.lyricsSourceLabel = ""
+        }
     }
 }
 #endif
