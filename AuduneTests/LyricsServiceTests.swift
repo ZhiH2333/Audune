@@ -23,6 +23,8 @@ final class LyricsServiceTests: XCTestCase {
     }
 
     func testLyricsManualBrowsingPausesAndCanResumePlaybackFollowing() {
+        XCTAssertEqual(LyricsFollowState.manualScrollResumeDelay, .seconds(3))
+
         var state = LyricsFollowState()
         XCTAssertTrue(state.followsPlayback)
 

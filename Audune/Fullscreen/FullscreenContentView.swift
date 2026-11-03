@@ -540,6 +540,7 @@ struct AppleMusicLyricsPane: View {
     var openSettings: () -> Void
     @State private var activeIndex: Int? = nil
     @State private var followState = LyricsFollowState()
+    @State private var followResumeTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -625,7 +626,14 @@ struct AppleMusicLyricsPane: View {
             }
         }
         .onChange(of: model.nowPlaying.trackIdentity) { _, _ in
+            followResumeTask?.cancel()
+            followResumeTask = nil
             activeIndex = nil
+            followState.resumeFollowing()
+        }
+        .onDisappear {
+            followResumeTask?.cancel()
+            followResumeTask = nil
             followState.resumeFollowing()
         }
     }
@@ -654,6 +662,8 @@ struct AppleMusicLyricsPane: View {
                                     canSeek: model.nowPlaying.seekSupported,
                                     onSeek: { seconds in
                                         guard model.nowPlaying.seekSupported else { return }
+                                        followResumeTask?.cancel()
+                                        followResumeTask = nil
                                         followState.resumeFollowing()
                                         activeIndex = index
                                         onSeek(seconds)
@@ -682,8 +692,25 @@ struct AppleMusicLyricsPane: View {
                         )
                     )
                     .onScrollPhaseChange { _, phase in
-                        if phase == .interacting {
+                        switch phase {
+                        case .tracking, .interacting:
+                            followResumeTask?.cancel()
+                            followResumeTask = nil
                             followState.beginManualBrowsing()
+                        case .idle where followState.followsPlayback == false:
+                            followResumeTask?.cancel()
+                            followResumeTask = Task {
+                                do {
+                                    try await Task.sleep(for: LyricsFollowState.manualScrollResumeDelay)
+                                } catch {
+                                    return
+                                }
+                                guard Task.isCancelled == false else { return }
+                                followState.resumeFollowing()
+                                followResumeTask = nil
+                            }
+                        default:
+                            break
                         }
                     }
                     .onAppear {
@@ -710,33 +737,8 @@ struct AppleMusicLyricsPane: View {
                             scrollToActiveLine(activeIndex, using: proxy, animated: true)
                         }
                     }
-
-                    if followState.followsPlayback == false {
-                        Button {
-                            followState.resumeFollowing()
-                        } label: {
-                            Label(
-                                String(localized: "Follow current behavior"),
-                                systemImage: "arrow.down.to.line"
-                            )
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 9)
-                            .background(Capsule().fill(Color.white.opacity(0.16)))
-                            .overlay {
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 12)
-                        .padding(.trailing, 24)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
                 }
             }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: followState.followsPlayback)
         }
     }
 
@@ -795,8 +797,8 @@ struct AppleMusicLyricLineView: View {
             // Main lyric line
             Text(line.text)
                 .font(.system(
-                    size: 34,
-                    weight: isActive ? .semibold : .medium,
+                    size: isActive ? 44 : 30,
+                    weight: isActive ? .heavy : .bold,
                     design: .rounded
                 ))
                 .foregroundStyle(Color.white.opacity(textOpacity))
@@ -813,8 +815,8 @@ struct AppleMusicLyricLineView: View {
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
                     .font(.system(
-                        size: 16,
-                        weight: isActive ? .medium : .regular,
+                        size: isActive ? 21 : 16,
+                        weight: isActive ? .bold : .semibold,
                         design: .rounded
                     ))
                     .foregroundStyle(Color.white.opacity(translationOpacity))

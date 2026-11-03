@@ -28,6 +28,8 @@ nonisolated enum LyricsLoadStatus: Equatable, Sendable {
 }
 
 nonisolated struct LyricsFollowState: Equatable, Sendable {
+    static let manualScrollResumeDelay = Duration.seconds(3)
+
     private(set) var followsPlayback = true
 
     mutating func beginManualBrowsing() {
