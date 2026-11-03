@@ -8,7 +8,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case visualization
     case studio
     case island
-    case fullscreen
 
     var id: String { rawValue }
 
@@ -19,7 +18,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .visualization: return String(localized: "Visualization")
         case .studio: return String(localized: "Studio")
         case .island: return String(localized: "Notch Island")
-        case .fullscreen: return String(localized: "Zen")
         }
     }
 
@@ -30,7 +28,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .visualization: return "waveform.path.ecg"
         case .studio: return "macwindow"
         case .island: return "rectangle.topthird.inset.filled"
-        case .fullscreen: return "macwindow"
         }
     }
 }
@@ -38,12 +35,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     let studio: StudioWindowController
     let island: IslandWindowController
-    let fullscreen: FullscreenWindowController?
     @Bindable var model: StudioModel
     @Bindable var islandModel: IslandModel
     @State private var presetLibrary = VisualPresetCatalog.restoring()
     @State private var startupPrefs = StartupPreferences.load()
-    @State private var fullscreenPrefs = FullscreenPreferences.load()
     @State private var launchAtLogin = SystemLaunchAtLoginService()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var layoutPreviewEnergy = LayoutPreviewEnergyState()
@@ -51,12 +46,10 @@ struct SettingsView: View {
 
     init(
         studio: StudioWindowController,
-        island: IslandWindowController,
-        fullscreen: FullscreenWindowController? = nil
+        island: IslandWindowController
     ) {
         self.studio = studio
         self.island = island
-        self.fullscreen = fullscreen
         self.model = studio.model
         self.islandModel = island.model
     }
@@ -86,7 +79,6 @@ struct SettingsView: View {
                     case .visualization: visualizationPane
                     case .studio: studioPane
                     case .island: islandPane
-                    case .fullscreen: fullscreenPane
                     }
                 }
                 .formStyle(.grouped)
@@ -102,7 +94,6 @@ struct SettingsView: View {
         .onChange(of: model.prefs) { _, newValue in
             studio.preferencesDidChange()
             island.updateSharedVisuals(newValue)
-            fullscreen?.updateSharedVisuals(newValue)
         }
         .onChange(of: islandModel.prefs) { _, _ in
             island.preferencesDidChange()
@@ -122,19 +113,9 @@ struct SettingsView: View {
                 reloadPresetLibrary()
                 launchAtLogin.refresh()
             }
-            if newCategory == .fullscreen {
-                fullscreenPrefs = fullscreen?.model.prefs ?? FullscreenPreferences.load()
-            }
         }
         .onChange(of: startupPrefs) { _, newValue in
             newValue.save()
-        }
-        .onChange(of: fullscreenPrefs) { _, newValue in
-            newValue.save()
-            if let fullscreen {
-                fullscreen.model.prefs = newValue
-                fullscreen.preferencesDidChange()
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             guard model.settingsCategory == .startup else { return }
@@ -686,48 +667,6 @@ struct SettingsView: View {
         Section {
             Button("Reset Notch Island Settings") {
                 island.resetPreferences()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var fullscreenPane: some View {
-        Section {
-            Text("Experimental Zen player window. Uses the same Now Playing metadata as Notch Island and never starts or stops system audio capture.")
-                .foregroundStyle(.secondary)
-                .font(.callout)
-        }
-        Section("Zen Mode") {
-            Toggle("Enable Zen", isOn: $fullscreenPrefs.isEnabled)
-            if fullscreenPrefs.isEnabled {
-                Button("Open Zen") {
-                    fullscreen?.show()
-                }
-                .disabled(fullscreen == nil)
-            }
-        }
-        Section("Lyrics") {
-            Toggle("Search lyrics online", isOn: $fullscreenPrefs.lyricsNetworkEnabled)
-                .disabled(fullscreenPrefs.isEnabled == false)
-            Picker("Lyrics source", selection: $fullscreenPrefs.lyricsSource) {
-                ForEach(LyricsSourceSelection.allCases) { selection in
-                    Text(selection.title).tag(selection)
-                }
-            }
-            .disabled(fullscreenPrefs.isEnabled == false || fullscreenPrefs.lyricsNetworkEnabled == false)
-            Text("Automatic checks enabled sources in parallel and uses the first good result. Choose a source to query it alone. Searches use song metadata only; artwork and audio are never uploaded. Default is off.")
-                .foregroundStyle(.secondary)
-                .font(.caption)
-        }
-        Section {
-            Button("Reset Zen Settings") {
-                FullscreenPreferences.reset()
-                fullscreenPrefs = .standard
-                if let fullscreen {
-                    fullscreen.model.prefs = .standard
-                    fullscreen.preferencesDidChange()
-                    fullscreen.hide()
-                }
             }
         }
     }

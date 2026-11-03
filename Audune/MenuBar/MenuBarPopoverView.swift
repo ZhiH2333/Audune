@@ -13,7 +13,6 @@ final class MenuBarModel {
     var studioVisible = false
     var islandEnabled = true
     var islandSupported = false
-    var fullscreenEnabled = false
 }
 
 struct MenuBarPopoverView: View {
@@ -23,7 +22,6 @@ struct MenuBarPopoverView: View {
     var toggleStudio: () -> Void
     var toggleIsland: () -> Void = {}
     var openSettings: () -> Void
-    var openFullscreen: () -> Void = {}
     var openAbout: () -> Void = {}
     var openDebug: (() -> Void)?
     var quit: () -> Void
@@ -53,8 +51,6 @@ struct MenuBarPopoverView: View {
             PopoverButton(title: studioTitle, symbol: "macwindow", leading: true, action: toggleStudio)
             PopoverButton(title: islandTitle, symbol: "rectangle.topthird.inset.filled", leading: true, action: toggleIsland)
                 .disabled(model.islandSupported == false)
-            PopoverButton(title: "Zen", symbol: "macwindow", leading: true, action: openFullscreen)
-                .disabled(model.fullscreenEnabled == false)
             PopoverButton(title: "Settings\u{2026}", symbol: "gearshape", leading: true, action: openSettings)
                 .keyboardShortcut(",")
             PopoverButton(title: "About Audune", symbol: "info.circle", leading: true, action: openAbout)

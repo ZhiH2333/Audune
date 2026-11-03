@@ -576,39 +576,9 @@ Optional system Now Playing on Notch Island Expanded/Pinned: artwork, title, art
 AUD-17 (Island collapsed/expanded).
 
 ### Out of scope
-Compact mini Now Playing, lyrics (see AUD-NP-02), art color themes, AppleScript Automation, Accessibility, media-key hijack, Studio/Menu Bar Now Playing, SkyLight/CGS.
+Compact mini Now Playing, art color themes, AppleScript Automation, Accessibility, media-key hijack, Studio/Menu Bar Now Playing, SkyLight/CGS.
 
 ---
-
-## AUD-NP-02 — [EXPERIMENTAL] Zen Player + Network Lyrics
-
-**Labels:** `P2`, `experimental`, `fullscreen`
-**Milestone:** Experimental — Zen Player
-
-### Goal
-Optional Zen player window sharing Island Now Playing metadata and the single `AudioSnapshot`: blurred artwork backdrop, transport, low-opacity visualization. Opens as a normal centered window by default. Optional synced lyrics via LRCLIB when the user enables network search (default off). Does not count toward Core MVP.
-
-### Tasks
-- [x] Document Experimental Zen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
-- [x] Hoist `NowPlayingService` so Island and Zen share one listener; reconcile when either surface wants metadata.
-- [x] Zen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
-- [x] `LyricsService` + hybrid providers (LRCLIB + NetEase/QQ/Kugou) with LyricsX-style quality ranking; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
-- [x] Automatic lyrics source selection races enabled sources and accepts the first good result; Settings can pin one provider; source preference is persisted and switching it cancels/reloads the current track. *(unit: provider group + preference tests)*
-- [x] Reduce Zen render cost and restrain visualization/background motion; keep the default presentation a normal window, while hiding/restoring Island only around a manually requested native Fullscreen transition. *(unit: Island suppression lifecycle; GUI/performance: manual test rows)*
-- [x] Prevent hosting-view constraint feedback, set a minimum window size that fits both content columns, and refresh lyrics reliably on the first Now Playing snapshot. *(unit: Zen window + initial lyrics tests)*
-
-### Acceptance criteria
-- [x] Default: Zen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*
-- [ ] Opening Zen with a playing track shows artwork/title/artist/transport in a normal window; Esc / close exits; Island Compact unchanged. *(manual — see MANUAL_TESTS)*
-- [x] Enabling lyrics fetches only title/artist/(album)/duration from lrclib.net; no artwork/PCM upload; empty/error states are explicit. *(client + service unit-covered; GUI manual)*
-- [x] Capture pipeline unaffected by Zen or lyrics toggles. *(Zen never touches ProcessTapSpike)*
-- [ ] Manual GUI rows recorded honestly for Zen window and lyrics; no App Store claim. *(rows remain NOT TESTED)*
-
-### Dependencies
-AUD-NP-01 (shared Now Playing).
-
-### Out of scope
-Album-art color themes, local `.lrc` file import (v1), SkyLight/CGS, Process Tap coupling, telemetry, Mac App Store entitlement.
 
 ---
 

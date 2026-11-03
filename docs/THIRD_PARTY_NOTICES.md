@@ -1,12 +1,5 @@
 # Third-party notices
 
-## LyricsX / LyricsKit (research reference for Experimental lyrics)
-
-- Projects: [ddddxxx/LyricsX](https://github.com/ddddxxx/LyricsX), [ddddxxx/LyricsKit](https://github.com/ddddxxx/LyricsKit)
-- License: Mozilla Public License 2.0
-- Purpose in Audune: **research / architecture reference only** (search-request → multi-provider → quality ranking). Audune does **not** link LyricsKit as a Swift package; domestic/international providers are reimplemented with `async`/`URLSession`.
-- Network lyrics remain user-gated (`fullscreen.lyricsNetworkEnabled`, default off) and send title/artist/(album)/duration only.
-
 ## mediaremote-adapter (Experimental Island Now Playing)
 
 - Package: [ejbills/mediaremote-adapter](https://github.com/ejbills/mediaremote-adapter) (Swift Package Manager fork)

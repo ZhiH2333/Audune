@@ -297,21 +297,6 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 - [ ] `NOT TESTED` — Empty (nothing reporting Now Playing) and unavailable (adapter failure) states show clear copy and do not crash or misplace the island.
 - [ ] `NOT TESTED` — Sleep/wake and display reconfiguration leave Now Playing usable again or show unavailable cleanly without a second Process Tap.
 
-### Experimental Zen Player + Network Lyrics (AUD-NP-02)
-
-Unit coverage: Fullscreen preferences, LRC parse, lyrics follow state, paused-seek preservation, lyrics network gate (zero requests when off), Now Playing listening reconcile. GUI rows stay `NOT TESTED` until a real macOS session.
-
-- [ ] `NOT TESTED` — Settings → Zen enables the surface; Search lyrics online defaults off; with lyrics off, opening Zen never contacts the network.
-- [ ] `NOT TESTED` — Opening Zen (Settings, menu bar, or Island Expanded) opens a centered resizable window rather than native Fullscreen and shows blurred artwork, title/artist, and transport; Esc / close exits; Process Tap is unaffected.
-- [ ] `NOT TESTED` — Zen enforces a 1040 × 700 pt minimum content size; resize above the minimum at native and scaled resolutions and confirm both artwork/player and lyrics columns adapt without constraint warnings; native Fullscreen is entered only after using the macOS window control.
-- [ ] `NOT TESTED` — Island remains visible while Zen is a normal window; if native Fullscreen is manually entered, Island hides until the native exit transition completes.
-- [ ] `NOT TESTED` — With a track already playing, the first Zen open loads synced lyrics without reopening; Search lyrics online with a known track loads lines from a hybrid source (LRCLIB and/or NetEase/QQ/Kugou), immediately centers the current line, shows the winning Source label, and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
-- [ ] `NOT TESTED` — Changing tracks cancels the previous lyrics request and immediately recenters the new track; current lyric stays prominent while surrounding lines remain readable, long lines wrap, and the top/bottom fade stays gradual.
-- [ ] `NOT TESTED` — Scrolling lyrics manually suspends auto-follow without changing playback; playback highlighting continues at the actual line, native scroll momentum remains intact, and 3 seconds after scrolling stops the view smoothly returns to the current playing line without seeking.
-- [ ] `NOT TESTED` — Clicking a timed lyric seeks playback to that line and restores auto-follow; Reduce Motion removes lyric scrolling and emphasis animations while keeping controls usable.
-- [ ] `NOT TESTED` — Automatic source selection returns the first acceptable provider on the current network; manually selecting LRCLIB / NetEase / QQ Music / Kugou queries only that provider and persists across relaunch.
-- [ ] `NOT TESTED` — Chinese and English Zen / lyrics Settings copy fits the Settings window.
-
 ## G. Desktop Magnet (only after the Magnet milestone)
 
 - [ ] `NOT TESTED` — Magnet can be dragged and resized.

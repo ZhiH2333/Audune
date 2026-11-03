@@ -81,10 +81,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let haptics: any IslandHapticPerforming
     private var hapticToken = 0
     let model = IslandModel()
-    /// Shared with Fullscreen when injected from `AppCoordinator`; tests may use a private instance.
+    /// Tests may inject a private instance.
     let nowPlaying: NowPlayingService
-    /// When set, listening is reconciled by the owner (Island ∪ Fullscreen). Otherwise Island owns start/stop.
-    var reconcileNowPlayingListening: (() -> Void)?
     private let panel: NSPanel
     private var stateContext = IslandStateContext(state: .compact)
     private var timer: Timer?
@@ -102,7 +100,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
-    private var isFullscreenSuppressed = false
     /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
     private var frameAnimationGeneration = 0
     /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
@@ -110,7 +107,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     var openStudio: (() -> Void)?
     var openSettings: (() -> Void)?
-    var openFullscreen: (() -> Void)?
 
     /// True when this surface alone needs the MediaRemote listener.
     var wantsNowPlayingListening: Bool {
@@ -182,27 +178,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     var isVisible: Bool {
-        guard isFullscreenSuppressed == false else { return false }
         return panel.isVisible || (allowsOrderFront == false && model.state.isVisible && model.isSupported)
-    }
-
-    func setFullscreenPresentationActive(_ isActive: Bool) {
-        guard isFullscreenSuppressed != isActive else { return }
-        if isActive {
-            isFullscreenSuppressed = true
-            timingGeneration += 1
-            collapseTask?.cancel()
-            collapseTask = nil
-            expandTask?.cancel()
-            expandTask = nil
-            stopDisplayTimer()
-            updateKeyMonitor(active: false)
-            panel.orderOut(nil)
-            return
-        }
-
-        isFullscreenSuppressed = false
-        evaluateScreensAndApply(animated: false)
     }
 
     func shutdown() {
@@ -217,11 +193,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         saveTask?.cancel()
         saveTask = nil
         model.nowPlaying = .idle
-        if reconcileNowPlayingListening != nil {
-            reconcileNowPlayingListening?()
-        } else {
-            nowPlaying.stop()
-        }
+        nowPlaying.stop()
         stopDisplayTimer()
         updateKeyMonitor(active: false)
         if let screenObserver {
@@ -394,11 +366,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func syncNowPlayingListening() {
-        if let reconcileNowPlayingListening {
-            reconcileNowPlayingListening()
-        } else {
-            nowPlaying.syncDesiredListening(shouldListen: wantsNowPlayingListening)
-        }
+        nowPlaying.syncDesiredListening(shouldListen: wantsNowPlayingListening)
         refreshNowPlayingSnapshot()
     }
 
@@ -502,9 +470,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             openSettings: { [weak self] in
                 self?.openSettings?()
             },
-            openFullscreen: { [weak self] in
-                self?.openFullscreen?()
-            },
             toggleNowPlaying: { [weak self] in
                 self?.nowPlaying.togglePlayPause()
             },
@@ -590,18 +555,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown
         model.hoverArmed = stateContext.state == .compact && stateContext.expandArmedAt != nil
-
-        if isFullscreenSuppressed {
-            collapseTask?.cancel()
-            collapseTask = nil
-            expandTask?.cancel()
-            expandTask = nil
-            model.showsExpandedChrome = false
-            stopDisplayTimer()
-            updateKeyMonitor(active: false)
-            panel.orderOut(nil)
-            return
-        }
 
         scheduleCollapseTimerIfNeeded()
         scheduleExpandTimerIfNeeded()
@@ -706,8 +659,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func rearmHoverIfPointerStillInside() {
-        guard isFullscreenSuppressed == false,
-              allowsOrderFront,
+        guard allowsOrderFront,
               stateContext.state == .compact,
               model.prefs.hoverToExpand,
               IslandStateMachine.pointerIsInside(windowFrame: panel.frame, cursor: NSEvent.mouseLocation)

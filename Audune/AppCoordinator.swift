@@ -7,10 +7,8 @@ import AppKit
 @MainActor
 final class AppCoordinator {
     private let spike = ProcessTapSpike()
-    private let nowPlaying: NowPlayingService
     private let studio: StudioWindowController
     private let island: IslandWindowController
-    private let fullscreen: FullscreenWindowController
     private let settings: SettingsWindowController
     private let menuBar: MenuBarController
     private let startupApplicator = StartupApplicator()
@@ -20,39 +18,21 @@ final class AppCoordinator {
 
     init() {
         let defaults = UserDefaults.standard
-        let nowPlaying = NowPlayingService()
         let studio = StudioWindowController(spike: spike, defaults: defaults)
         let island = IslandWindowController(
             spike: spike,
             defaults: defaults,
-            nowPlaying: nowPlaying,
             activateOnInit: false
-        )
-        let fullscreen = FullscreenWindowController(
-            spike: spike,
-            defaults: defaults,
-            nowPlaying: nowPlaying
         )
         let settings = SettingsWindowController(
             studio: studio,
-            island: island,
-            fullscreen: fullscreen
+            island: island
         )
         studio.openSettings = { settings.show() }
         island.openStudio = { studio.show() }
         island.openSettings = { settings.show(category: .island) }
-        island.openFullscreen = {
-            if fullscreen.model.prefs.isEnabled {
-                fullscreen.show()
-            } else {
-                settings.show(category: .fullscreen)
-            }
-        }
-        fullscreen.openSettings = { settings.show(category: .fullscreen) }
-        self.nowPlaying = nowPlaying
         self.studio = studio
         self.island = island
-        self.fullscreen = fullscreen
         self.settings = settings
 
         #if DEBUG
@@ -68,21 +48,10 @@ final class AppCoordinator {
             toggleStudio: { studio.toggle() },
             toggleIsland: { island.toggleEnabled() },
             openSettings: { settings.show() },
-            openFullscreen: { fullscreen.toggle() },
             studioVisible: { studio.isVisible },
             islandEnabled: { island.isEffectivelyEnabled },
-            islandSupported: { island.model.isSupported },
-            fullscreenEnabled: { fullscreen.model.prefs.isEnabled }
+            islandSupported: { island.model.isSupported }
         )
-
-        let reconcile: () -> Void = { [weak self] in
-            self?.reconcileNowPlayingListening()
-        }
-        island.reconcileNowPlayingListening = reconcile
-        fullscreen.reconcileNowPlayingListening = reconcile
-        fullscreen.setIslandFullscreenPresentationActive = { [weak island] isActive in
-            island?.setFullscreenPresentationActive(isActive)
-        }
 
         startupApplicator.applyOnce(
             preferences: StartupPreferences.load(from: defaults),
@@ -94,20 +63,11 @@ final class AppCoordinator {
         )
     }
 
-    func reconcileNowPlayingListening() {
-        let shouldListen = island.wantsNowPlayingListening || fullscreen.wantsNowPlayingListening
-        nowPlaying.syncDesiredListening(shouldListen: shouldListen)
-        island.refreshNowPlayingSnapshot()
-        fullscreen.refreshNowPlayingSnapshot()
-    }
-
     func shutdown() {
         spike.stop()
         menuBar.shutdown()
         studio.shutdown()
         island.shutdown()
-        fullscreen.shutdown()
-        nowPlaying.stop()
         settings.shutdown()
         #if DEBUG
         debugWindow.shutdown()

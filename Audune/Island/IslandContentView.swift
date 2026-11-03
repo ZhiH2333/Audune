@@ -158,7 +158,6 @@ struct IslandContentView: View {
     var collapse: () -> Void
     var openStudio: () -> Void
     var openSettings: () -> Void
-    var openFullscreen: () -> Void = {}
     var toggleNowPlaying: () -> Void = {}
     var previousTrack: () -> Void = {}
     var nextTrack: () -> Void = {}
@@ -302,12 +301,6 @@ struct IslandContentView: View {
                 label: String(localized: "Open Studio"),
                 selected: false,
                 action: openStudio
-            )
-            IslandIconButton(
-                symbol: "macwindow",
-                label: String(localized: "Open Zen"),
-                selected: false,
-                action: openFullscreen
             )
             IslandIconButton(
                 symbol: "gearshape",

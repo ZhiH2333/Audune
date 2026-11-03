@@ -9,11 +9,9 @@ final class MenuBarController: NSObject {
     private let toggleStudio: () -> Void
     private let toggleIsland: () -> Void
     private let openSettings: () -> Void
-    private let openFullscreen: () -> Void
     private let studioVisible: () -> Bool
     private let islandEnabled: () -> Bool
     private let islandSupported: () -> Bool
-    private let fullscreenEnabled: () -> Bool
     private let model = MenuBarModel()
     private let spectrumImage = MenuBarSpectrumImage()
     private let statusItem = NSStatusBar.system.statusItem(withLength: MenuBarSpectrumImage.pointSize.width)
@@ -30,22 +28,18 @@ final class MenuBarController: NSObject {
         toggleStudio: @escaping () -> Void,
         toggleIsland: @escaping () -> Void = {},
         openSettings: @escaping () -> Void,
-        openFullscreen: @escaping () -> Void = {},
         studioVisible: @escaping () -> Bool,
         islandEnabled: @escaping () -> Bool = { false },
-        islandSupported: @escaping () -> Bool = { false },
-        fullscreenEnabled: @escaping () -> Bool = { false }
+        islandSupported: @escaping () -> Bool = { false }
     ) {
         self.spike = spike
         self.openDebug = openDebug
         self.toggleStudio = toggleStudio
         self.toggleIsland = toggleIsland
         self.openSettings = openSettings
-        self.openFullscreen = openFullscreen
         self.studioVisible = studioVisible
         self.islandEnabled = islandEnabled
         self.islandSupported = islandSupported
-        self.fullscreenEnabled = fullscreenEnabled
         super.init()
         let root = MenuBarPopoverView(
             model: model,
@@ -54,7 +48,6 @@ final class MenuBarController: NSObject {
             toggleStudio: { [weak self] in self?.toggleStudioWindow() },
             toggleIsland: { [weak self] in self?.toggleIslandWindow() },
             openSettings: { [weak self] in self?.showSettingsWindow() },
-            openFullscreen: { [weak self] in self?.showFullscreen() },
             openAbout: { [weak self] in self?.showAboutPanel() },
             openDebug: { [weak self] in self?.showDebugWindow() },
             quit: { NSApp.terminate(nil) }
@@ -107,11 +100,6 @@ final class MenuBarController: NSObject {
     private func showSettingsWindow() {
         popover.performClose(nil)
         openSettings()
-    }
-
-    private func showFullscreen() {
-        popover.performClose(nil)
-        openFullscreen()
     }
 
     private func showAboutPanel() {
@@ -181,8 +169,6 @@ final class MenuBarController: NSObject {
         if model.islandEnabled != isIslandEnabled { model.islandEnabled = isIslandEnabled }
         let isIslandSupported = islandSupported()
         if model.islandSupported != isIslandSupported { model.islandSupported = isIslandSupported }
-        let isFullscreenEnabled = fullscreenEnabled()
-        if model.fullscreenEnabled != isFullscreenEnabled { model.fullscreenEnabled = isFullscreenEnabled }
         guard let button = statusItem.button else { return }
         let sequence = presentation.state == .receiving ? snapshot.sequence : nil
         if renderedState == presentation.state && renderedSequence == sequence { return }

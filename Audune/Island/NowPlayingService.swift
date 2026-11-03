@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-/// Owns the Experimental Now Playing listener lifecycle (Island + Fullscreen).
+/// Owns the Experimental Now Playing listener lifecycle for Notch Island.
 /// Never starts or stops Process Tap.
 @MainActor
 @Observable
