@@ -69,7 +69,7 @@ struct FullscreenContentView: View {
                         nextTrack: nextTrack,
                         seek: seek
                     )
-                    .frame(maxWidth: min(geometry.size.width * 0.42, 480))
+                    .frame(maxWidth: min(geometry.size.width * 0.38, 440))
 
                     // Right Column: Apple Music Synced Lyrics
                     AppleMusicLyricsPane(
@@ -95,7 +95,7 @@ struct FullscreenContentView: View {
                                 .background(Circle().fill(Color.white.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(String(localized: "Fullscreen Settings"))
+                        .accessibilityLabel(String(localized: "Zen Settings"))
 
                         Button(action: close) {
                             Image(systemName: "xmark")
@@ -105,7 +105,7 @@ struct FullscreenContentView: View {
                                 .background(Circle().fill(Color.white.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(String(localized: "Close Fullscreen"))
+                        .accessibilityLabel(String(localized: "Close Zen"))
                         .keyboardShortcut(.cancelAction)
                     }
                     .padding(.top, 18)
@@ -621,6 +621,9 @@ struct AppleMusicLyricsPane: View {
                 updateActiveIndex()
             }
         }
+        .onChange(of: model.nowPlaying.trackIdentity) { _, _ in
+            activeIndex = nil
+        }
     }
 
     private func updateActiveIndex() {
@@ -632,45 +635,69 @@ struct AppleMusicLyricsPane: View {
     }
 
     private var lyricsScroller: some View {
-        ScrollViewReader { proxy in
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 26) {
-                    // Top breathing space
-                    Color.clear.frame(height: 60)
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 26) {
+                        Color.clear.frame(height: max(geometry.size.height / 2, 180))
 
-                    ForEach(Array(model.lyricsLines.enumerated()), id: \.element.id) { index, line in
-                        AppleMusicLyricLineView(
-                            line: line,
-                            index: index,
-                            activeIndex: activeIndex,
-                            onSeek: onSeek
-                        )
-                        .id(index)
+                        ForEach(Array(model.lyricsLines.enumerated()), id: \.element.id) { index, line in
+                            AppleMusicLyricLineView(
+                                line: line,
+                                index: index,
+                                activeIndex: activeIndex,
+                                onSeek: onSeek
+                            )
+                            .id(index)
+                        }
+
+                        Color.clear.frame(height: max(geometry.size.height / 2, 180))
                     }
-
-                    // Bottom breathing space
-                    Color.clear.frame(height: 120)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 20)
-            }
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.12),
-                        .init(color: .black, location: 0.88),
-                        .init(color: .clear, location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.18), location: 0.12),
+                            .init(color: .black, location: 0.28),
+                            .init(color: .black, location: 0.72),
+                            .init(color: .black.opacity(0.18), location: 0.88),
+                            .init(color: .clear, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
-            )
-            .onChange(of: activeIndex) { _, newValue in
-                guard let newValue else { return }
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
-                    proxy.scrollTo(newValue, anchor: UnitPoint(x: 0.5, y: 0.38))
+                .onAppear {
+                    let index = activeLineIndex()
+                    activeIndex = index
+                    scrollToActiveLine(index, using: proxy, animated: false)
+                }
+                .onChange(of: model.lyricsLines) { _, _ in
+                    let index = activeLineIndex()
+                    activeIndex = index
+                    scrollToActiveLine(index, using: proxy, animated: false)
+                }
+                .onChange(of: activeIndex) { _, newValue in
+                    scrollToActiveLine(newValue, using: proxy, animated: true)
                 }
             }
+        }
+    }
+
+    private func activeLineIndex() -> Int? {
+        LRCParser.activeIndex(in: model.lyricsLines, at: model.nowPlaying.displayElapsed())
+    }
+
+    private func scrollToActiveLine(_ index: Int?, using proxy: ScrollViewProxy, animated: Bool) {
+        guard let index, model.lyricsLines.indices.contains(index) else { return }
+        if animated {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                proxy.scrollTo(index, anchor: .center)
+            }
+        } else {
+            proxy.scrollTo(index, anchor: .center)
         }
     }
 }
@@ -701,17 +728,23 @@ struct AppleMusicLyricLineView: View {
         return 0.30
     }
 
+    private var blurRadius: CGFloat {
+        guard let activeIndex else { return 0 }
+        return min(CGFloat(abs(index - activeIndex)) * 1.25, 6)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Main lyric line
             Text(line.text)
                 .font(.system(
-                    size: isActive ? 40 : 28,
+                    size: isActive ? 44 : 30,
                     weight: isActive ? .heavy : .bold,
                     design: .rounded
                 ))
                 .foregroundStyle(Color.white.opacity(textOpacity))
                 .fixedSize(horizontal: false, vertical: true)
+                .blur(radius: blurRadius)
                 .shadow(
                     color: Color.black.opacity(isActive ? 0.35 : 0),
                     radius: isActive ? 10 : 0,
@@ -729,6 +762,7 @@ struct AppleMusicLyricLineView: View {
                     ))
                     .foregroundStyle(Color.white.opacity(translationOpacity))
                     .fixedSize(horizontal: false, vertical: true)
+                    .blur(radius: blurRadius)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

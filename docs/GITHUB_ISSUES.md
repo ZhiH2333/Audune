@@ -580,28 +580,28 @@ Compact mini Now Playing, lyrics (see AUD-NP-02), art color themes, AppleScript 
 
 ---
 
-## AUD-NP-02 — [EXPERIMENTAL] Fullscreen Player + Network Lyrics
+## AUD-NP-02 — [EXPERIMENTAL] Zen Player + Network Lyrics
 
 **Labels:** `P2`, `experimental`, `fullscreen`
-**Milestone:** Experimental — Fullscreen Player
+**Milestone:** Experimental — Zen Player
 
 ### Goal
-Optional fullscreen ambient player sharing Island Now Playing metadata and the single `AudioSnapshot`: blurred artwork backdrop, transport, low-opacity visualization. Optional synced lyrics via LRCLIB when the user enables network search (default off). Does not count toward Core MVP.
+Optional Zen player window sharing Island Now Playing metadata and the single `AudioSnapshot`: blurred artwork backdrop, transport, low-opacity visualization. Opens as a normal centered window by default. Optional synced lyrics via LRCLIB when the user enables network search (default off). Does not count toward Core MVP.
 
 ### Tasks
-- [x] Document Experimental Fullscreen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
-- [x] Hoist `NowPlayingService` so Island and Fullscreen share one listener; reconcile when either surface wants metadata.
-- [x] Fullscreen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
+- [x] Document Experimental Zen + gated lyrics in PRODUCT_SPEC / MANUAL_TESTS / GITHUB_ISSUES.
+- [x] Hoist `NowPlayingService` so Island and Zen share one listener; reconcile when either surface wants metadata.
+- [x] Zen window (public AppKit APIs only), prefs, blur backdrop, NP chrome, shared viz; never start/stop Process Tap.
 - [x] `LyricsService` + hybrid providers (LRCLIB + NetEase/QQ/Kugou) with LyricsX-style quality ranking; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
 - [x] Automatic lyrics source selection races enabled sources and accepts the first good result; Settings can pin one provider; source preference is persisted and switching it cancels/reloads the current track. *(unit: provider group + preference tests)*
-- [x] Reduce Fullscreen render cost, restrain visualization/background motion, fill the display edge-to-edge, and hide/restore Island around native Fullscreen transitions. *(unit: Island suppression lifecycle; GUI/performance: manual test rows)*
+- [x] Reduce Zen render cost and restrain visualization/background motion; keep the default presentation a normal window, while hiding/restoring Island only around a manually requested native Fullscreen transition. *(unit: Island suppression lifecycle; GUI/performance: manual test rows)*
 
 ### Acceptance criteria
-- [x] Default: Fullscreen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*
-- [ ] Opening Fullscreen with a playing track shows artwork/title/artist/transport; Esc / close exits; Island Compact unchanged. *(manual — see MANUAL_TESTS)*
+- [x] Default: Zen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*
+- [ ] Opening Zen with a playing track shows artwork/title/artist/transport in a normal window; Esc / close exits; Island Compact unchanged. *(manual — see MANUAL_TESTS)*
 - [x] Enabling lyrics fetches only title/artist/(album)/duration from lrclib.net; no artwork/PCM upload; empty/error states are explicit. *(client + service unit-covered; GUI manual)*
-- [x] Capture pipeline unaffected by Fullscreen or lyrics toggles. *(Fullscreen never touches ProcessTapSpike)*
-- [ ] Manual GUI rows recorded honestly; no App Store claim. *(rows remain NOT TESTED)*
+- [x] Capture pipeline unaffected by Zen or lyrics toggles. *(Zen never touches ProcessTapSpike)*
+- [ ] Manual GUI rows recorded honestly for Zen window and lyrics; no App Store claim. *(rows remain NOT TESTED)*
 
 ### Dependencies
 AUD-NP-01 (shared Now Playing).

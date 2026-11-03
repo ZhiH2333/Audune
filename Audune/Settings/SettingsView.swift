@@ -19,7 +19,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .visualization: return String(localized: "Visualization")
         case .studio: return String(localized: "Studio")
         case .island: return String(localized: "Notch Island")
-        case .fullscreen: return String(localized: "Fullscreen Player")
+        case .fullscreen: return String(localized: "Zen")
         }
     }
 
@@ -30,7 +30,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .visualization: return "waveform.path.ecg"
         case .studio: return "macwindow"
         case .island: return "rectangle.topthird.inset.filled"
-        case .fullscreen: return "arrow.up.left.and.arrow.down.right"
+        case .fullscreen: return "macwindow"
         }
     }
 }
@@ -693,14 +693,14 @@ struct SettingsView: View {
     @ViewBuilder
     private var fullscreenPane: some View {
         Section {
-            Text("Experimental Fullscreen ambient player. Uses the same Now Playing metadata as Notch Island and never starts or stops system audio capture.")
+            Text("Experimental Zen player window. Uses the same Now Playing metadata as Notch Island and never starts or stops system audio capture.")
                 .foregroundStyle(.secondary)
                 .font(.callout)
         }
-        Section("Fullscreen Player") {
-            Toggle("Enable Fullscreen Player", isOn: $fullscreenPrefs.isEnabled)
+        Section("Zen Mode") {
+            Toggle("Enable Zen", isOn: $fullscreenPrefs.isEnabled)
             if fullscreenPrefs.isEnabled {
-                Button("Open Fullscreen Player") {
+                Button("Open Zen") {
                     fullscreen?.show()
                 }
                 .disabled(fullscreen == nil)
@@ -720,7 +720,7 @@ struct SettingsView: View {
                 .font(.caption)
         }
         Section {
-            Button("Reset Fullscreen Settings") {
+            Button("Reset Zen Settings") {
                 FullscreenPreferences.reset()
                 fullscreenPrefs = .standard
                 if let fullscreen {

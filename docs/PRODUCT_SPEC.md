@@ -142,26 +142,27 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
 - 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
 
-### Experimental — Fullscreen Player + Network Lyrics（可选，默认关闭）
+### Experimental — Zen Player + Network Lyrics（可选，默认关闭）
 
-- **不属于 Core MVP。** Settings → Fullscreen Player；也可从 Island Expanded 进入。
-- 全屏氛围窗：背景覆盖整个显示区域，封面柔和模糊底景、大封面、曲名/歌手、进度与 transport、克制且低不透明度的共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。优先使用静态/低频动画并限制渲染更新频率，避免全屏空闲时持续高功耗。
-- 全屏显示及原生退出转场期间临时隐藏 Island；退出动画完成后按原有设置恢复。全屏关闭必须等待 AppKit 退出转场结束再隐藏窗口。
+- **不属于 Core MVP。** Settings → Zen；也可从 Island Expanded 或菜单栏打开。
+- Zen 默认以居中、可调整大小的普通窗口打开，不自动进入 macOS 全屏。窗口展示柔和模糊的封面底景、曲名/歌手、进度与 transport、克制且低不透明度的共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。优先使用静态/低频动画并限制渲染更新频率，避免空闲时持续高功耗。
+- Zen 窗口不自动隐藏 Island。用户主动切入 macOS 原生全屏时，临时隐藏 Island；退出全屏后恢复。
 - **绝不** start/stop Process Tap；不用 SkyLight / CGSSpace。
 - **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration 查询。自动来源模式并行探测国际 **LRCLIB**（HTTPS）及国内 **NetEase / QQ Music / Kugou**（公开检索接口；Kugou 仅接受明文 LRC），使用首个达到匹配质量门槛的结果；Settings 也可手动固定单一来源。不上传封面或 PCM；切歌/切换来源取消 in-flight；无结果/失败显示明确空态。架构参考 [LyricsX](https://github.com/ddddxxx/LyricsX) / LyricsKit，运行时不嵌入该库。
+- 歌词区域以当前播放行居中，逐行跟随进度，并在上下方向渐隐和模糊；歌词内容变化时立即重新定位当前行。
 - 实验性；不可承诺 Mac App Store；匹配失败可接受；国内 HTTP 源通过 Info.plist ATS 例外限定域名。
 
 ### v0.4+ — 其他播放器 / 视觉扩展
 
 - 分源 Apple Events（Music/Spotify Automation）方案已从产品中移除；不以此替代上述 Experimental Now Playing。
-- 专辑封面取色主题、本地 `.lrc` 导入、录制、动态桌面和高级视觉均不属于 Core MVP（联网歌词仅见上方 Experimental Fullscreen）。
+- 专辑封面取色主题、本地 `.lrc` 导入、录制、动态桌面和高级视觉均不属于 Core MVP（联网歌词仅见上方 Experimental Zen）。
 
 ### 首版明确不做
 
 - 独立音乐播放器、播放列表或媒体库。
-- 专辑封面联动取色主题（Now Playing / Fullscreen 仅展示系统已提供的封面字节，不做取色主题）。
+- 专辑封面联动取色主题（Now Playing / Zen 仅展示系统已提供的封面字节，不做取色主题）。
 - 桌面壁纸层、屏幕边缘灯效、屏幕保护程序。
-- AI 功能、账号登录、远程配置、广告、遥测（Fullscreen 联网歌词仅在用户显式开启时访问 LRCLIB / NetEase / QQ / Kugou）。
+- AI 功能、账号登录、远程配置、广告、遥测（Zen 联网歌词仅在用户显式开启时访问 LRCLIB / NetEase / QQ / Kugou）。
 - 音频录制、直播、视频导出、听歌历史统计。
 - 插件市场、脚本执行系统、复杂可视化编辑器。
 - 要求用户安装虚拟音频驱动或第三方音频路由工具。
@@ -645,7 +646,7 @@ Core Audio Process Tap + Aggregate Device
 
 - 可视化编辑器节点/连线系统。
 - 任意脚本、Shader 编辑器或下载第三方主题。
-- 专辑封面自动取色、动态壁纸、视频录制。（Experimental Fullscreen 联网歌词见 §3，默认关闭。）
+- 专辑封面自动取色、动态壁纸、视频录制。（Experimental Zen 联网歌词见 §3，默认关闭。）
 
 ---
 
@@ -771,7 +772,7 @@ Issue 的具体标题、任务和验收清单见 `docs/GITHUB_ISSUES.md`。推�
 5. **Phase 4 — Desktop Magnet**：普通层级的桌面磁贴和位置恢复。
 6. **Phase 5 — Release Readiness**：隐私说明、文档、CI、人工回归与测试包。
 7. **Experimental — Island Now Playing**：可选完整播放器（AUD-NP-01）；默认关闭；不计入 Core MVP。若 Apple 日后提供公开系统 Now Playing API，再评估替换私有旁路。
-8. **Experimental — Fullscreen Player + Network Lyrics**：全屏氛围播放器与可选 LRCLIB 歌词（AUD-NP-02）；默认关闭；不计入 Core MVP。
+8. **Experimental — Zen Player + Network Lyrics**：普通窗口氛围播放器与可选 LRCLIB 歌词（AUD-NP-02）；默认关闭；不计入 Core MVP。
 
 ### Definition of Done（每个 Issue）
 

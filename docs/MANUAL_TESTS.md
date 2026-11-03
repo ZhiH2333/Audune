@@ -297,18 +297,18 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 - [ ] `NOT TESTED` — Empty (nothing reporting Now Playing) and unavailable (adapter failure) states show clear copy and do not crash or misplace the island.
 - [ ] `NOT TESTED` — Sleep/wake and display reconfiguration leave Now Playing usable again or show unavailable cleanly without a second Process Tap.
 
-### Experimental Fullscreen Player + Network Lyrics (AUD-NP-02)
+### Experimental Zen Player + Network Lyrics (AUD-NP-02)
 
 Unit coverage: Fullscreen preferences, LRC parse, lyrics network gate (zero requests when off), Now Playing listening reconcile. GUI rows stay `NOT TESTED` until a real macOS session.
 
-- [ ] `NOT TESTED` — Settings → Fullscreen Player enables the surface; Search lyrics online defaults off; with lyrics off, opening Fullscreen never contacts the network.
-- [ ] `NOT TESTED` — Opening Fullscreen (Settings or Island Expanded) shows blurred artwork backdrop, title/artist, transport; Esc / close exits; Process Tap is unaffected.
-- [ ] `NOT TESTED` — Fullscreen artwork/background fills every display edge at native and scaled resolutions, with a subdued visualization that responds without dominating the screen.
-- [ ] `NOT TESTED` — Island disappears before Fullscreen enters, stays hidden during it, and returns after the native exit transition; opening/closing feels smooth and does not cause a sustained Energy Impact increase while idle.
-- [ ] `NOT TESTED` — Enabling Search lyrics online with a known track loads synced lines from a hybrid source (LRCLIB and/or NetEase/QQ/Kugou), shows the winning Source label, and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
-- [ ] `NOT TESTED` — Changing tracks cancels the previous lyrics request; Reduce Motion removes Fullscreen motion while keeping controls usable.
+- [ ] `NOT TESTED` — Settings → Zen enables the surface; Search lyrics online defaults off; with lyrics off, opening Zen never contacts the network.
+- [ ] `NOT TESTED` — Opening Zen (Settings, menu bar, or Island Expanded) opens a centered resizable window rather than native Fullscreen and shows blurred artwork, title/artist, and transport; Esc / close exits; Process Tap is unaffected.
+- [ ] `NOT TESTED` — Zen window size and lyric column work at native and scaled resolutions; native Fullscreen is entered only after using the macOS window control; the subdued visualization responds without dominating the screen.
+- [ ] `NOT TESTED` — Island remains visible while Zen is a normal window; if native Fullscreen is manually entered, Island hides until the native exit transition completes.
+- [ ] `NOT TESTED` — Enabling Search lyrics online with a known track loads synced lines from a hybrid source (LRCLIB and/or NetEase/QQ/Kugou), immediately centers the current line, shows the winning Source label, and highlights by playback progress; wrong/missing tracks show an explicit empty or error state without crashing.
+- [ ] `NOT TESTED` — Changing tracks cancels the previous lyrics request and immediately recenters the new track; lyrics have a larger focus area and gradual top/bottom blur; Reduce Motion removes Zen motion while keeping controls usable.
 - [ ] `NOT TESTED` — Automatic source selection returns the first acceptable provider on the current network; manually selecting LRCLIB / NetEase / QQ Music / Kugou queries only that provider and persists across relaunch.
-- [ ] `NOT TESTED` — Chinese and English Fullscreen / lyrics Settings copy fits the Settings window.
+- [ ] `NOT TESTED` — Chinese and English Zen / lyrics Settings copy fits the Settings window.
 
 ## G. Desktop Magnet (only after the Magnet milestone)
 

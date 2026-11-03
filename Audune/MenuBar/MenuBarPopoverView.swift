@@ -53,7 +53,7 @@ struct MenuBarPopoverView: View {
             PopoverButton(title: studioTitle, symbol: "macwindow", leading: true, action: toggleStudio)
             PopoverButton(title: islandTitle, symbol: "rectangle.topthird.inset.filled", leading: true, action: toggleIsland)
                 .disabled(model.islandSupported == false)
-            PopoverButton(title: "Fullscreen Player", symbol: "arrow.up.left.and.arrow.down.right", leading: true, action: openFullscreen)
+            PopoverButton(title: "Zen", symbol: "macwindow", leading: true, action: openFullscreen)
                 .disabled(model.fullscreenEnabled == false)
             PopoverButton(title: "Settings\u{2026}", symbol: "gearshape", leading: true, action: openSettings)
                 .keyboardShortcut(",")

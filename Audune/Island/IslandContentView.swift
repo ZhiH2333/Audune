@@ -304,8 +304,8 @@ struct IslandContentView: View {
                 action: openStudio
             )
             IslandIconButton(
-                symbol: "arrow.up.left.and.arrow.down.right",
-                label: String(localized: "Open Fullscreen Player"),
+                symbol: "macwindow",
+                label: String(localized: "Open Zen"),
                 selected: false,
                 action: openFullscreen
             )

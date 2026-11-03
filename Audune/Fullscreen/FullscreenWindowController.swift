@@ -2,7 +2,7 @@
 import AppKit
 import SwiftUI
 
-/// Experimental Fullscreen ambient player. Never starts or stops Process Tap.
+/// Experimental Zen player window. Never starts or stops Process Tap.
 @MainActor
 final class FullscreenWindowController: NSObject, NSWindowDelegate {
     private let spike: ProcessTapSpike
@@ -35,8 +35,8 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         self.defaults = defaults
         self.nowPlaying = nowPlaying
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 1280, height: 720),
-            styleMask: [.borderless, .fullSizeContentView, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 740),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -90,22 +90,28 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         guard didShutdown == false else { return }
         guard model.prefs.isEnabled else { return }
         guard isClosingForFullscreenExit == false else { return }
-        setIslandFullscreenPresentationActive?(true)
         model.isPresented = true
         model.snapshot = spike.snapshots.load()
         refreshNowPlayingSnapshot()
         reconcileNowPlayingListening?()
         if panel.styleMask.contains(.fullScreen) == false,
            let screen = NSScreen.main ?? NSScreen.screens.first {
-            panel.setFrame(screen.frame, display: false)
+            let visibleFrame = screen.visibleFrame
+            let width = min(visibleFrame.width, min(1180, max(640, visibleFrame.width * 0.88)))
+            let height = min(visibleFrame.height, min(820, max(500, visibleFrame.height * 0.86)))
+            panel.setFrame(
+                NSRect(
+                    x: visibleFrame.midX - width / 2,
+                    y: visibleFrame.midY - height / 2,
+                    width: width,
+                    height: height
+                ),
+                display: false
+            )
         }
         NSApp.activate()
         panel.makeKeyAndOrderFront(nil)
-        if panel.styleMask.contains(.fullScreen) {
-            startDisplayTimer()
-        } else {
-            panel.toggleFullScreen(nil)
-        }
+        startDisplayTimer()
     }
 
     func hide() {
@@ -166,12 +172,13 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         if isClosingForFullscreenExit {
             finishHide()
         } else {
-            hide()
+            setIslandFullscreenPresentationActive?(false)
         }
     }
 
     func windowDidEnterFullScreen(_ notification: Notification) {
         guard model.isPresented, isClosingForFullscreenExit == false else { return }
+        setIslandFullscreenPresentationActive?(true)
         startDisplayTimer()
     }
 
@@ -183,10 +190,10 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         panel.delegate = self
         panel.isReleasedWhenClosed = false
         panel.level = .normal
-        panel.collectionBehavior = [.fullScreenPrimary, .managed]
+        panel.collectionBehavior = [.managed]
         panel.isFloatingPanel = false
         panel.hidesOnDeactivate = false
-        panel.title = String(localized: "Audune Fullscreen")
+        panel.title = String(localized: "Zen")
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.backgroundColor = .black

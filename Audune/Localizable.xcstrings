@@ -3790,6 +3790,86 @@
         }
       }
     }
+    "Close Zen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭 Zen"
+          }
+        }
+      }
+    },
+    "Enable Zen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 Zen"
+          }
+        }
+      }
+    },
+    "Experimental Zen player window. Uses the same Now Playing metadata as Notch Island and never starts or stops system audio capture.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实验性 Zen 播放器窗口，与灵动岛共用“正在播放”信息，且不会启动或停止系统音频捕获。"
+          }
+        }
+      }
+    },
+    "Open Zen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Zen"
+          }
+        }
+      }
+    },
+    "Reset Zen Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置 Zen 设置"
+          }
+        }
+      }
+    },
+    "Zen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zen"
+          }
+        }
+      }
+    },
+    "Zen Mode": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zen 模式"
+          }
+        }
+      }
+    },
+    "Zen Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zen 设置"
+          }
+        }
+      }
+    }
   },
   "version": "1.0"
 }
