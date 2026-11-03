@@ -54,8 +54,8 @@ struct FullscreenContentView: View {
                 .allowsHitTesting(false)
 
                 // 4. Two-Column Layout (Left: Player / Artwork & Controls, Right: Apple Music Lyrics)
-                let horizontalPadding = max(44, geometry.size.width * 0.055)
-                let spacing = max(44, geometry.size.width * 0.05)
+                let horizontalPadding = min(max(36, geometry.size.width * 0.055), 96)
+                let spacing = min(max(36, geometry.size.width * 0.05), 80)
 
                 HStack(alignment: .center, spacing: spacing) {
                     // Left Column: Player Pane
@@ -78,6 +78,7 @@ struct FullscreenContentView: View {
                         openSettings: openSettings
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .layoutPriority(1)
                 }
                 .padding(.horizontal, horizontalPadding)
                 .padding(.top, 40)
@@ -653,6 +654,7 @@ struct AppleMusicLyricsPane: View {
 
                         Color.clear.frame(height: max(geometry.size.height / 2, 180))
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
                 }
                 .mask(

@@ -5,12 +5,14 @@ import SwiftUI
 /// Experimental Zen player window. Never starts or stops Process Tap.
 @MainActor
 final class FullscreenWindowController: NSObject, NSWindowDelegate {
+    static let minimumWindowSize = CGSize(width: 1040, height: 700)
+
     private let spike: ProcessTapSpike
     private let defaults: UserDefaults
     let nowPlaying: NowPlayingService
     let model = FullscreenModel()
-    let lyrics = LyricsService()
-    private let panel: NSPanel
+    let lyrics: LyricsService
+    let panel: NSPanel
     private var timer: Timer?
     private var didShutdown = false
     private var isClosingForFullscreenExit = false
@@ -29,11 +31,13 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
     init(
         spike: ProcessTapSpike,
         defaults: UserDefaults = .standard,
-        nowPlaying: NowPlayingService
+        nowPlaying: NowPlayingService,
+        lyrics: LyricsService? = nil
     ) {
         self.spike = spike
         self.defaults = defaults
         self.nowPlaying = nowPlaying
+        self.lyrics = lyrics ?? LyricsService()
         panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 740),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -92,13 +96,13 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         guard isClosingForFullscreenExit == false else { return }
         model.isPresented = true
         model.snapshot = spike.snapshots.load()
-        refreshNowPlayingSnapshot()
         reconcileNowPlayingListening?()
+        refreshNowPlayingSnapshot()
         if panel.styleMask.contains(.fullScreen) == false,
            let screen = NSScreen.main ?? NSScreen.screens.first {
             let visibleFrame = screen.visibleFrame
-            let width = min(visibleFrame.width, min(1180, max(640, visibleFrame.width * 0.88)))
-            let height = min(visibleFrame.height, min(820, max(500, visibleFrame.height * 0.86)))
+            let width = min(visibleFrame.width, min(1180, max(Self.minimumWindowSize.width, visibleFrame.width * 0.88)))
+            let height = min(visibleFrame.height, min(820, max(Self.minimumWindowSize.height, visibleFrame.height * 0.86)))
             panel.setFrame(
                 NSRect(
                     x: visibleFrame.midX - width / 2,
@@ -146,7 +150,8 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
             model.nowPlaying = latest
         }
 
-        if trackChanged || (model.lyricsStatus == .idle && latest.hasTrack) {
+        let lyricsCanRetry = lyrics.status == .idle || lyrics.status == .empty || lyrics.status.isFailure
+        if latest.hasTrack && (trackChanged || lyricsCanRetry) {
             refreshLyrics()
         }
     }
@@ -199,6 +204,8 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         panel.backgroundColor = .black
         panel.hasShadow = false
         panel.isOpaque = true
+        panel.minSize = Self.minimumWindowSize
+        panel.contentMinSize = Self.minimumWindowSize
         let root = FullscreenContentView(
             model: model,
             spike: spike,
@@ -209,7 +216,9 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
             close: { [weak self] in self?.hide() },
             openSettings: { [weak self] in self?.openSettings?() }
         )
-        panel.contentView = NSHostingView(rootView: root)
+        let host = NSHostingView(rootView: root)
+        host.sizingOptions = []
+        panel.contentView = host
     }
 
     private func scheduleSavePreferences() {
@@ -241,6 +250,7 @@ final class FullscreenWindowController: NSObject, NSWindowDelegate {
         guard model.isPresented else { return }
         model.snapshot = spike.snapshots.load()
         refreshNowPlayingSnapshot()
+        publishLyrics()
     }
 
     private func refreshLyrics() {

@@ -146,6 +146,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 - **不属于 Core MVP。** Settings → Zen；也可从 Island Expanded 或菜单栏打开。
 - Zen 默认以居中、可调整大小的普通窗口打开，不自动进入 macOS 全屏。窗口展示柔和模糊的封面底景、曲名/歌手、进度与 transport、克制且低不透明度的共享可视化；复用与 Island 同一份 `NowPlayingService` 与 `AudioSnapshot`。优先使用静态/低频动画并限制渲染更新频率，避免空闲时持续高功耗。
+- Zen 窗口最小内容尺寸为 1040 × 700 pt，以容纳封面/播放控制与歌词两栏；扩大或缩小窗口时，两栏和封面应随可用空间自适应。窗口尺寸遵循 [Apple Human Interface Guidelines — Windows](https://developer.apple.com/design/human-interface-guidelines/windows) 的内容适配与可调整原则。
 - Zen 窗口不自动隐藏 Island。用户主动切入 macOS 原生全屏时，临时隐藏 Island；退出全屏后恢复。
 - **绝不** start/stop Process Tap；不用 SkyLight / CGSSpace。
 - **联网歌词**（`fullscreen.lyricsNetworkEnabled`，默认 `false`）：关闭时零网络。开启后仅用 title / artist / 可选 album / duration 查询。自动来源模式并行探测国际 **LRCLIB**（HTTPS）及国内 **NetEase / QQ Music / Kugou**（公开检索接口；Kugou 仅接受明文 LRC），使用首个达到匹配质量门槛的结果；Settings 也可手动固定单一来源。不上传封面或 PCM；切歌/切换来源取消 in-flight；无结果/失败显示明确空态。架构参考 [LyricsX](https://github.com/ddddxxx/LyricsX) / LyricsKit，运行时不嵌入该库。

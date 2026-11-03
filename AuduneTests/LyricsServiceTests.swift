@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import XCTest
 @testable import Audune
 
@@ -122,7 +124,12 @@ final class LyricsServiceTests: XCTestCase {
 private final class ReconcileFakeNowPlayingController: NowPlayingControlling {
     var onTrackReceived: ((NowPlayingTrackPayload?) -> Void)?
     var onListenerTerminated: (() -> Void)?
-    func startListening() {}
+    var payloadOnStart: NowPlayingTrackPayload?
+    func startListening() {
+        if let payloadOnStart {
+            onTrackReceived?(payloadOnStart)
+        }
+    }
     func stopListening() {}
     func togglePlayPause() {}
     func nextTrack() {}
@@ -132,7 +139,59 @@ private final class ReconcileFakeNowPlayingController: NowPlayingControlling {
 
 @MainActor
 final class NowPlayingListeningReconcileTests: XCTestCase {
-    func testSharedServiceListensWhenEitherSurfaceWantsIt() {
+    func testOpeningZenLoadsLyricsFromTheInitialNowPlayingSnapshot() async {
+        let fake = ReconcileFakeNowPlayingController()
+        fake.payloadOnStart = NowPlayingTrackPayload(
+            title: "Song",
+            artist: "Artist",
+            album: "",
+            isPlaying: true,
+            elapsedSeconds: 1,
+            durationSeconds: 120,
+            playbackRate: 1,
+            bundleIdentifier: "com.example.player",
+            artwork: nil,
+            timestamp: Date()
+        )
+        let nowPlaying = NowPlayingService(controllerFactory: { fake })
+        let fetcher = RecordingLyricsFetcher()
+        fetcher.result = .success("[00:01.00]First line")
+        let lyrics = LyricsService(fetcher: fetcher)
+        let suite = "AuduneZenInitialLyricsTests"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        var preferences = FullscreenPreferences.standard
+        preferences.isEnabled = true
+        preferences.lyricsNetworkEnabled = true
+        preferences.save(to: defaults)
+        let controller = FullscreenWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: nowPlaying,
+            lyrics: lyrics
+        )
+        controller.reconcileNowPlayingListening = {
+            nowPlaying.syncDesiredListening(shouldListen: controller.wantsNowPlayingListening)
+            controller.refreshNowPlayingSnapshot()
+        }
+
+        controller.show()
+
+        let deadline = Date().addingTimeInterval(2)
+        while (controller.lyrics.status != .ready || controller.model.lyricsLines.isEmpty),
+              Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(controller.model.nowPlaying.title, "Song")
+        XCTAssertEqual(controller.lyrics.status, .ready)
+        XCTAssertEqual(controller.model.lyricsLines.map(\.text), ["First line"])
+        XCTAssertEqual(fetcher.queryCount, 1)
+
+        controller.shutdown()
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    func testSharedServiceListensWhenEitherSurfaceWantsIt() throws {
         let fake = ReconcileFakeNowPlayingController()
         let service = NowPlayingService(controllerFactory: { fake })
         let suite = "AuduneNPReconcileTests"
@@ -149,6 +208,10 @@ final class NowPlayingListeningReconcileTests: XCTestCase {
             activateOnInit: false
         )
         let fullscreen = FullscreenWindowController(spike: spike, defaults: defaults, nowPlaying: service)
+        XCTAssertEqual(fullscreen.panel.minSize, FullscreenWindowController.minimumWindowSize)
+        XCTAssertEqual(fullscreen.panel.contentMinSize, FullscreenWindowController.minimumWindowSize)
+        let host = try XCTUnwrap(fullscreen.panel.contentView as? NSHostingView<FullscreenContentView>)
+        XCTAssertEqual(host.sizingOptions, [])
 
         let reconcile = {
             let shouldListen = island.wantsNowPlayingListening || fullscreen.wantsNowPlayingListening

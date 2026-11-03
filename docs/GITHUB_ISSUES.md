@@ -595,6 +595,7 @@ Optional Zen player window sharing Island Now Playing metadata and the single `A
 - [x] `LyricsService` + hybrid providers (LRCLIB + NetEase/QQ/Kugou) with LyricsX-style quality ranking; zero network when toggle off; cancel on track change; LRC parse + scroll UI; Settings + i18n + unit tests.
 - [x] Automatic lyrics source selection races enabled sources and accepts the first good result; Settings can pin one provider; source preference is persisted and switching it cancels/reloads the current track. *(unit: provider group + preference tests)*
 - [x] Reduce Zen render cost and restrain visualization/background motion; keep the default presentation a normal window, while hiding/restoring Island only around a manually requested native Fullscreen transition. *(unit: Island suppression lifecycle; GUI/performance: manual test rows)*
+- [x] Prevent hosting-view constraint feedback, set a minimum window size that fits both content columns, and refresh lyrics reliably on the first Now Playing snapshot. *(unit: Zen window + initial lyrics tests)*
 
 ### Acceptance criteria
 - [x] Default: Zen feature available but lyrics network off; no outbound requests until the user enables Search lyrics online. *(unit: LyricsService network gate + FullscreenPreferences defaults)*
