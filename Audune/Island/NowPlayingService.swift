@@ -86,10 +86,6 @@ final class NowPlayingService {
         pendingSeek = (bundleID: bundleID, expectedElapsed: clamped, issuedAt: Date())
         snapshot.elapsedSeconds = clamped
         snapshot.lastUpdated = Date()
-        snapshot.isPlaying = true
-        if snapshot.playbackRate <= 0 {
-            snapshot.playbackRate = 1
-        }
         controller?.setTime(seconds: clamped)
     }
 

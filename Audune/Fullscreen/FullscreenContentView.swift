@@ -539,6 +539,8 @@ struct AppleMusicLyricsPane: View {
     var onSeek: (Double) -> Void
     var openSettings: () -> Void
     @State private var activeIndex: Int? = nil
+    @State private var followState = LyricsFollowState()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -624,6 +626,7 @@ struct AppleMusicLyricsPane: View {
         }
         .onChange(of: model.nowPlaying.trackIdentity) { _, _ in
             activeIndex = nil
+            followState.resumeFollowing()
         }
     }
 
@@ -638,53 +641,102 @@ struct AppleMusicLyricsPane: View {
     private var lyricsScroller: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 26) {
-                        Color.clear.frame(height: max(geometry.size.height / 2, 180))
+                ZStack(alignment: .topTrailing) {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(alignment: .leading, spacing: 26) {
+                            Color.clear.frame(height: max(geometry.size.height / 2, 180))
 
-                        ForEach(Array(model.lyricsLines.enumerated()), id: \.element.id) { index, line in
-                            AppleMusicLyricLineView(
-                                line: line,
-                                index: index,
-                                activeIndex: activeIndex,
-                                onSeek: onSeek
-                            )
-                            .id(index)
+                            ForEach(Array(model.lyricsLines.enumerated()), id: \.element.id) { index, line in
+                                AppleMusicLyricLineView(
+                                    line: line,
+                                    index: index,
+                                    activeIndex: activeIndex,
+                                    canSeek: model.nowPlaying.seekSupported,
+                                    onSeek: { seconds in
+                                        guard model.nowPlaying.seekSupported else { return }
+                                        followState.resumeFollowing()
+                                        activeIndex = index
+                                        onSeek(seconds)
+                                    }
+                                )
+                                .id(index)
+                            }
+
+                            Color.clear.frame(height: max(geometry.size.height / 2, 180))
                         }
-
-                        Color.clear.frame(height: max(geometry.size.height / 2, 180))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
-                }
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .black.opacity(0.18), location: 0.12),
-                            .init(color: .black, location: 0.28),
-                            .init(color: .black, location: 0.72),
-                            .init(color: .black.opacity(0.18), location: 0.88),
-                            .init(color: .clear, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .black.opacity(0.18), location: 0.12),
+                                .init(color: .black, location: 0.28),
+                                .init(color: .black, location: 0.72),
+                                .init(color: .black.opacity(0.18), location: 0.88),
+                                .init(color: .clear, location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .onAppear {
-                    let index = activeLineIndex()
-                    activeIndex = index
-                    scrollToActiveLine(index, using: proxy, animated: false)
-                }
-                .onChange(of: model.lyricsLines) { _, _ in
-                    let index = activeLineIndex()
-                    activeIndex = index
-                    scrollToActiveLine(index, using: proxy, animated: false)
-                }
-                .onChange(of: activeIndex) { _, newValue in
-                    scrollToActiveLine(newValue, using: proxy, animated: true)
+                    .onScrollPhaseChange { _, phase in
+                        if phase == .interacting {
+                            followState.beginManualBrowsing()
+                        }
+                    }
+                    .onAppear {
+                        let index = activeLineIndex()
+                        activeIndex = index
+                        if followState.followsPlayback {
+                            scrollToActiveLine(index, using: proxy, animated: false)
+                        }
+                    }
+                    .onChange(of: model.lyricsLines) { _, _ in
+                        let index = activeLineIndex()
+                        activeIndex = index
+                        if followState.followsPlayback {
+                            scrollToActiveLine(index, using: proxy, animated: false)
+                        }
+                    }
+                    .onChange(of: activeIndex) { _, newValue in
+                        if followState.followsPlayback {
+                            scrollToActiveLine(newValue, using: proxy, animated: true)
+                        }
+                    }
+                    .onChange(of: followState.followsPlayback) { _, followsPlayback in
+                        if followsPlayback {
+                            scrollToActiveLine(activeIndex, using: proxy, animated: true)
+                        }
+                    }
+
+                    if followState.followsPlayback == false {
+                        Button {
+                            followState.resumeFollowing()
+                        } label: {
+                            Label(
+                                String(localized: "Follow current behavior"),
+                                systemImage: "arrow.down.to.line"
+                            )
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(Capsule().fill(Color.white.opacity(0.16)))
+                            .overlay {
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 12)
+                        .padding(.trailing, 24)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
             }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: followState.followsPlayback)
         }
     }
 
@@ -694,8 +746,8 @@ struct AppleMusicLyricsPane: View {
 
     private func scrollToActiveLine(_ index: Int?, using proxy: ScrollViewProxy, animated: Bool) {
         guard let index, model.lyricsLines.indices.contains(index) else { return }
-        if animated {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+        if animated && reduceMotion == false {
+            withAnimation(.easeInOut(duration: 0.45)) {
                 proxy.scrollTo(index, anchor: .center)
             }
         } else {
@@ -710,9 +762,12 @@ struct AppleMusicLyricLineView: View {
     let line: LyricLine
     let index: Int
     let activeIndex: Int?
+    let canSeek: Bool
     let onSeek: (Double) -> Void
 
     @State private var isHovered = false
+    @State private var isPointerCursorPushed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var isActive: Bool {
         index == activeIndex
@@ -740,8 +795,8 @@ struct AppleMusicLyricLineView: View {
             // Main lyric line
             Text(line.text)
                 .font(.system(
-                    size: isActive ? 44 : 30,
-                    weight: isActive ? .heavy : .bold,
+                    size: 34,
+                    weight: isActive ? .semibold : .medium,
                     design: .rounded
                 ))
                 .foregroundStyle(Color.white.opacity(textOpacity))
@@ -758,8 +813,8 @@ struct AppleMusicLyricLineView: View {
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
                     .font(.system(
-                        size: isActive ? 21 : 16,
-                        weight: isActive ? .bold : .semibold,
+                        size: 16,
+                        weight: isActive ? .medium : .regular,
                         design: .rounded
                     ))
                     .foregroundStyle(Color.white.opacity(translationOpacity))
@@ -770,18 +825,28 @@ struct AppleMusicLyricLineView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
-            onSeek(line.timeSeconds)
+            if canSeek {
+                onSeek(line.timeSeconds)
+            }
         }
         .onHover { hovering in
             isHovered = hovering
-            if hovering {
+            if hovering && canSeek && isPointerCursorPushed == false {
                 NSCursor.pointingHand.push()
-            } else {
+                isPointerCursorPushed = true
+            } else if hovering == false && isPointerCursorPushed {
                 NSCursor.pop()
+                isPointerCursorPushed = false
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
-        .animation(.easeInOut(duration: 0.2), value: isHovered)
+        .onChange(of: canSeek) { _, canSeek in
+            if canSeek == false && isPointerCursorPushed {
+                NSCursor.pop()
+                isPointerCursorPushed = false
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isActive)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isHovered)
     }
 }
 #endif

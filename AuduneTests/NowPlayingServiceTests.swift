@@ -140,6 +140,33 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(fake.seekCalls, [80], "Further seeks must not call MediaRemote once unsupported")
     }
 
+    func testSeekPreservesPausedPlaybackState() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Paused track",
+                artist: "Artist",
+                album: "",
+                isPlaying: false,
+                elapsedSeconds: 10,
+                durationSeconds: 120,
+                playbackRate: 0,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+
+        service.seek(to: 45)
+
+        XCTAssertEqual(fake.seekCalls, [45])
+        XCTAssertEqual(service.snapshot.elapsedSeconds, 45, accuracy: 0.001)
+        XCTAssertFalse(service.snapshot.isPlaying)
+        XCTAssertEqual(service.snapshot.playbackRate, 0)
+    }
+
     func testDisplayElapsedAdvancesWhilePlaying() {
         var snapshot = NowPlayingSnapshot.idle
         snapshot.isPlaying = true

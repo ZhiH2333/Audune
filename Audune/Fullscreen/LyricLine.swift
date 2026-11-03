@@ -27,6 +27,18 @@ nonisolated enum LyricsLoadStatus: Equatable, Sendable {
     }
 }
 
+nonisolated struct LyricsFollowState: Equatable, Sendable {
+    private(set) var followsPlayback = true
+
+    mutating func beginManualBrowsing() {
+        followsPlayback = false
+    }
+
+    mutating func resumeFollowing() {
+        followsPlayback = true
+    }
+}
+
 /// Parses synced LRC text into timed lines. Ignores metadata tags and unsynced plain text.
 nonisolated enum LRCParser {
     private static let linePattern = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\](.*)/

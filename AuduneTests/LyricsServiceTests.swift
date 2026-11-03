@@ -22,6 +22,17 @@ final class LyricsServiceTests: XCTestCase {
         XCTAssertEqual(LRCParser.activeIndex(in: lines, at: 90), 2)
     }
 
+    func testLyricsManualBrowsingPausesAndCanResumePlaybackFollowing() {
+        var state = LyricsFollowState()
+        XCTAssertTrue(state.followsPlayback)
+
+        state.beginManualBrowsing()
+        XCTAssertFalse(state.followsPlayback)
+
+        state.resumeFollowing()
+        XCTAssertTrue(state.followsPlayback)
+    }
+
     func testLRCParserMergesSeparateTranslation() {
         let primary = """
         [00:02.00]Baby that's the fun of me
