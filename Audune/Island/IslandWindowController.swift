@@ -13,6 +13,7 @@ struct IslandWindowInspection: Equatable {
     var collectionBehavior: NSWindow.CollectionBehavior
     var isMovable: Bool
     var isMovableByWindowBackground: Bool
+    var isFullScreen: Bool
     var isOpaque: Bool
     var backgroundAlpha: CGFloat
     var hasShadow: Bool
@@ -193,6 +194,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         saveTask?.cancel()
         saveTask = nil
         model.nowPlaying = .idle
+        model.isFullScreen = false
         nowPlaying.stop()
         stopDisplayTimer()
         updateKeyMonitor(active: false)
@@ -277,6 +279,32 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         applyEvent(.collapseRequested, animated: true)
     }
 
+    func toggleFullScreenView() {
+        guard stateContext.state.isExpandedOrPinned, let geometry = model.geometry else { return }
+        model.isFullScreen.toggle()
+        stateContext.exitedAt = nil
+        if model.isFullScreen {
+            collapseTask?.cancel()
+            collapseTask = nil
+        }
+        updatePanelFrame(
+            model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
+            expanding: model.isFullScreen,
+            targetExpandedChrome: true,
+            animated: allowsOrderFront,
+            hapticPattern: nil,
+            hapticToken: hapticToken
+        )
+    }
+
+    private func escapeExpandedPresentation() {
+        if model.isFullScreen {
+            toggleFullScreenView()
+        } else {
+            applyEvent(.escapePressed, animated: true)
+        }
+    }
+
     func togglePin() {
         applyEvent(.togglePin(at: Date().timeIntervalSinceReferenceDate), animated: true)
     }
@@ -301,7 +329,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         syncNowPlayingListening()
         // Expanded size no longer depends on Now Playing; only listening/chrome change.
         if let geometry = model.geometry, stateContext.state.isExpandedOrPinned {
-            let target = geometry.expandedPlayerFrame()
+            let target = model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame()
             updatePanelFrame(
                 target,
                 expanding: false,
@@ -394,7 +422,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     func simulateEscapePressed() {
-        applyEvent(.escapePressed, animated: false)
+        escapeExpandedPresentation()
     }
 
     func inspectWindowForTests() -> IslandWindowInspection {
@@ -408,6 +436,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             collectionBehavior: panel.collectionBehavior,
             isMovable: panel.isMovable,
             isMovableByWindowBackground: panel.isMovableByWindowBackground,
+            isFullScreen: model.isFullScreen,
             isOpaque: panel.isOpaque,
             backgroundAlpha: panel.backgroundColor?.alphaComponent ?? 1,
             hasShadow: panel.hasShadow,
@@ -463,6 +492,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             collapse: { [weak self] in
                 self?.collapse()
+            },
+            toggleFullScreen: { [weak self] in
+                self?.toggleFullScreenView()
             },
             openStudio: { [weak self] in
                 self?.openStudio?()
@@ -552,6 +584,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             expandDelay: model.prefs.expandDelaySeconds
         )
         model.state = stateContext.state
+        if stateContext.state.isExpandedOrPinned == false {
+            model.isFullScreen = false
+        }
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown
         model.hoverArmed = stateContext.state == .compact && stateContext.expandArmedAt != nil
@@ -570,7 +605,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
         let targetFrame: NSRect
         if stateContext.state.isExpandedOrPinned {
-            targetFrame = geometry.expandedPlayerFrame()
+            targetFrame = model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame()
         } else {
             targetFrame = geometry.compactFrame
         }
@@ -606,6 +641,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         collapseTask?.cancel()
         collapseTask = nil
         guard stateContext.state == .expanded,
+              model.isFullScreen == false,
               stateContext.pointerInside == false,
               stateContext.pointerDown == false,
               let exitedAt = stateContext.exitedAt
@@ -750,7 +786,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 if event.keyCode == 53 {
                     MainActor.assumeIsolated {
-                        self?.applyEvent(.escapePressed, animated: true)
+                        self?.escapeExpandedPresentation()
                     }
                     return nil
                 }

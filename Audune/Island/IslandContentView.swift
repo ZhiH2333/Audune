@@ -25,6 +25,7 @@ final class IslandModel {
     var hoverArmed = false
     /// Drives Compact/Expanded chrome. Stays expanded through collapse frame animation so content doesn't pop early.
     var showsExpandedChrome = false
+    var isFullScreen = false
     /// Experimental Now Playing snapshot mirrored from `NowPlayingService` for Expanded UI.
     var nowPlaying = NowPlayingSnapshot.idle
 
@@ -156,6 +157,7 @@ struct IslandContentView: View {
     var togglePin: () -> Void
     var expand: () -> Void
     var collapse: () -> Void
+    var toggleFullScreen: () -> Void
     var openStudio: () -> Void
     var openSettings: () -> Void
     var toggleNowPlaying: () -> Void = {}
@@ -166,7 +168,9 @@ struct IslandContentView: View {
 
     var body: some View {
         Group {
-            if model.showsExpandedChrome {
+            if model.isFullScreen {
+                fullScreenBody
+            } else if model.showsExpandedChrome {
                 expandedBody
             } else {
                 compactBody
@@ -274,6 +278,54 @@ struct IslandContentView: View {
         .clipShape(shape)
     }
 
+    private var fullScreenBody: some View {
+        ZStack {
+            Color.black
+            RadialGradient(
+                colors: [Color.white.opacity(0.08), Color.black],
+                center: .center,
+                startRadius: 0,
+                endRadius: 720
+            )
+            expandedVisualization(opacityOverride: nil, orbitBoost: false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 72)
+                .padding(.vertical, 76)
+                .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                HStack {
+                    modeIconRow
+                    Spacer()
+                    IslandIconButton(
+                        symbol: "arrow.down.right.and.arrow.up.left",
+                        label: String(localized: "Exit full screen"),
+                        selected: false,
+                        action: toggleFullScreen
+                    )
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
+
+                Spacer()
+
+                HStack {
+                    Text("Notch Island")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(warmWhite.opacity(0.7))
+                    Spacer()
+                    Text(model.captureLabel(phase: spike.phase))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(warmWhite.opacity(0.7))
+                }
+                .padding(.horizontal, 36)
+                .padding(.bottom, 24)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+    }
+
     /// Icon-only Spectrum / Waveform / Orbit switcher in the left wing (replaces status text).
     private var modeIconRow: some View {
         HStack(spacing: 2) {
@@ -307,6 +359,12 @@ struct IslandContentView: View {
                 label: String(localized: "Notch Island Settings"),
                 selected: false,
                 action: openSettings
+            )
+            IslandIconButton(
+                symbol: "arrow.up.left.and.arrow.down.right",
+                label: String(localized: "Enter full screen"),
+                selected: false,
+                action: toggleFullScreen
             )
             IslandIconButton(
                 symbol: "chevron.up",

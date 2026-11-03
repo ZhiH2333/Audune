@@ -142,6 +142,37 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testFullScreenViewFillsSelectedDisplayAndEscapeReturnsToExpandedIsland() throws {
+        let screen = notchedScreen(origin: CGPoint(x: -1512, y: 120))
+        let geometry = try IslandGeometry.analyze(screen: screen).get()
+        let spike = ProcessTapSpike()
+        let controller = IslandWindowController(
+            spike: spike,
+            defaults: defaults,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        XCTAssertTrue(controller.inspectWindowForTests().isFullScreen)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.screenFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
+        XCTAssertEqual(spike.phase, .idle)
+
+        controller.simulateEscapePressed()
+        XCTAssertFalse(controller.inspectWindowForTests().isFullScreen)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.expandedPlayerFrame())
+        XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
+
+        controller.simulateEscapePressed()
+        XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.compactFrame)
+        XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
+        XCTAssertEqual(spike.phase, .idle)
+    }
+
+    @MainActor
     func testNonNotchedScreenCleanlyDisablesIslandAndStopsTimer() {
         let external = nonNotchedScreen()
         let spike = ProcessTapSpike()

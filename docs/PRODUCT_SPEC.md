@@ -253,7 +253,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 **Expanded（展开）**
 - 平滑展开；Expanded/Pinned 使用统一的大尺寸 frame（约 520–580 pt 宽，含额外高度），**不**随 `island.nowPlayingEnabled` 改变。
-- 左翼为频谱 / 波形 / 环形图标切换；右翼为 Pin / Studio / Settings / 收起。
+- 左翼为频谱 / 波形 / 环形图标切换；右翼为 Pin / Studio / Settings / 全屏 / 收起。
+- 全屏按钮把同一个 Island 面板铺满当前目标显示器，显示共享音频数据驱动的选定可视化；提供模式切换和退出按钮。退出按钮或第一次按 Escape 返回 Expanded/Pinned，第二次 Escape 才收起到 Compact。此视图不创建新窗口或音频捕获管线，也不切换到 macOS 原生全屏 Space。
 - 当 `island.nowPlayingEnabled` 为真时，按 `island.nowPlayingLayout.*` 显隐封面、标题与歌手、进度条、transport；氛围可视化由 `showVisualization` 控制。关闭 Now Playing 时不画播放器条，仅保留模式图标与可视化（若开启）。
 - Settings → Notch Island 提供 Expanded 布局预览（对照 Studio Layout 预览：可 Pause / Resume）与上述显隐开关。
 
