@@ -310,9 +310,7 @@ struct IslandContentView: View {
                 HStack(alignment: .center, spacing: 18) {
                     fullScreenNowPlayingMetadata
                     Spacer()
-                    Text(model.captureLabel(phase: spike.phase))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(warmWhite.opacity(0.7))
+                    fullScreenPlaybackButton
                 }
                 .padding(.horizontal, 36)
                 .frame(minHeight: 64)
@@ -386,6 +384,42 @@ struct IslandContentView: View {
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(warmWhite.opacity(0.72))
             .accessibilityAddTraits(.isStaticText)
+    }
+
+    private var fullScreenPlaybackButton: some View {
+        Button(action: toggleNowPlaying) {
+            Image(systemName: model.nowPlaying.isPlaying ? "pause.fill" : "play.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(warmWhite.opacity(canToggleFullScreenPlayback ? 0.9 : 0.4))
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(canToggleFullScreenPlayback == false)
+        .help(fullScreenPlaybackHelp)
+        .accessibilityLabel(model.nowPlaying.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
+    }
+
+    private var canToggleFullScreenPlayback: Bool {
+        model.prefs.nowPlayingEnabled
+            && model.nowPlaying.availability == .listening
+            && model.nowPlaying.hasTrack
+    }
+
+    private var fullScreenPlaybackHelp: String {
+        guard model.prefs.nowPlayingEnabled else {
+            return String(localized: "Enable Now Playing in Notch Island settings to control playback.")
+        }
+        switch model.nowPlaying.availability {
+        case .unavailable:
+            return String(localized: "Now Playing unavailable")
+        case .empty, .idle:
+            return String(localized: "Nothing playing")
+        case .listening:
+            return model.nowPlaying.hasTrack
+                ? (model.nowPlaying.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
+                : String(localized: "Nothing playing")
+        }
     }
 
     /// Icon-only Spectrum / Waveform / Orbit switcher in the left wing (replaces status text).

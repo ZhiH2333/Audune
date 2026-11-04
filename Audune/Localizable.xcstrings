@@ -1022,6 +1022,16 @@
         }
       }
     },
+    "Enable Now Playing in Notch Island settings to control playback.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在 Notch Island 设置中启用“正在播放”以控制播放。"
+          }
+        }
+      }
+    },
     "Enter a name.": {
       "localizations": {
         "zh-Hans": {
