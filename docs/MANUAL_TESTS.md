@@ -304,6 +304,10 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 
 Automated parser/clock/controller tests do not verify real MediaRemote clients, macOS file access, typography, or full-screen motion. Keep GUI rows `NOT TESTED` until checked in a real macOS session. No online provider is currently integrated; verify that no lyrics network request occurs.
 
+Automated check on `dev` at `4d9ca18`: `xcodebuild test -project Audune.xcodeproj -scheme Audune -destination 'platform=macOS' -only-testing:AuduneTests/NowPlayingServiceTests -only-testing:AuduneTests/IslandWindowControllerTests -only-testing:AuduneTests/LyricsSourceTests -only-testing:AuduneTests/LyricsPlaybackClockTests` passed (31 tests, 0 failures). This does not change the manual rows below from `NOT TESTED`.
+
+Regression check after the Lyrics implementation: the full `xcodebuild test -project Audune.xcodeproj -scheme Audune -destination 'platform=macOS'` run executed 329 tests; all Lyrics, Now Playing, controller, and localization suites passed, with one failure in the unrelated `StudioPassthroughTests.testCanvasPointResolvesToTheWindowUnderTheVisualPanel` window-server test. The Release build (`xcodebuild build -project Audune.xcodeproj -scheme Audune -configuration Release -destination 'platform=macOS'`) succeeded. The window-server failure is not counted as a Lyrics test pass.
+
 - [ ] `NOT TESTED` — Switching between Visualizer and Lyrics changes only the Fullscreen scene; Spectrum / Waveform / Orbit selection, window size/background, Expanded/Compact presentation, and Process Tap remain unchanged.
 - [ ] `NOT TESTED` — Entering Lyrics acquires a temporary Now Playing demand while leaving `Show Now Playing when expanded` unchanged; exiting releases the demand and leaves listening active only if the saved preference was already on.
 - [ ] `NOT TESTED` — With a real Now Playing client, lyric time follows play, pause, resume, seek, playback-rate changes (when reported), and track changes without a separate timer visibly drifting.

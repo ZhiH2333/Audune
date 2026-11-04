@@ -142,7 +142,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
 - 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
 
-### Planned — Island Fullscreen Lyrics（AUD-27）
+### In progress — Island Fullscreen Lyrics（AUD-27）
 
 - Lyrics 是现有 Island Fullscreen 的第二个 Scene；保留窗口、背景和视觉化器选择，不创建独立播放器，也不影响 Compact wings。
 - Lyrics 读取现有 Now Playing 服务。进入时通过临时 runtime demand 确保服务运行，不改写 `Show Now Playing when expanded` 持久偏好；退出时释放 demand，监听是否保留由原偏好决定。
@@ -150,6 +150,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 行时间和逐字/音节时间必须区分；LRC 不得伪装成逐字时间数据。播放时间以 NowPlayingService 为权威，展示时钟只负责连续采样。
 - 自动在线查词仅为未来回退路径。当前实施环境无法核验候选服务的 API、许可/条款、维护和隐私政策，因此本版本不集成在线 Provider、不发出歌词网络请求；界面必须明确报告在线来源不可用。完成核验后另行实施并披露最少必要的查询字段。
 - 本地歌词优先于在线来源；用户可删除当前歌曲已导入的歌词，删除后在线回退仍受 Provider 审核门槛约束。
+- 当前 `dev` 已实现 Fullscreen 场景切换、本地 LRC 导入/删除、行级同步、可选时间戳逐词填充及临时 Now Playing demand。在线 Provider 未审核，当前 LRC 不含逐词时间；真实播放器、文件授权和屏幕动效仍需按 `docs/MANUAL_TESTS.md` 手动验收。
 
 ### v0.4+ — 其他播放器 / 视觉扩展
 

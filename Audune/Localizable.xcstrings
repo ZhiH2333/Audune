@@ -1529,7 +1529,16 @@
         }
       }
     },
-    "Island layout preview": {},
+    "Island layout preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵动岛布局预览"
+          }
+        }
+      }
+    },
     "Keep current selection": {
       "localizations": {
         "zh-Hans": {
@@ -1876,7 +1885,16 @@
         }
       }
     },
-    "Next Track": {},
+    "Next Track": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一首"
+          }
+        }
+      }
+    },
     "No": {
       "extractionState": "stale",
       "localizations": {
@@ -2488,7 +2506,16 @@
         }
       }
     },
-    "Previous Track": {},
+    "Previous Track": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一首"
+          }
+        }
+      }
+    },
     "Progress": {
       "localizations": {
         "zh-Hans": {
@@ -3592,8 +3619,26 @@
         }
       }
     },
-    "Unknown Artist": {},
-    "Unknown Title": {},
+    "Unknown Artist": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知艺术家"
+          }
+        }
+      }
+    },
+    "Unknown Title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知标题"
+          }
+        }
+      }
+    },
     "Unknown until the player is running": {
       "extractionState": "stale",
       "localizations": {
