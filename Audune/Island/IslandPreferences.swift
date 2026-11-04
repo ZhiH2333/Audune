@@ -40,6 +40,10 @@ nonisolated struct IslandNowPlayingLayout: Equatable, Sendable {
     var showsAnyChrome: Bool {
         showArtwork || showTitleArtist || showProgress || showTransport
     }
+
+    var showsFullScreenMetadata: Bool {
+        showArtwork || showTitleArtist
+    }
 }
 
 nonisolated struct IslandPreferences: Equatable, Sendable {

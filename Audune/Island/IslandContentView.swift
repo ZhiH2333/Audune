@@ -309,10 +309,8 @@ struct IslandContentView: View {
 
                 Spacer()
 
-                HStack {
-                    Text("Notch Island")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(warmWhite.opacity(0.7))
+                HStack(alignment: .center, spacing: 18) {
+                    fullScreenNowPlayingMetadata
                     Spacer()
                     Text(model.captureLabel(phase: spike.phase))
                         .font(.system(size: 12, weight: .medium))
@@ -324,6 +322,71 @@ struct IslandContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+    }
+
+    @ViewBuilder
+    private var fullScreenNowPlayingMetadata: some View {
+        if model.prefs.nowPlayingEnabled, model.prefs.nowPlayingLayout.showsFullScreenMetadata {
+            switch model.nowPlaying.availability {
+            case .unavailable:
+                fullScreenNowPlayingStatus(String(localized: "Now Playing unavailable"))
+            case .empty, .idle:
+                fullScreenNowPlayingStatus(String(localized: "Nothing playing"))
+            case .listening:
+                if model.nowPlaying.hasTrack {
+                    HStack(alignment: .center, spacing: 20) {
+                        if model.prefs.nowPlayingLayout.showArtwork {
+                            fullScreenArtwork
+                        }
+                        if model.prefs.nowPlayingLayout.showTitleArtist {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(model.nowPlaying.title.isEmpty ? String(localized: "Unknown Title") : model.nowPlaying.title)
+                                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                                    .foregroundStyle(warmWhite)
+                                    .lineLimit(1)
+                                Text(model.nowPlaying.artist.isEmpty ? String(localized: "Unknown Artist") : model.nowPlaying.artist)
+                                    .font(.system(size: 19, weight: .medium, design: .rounded))
+                                    .foregroundStyle(warmWhite.opacity(0.65))
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: 360, alignment: .leading)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                } else {
+                    fullScreenNowPlayingStatus(String(localized: "Nothing playing"))
+                }
+            }
+        }
+    }
+
+    private var fullScreenArtwork: some View {
+        ZStack {
+            if let artwork = model.nowPlaying.artwork {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .overlay {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 28, weight: .medium))
+                            .foregroundStyle(warmWhite.opacity(0.72))
+                    }
+            }
+        }
+        .frame(width: 96, height: 96)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+        .accessibilityHidden(true)
+    }
+
+    private func fullScreenNowPlayingStatus(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(warmWhite.opacity(0.72))
+            .accessibilityAddTraits(.isStaticText)
     }
 
     /// Icon-only Spectrum / Waveform / Orbit switcher in the left wing (replaces status text).

@@ -564,10 +564,12 @@ Optional system Now Playing on Notch Island Expanded/Pinned: artwork, title, art
 - [x] Add `ejbills/mediaremote-adapter` SPM; implement `NowPlayingService` lifecycle gated by `island.nowPlayingEnabled`.
 - [x] Expanded/Pinned UI + geometry height bump; Compact zero change; never start/stop Process Tap.
 - [x] Seek-unsupported per-bundle fallback to display-only scrubber; empty/unavailable states; unit tests + manual matrix.
+- [x] Full-screen left-corner metadata display follows the existing Now Playing and artwork/title visibility preferences.
 
 ### Acceptance criteria
 - [x] Default off: Expanded Island matches prior layout (preference + UI gated).
 - [ ] When enabled on a notched display: metadata and transport work for system Now Playing clients; Compact shows spectrum only. *(manual — see MANUAL_TESTS)*
+- [ ] In full-screen mode, enabled Now Playing displays artwork/title/artist in the lower-left and shows a clear empty/unavailable state when appropriate. *(manual — see MANUAL_TESTS)*
 - [x] Toggle off / disable Island / no-notch / shutdown stops the adapter listener. *(unit-covered for service stop; Island wiring in controller)*
 - [x] Capture pipeline is unaffected by Now Playing toggles. *(NowPlayingService never touches ProcessTapSpike)*
 - [ ] Unavailable/empty states are explicit; no App Store claim; 15.4+ manual tests recorded honestly. *(empty/unavailable unit-covered; GUI rows remain NOT TESTED)*

@@ -32,6 +32,28 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(loaded.nowPlayingLayout, .standard)
     }
 
+    func testFullScreenMetadataUsesArtworkAndTitleArtistTogglesOnly() {
+        XCTAssertTrue(IslandNowPlayingLayout.standard.showsFullScreenMetadata)
+        XCTAssertTrue(
+            IslandNowPlayingLayout(
+                showArtwork: true,
+                showTitleArtist: false,
+                showProgress: false,
+                showTransport: false,
+                showVisualization: false
+            ).showsFullScreenMetadata
+        )
+        XCTAssertFalse(
+            IslandNowPlayingLayout(
+                showArtwork: false,
+                showTitleArtist: false,
+                showProgress: true,
+                showTransport: true,
+                showVisualization: false
+            ).showsFullScreenMetadata
+        )
+    }
+
     func testSaveAndLoadRoundTrip() {
         let custom = IslandPreferences(
             isEnabled: false,
