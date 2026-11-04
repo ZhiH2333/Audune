@@ -82,6 +82,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let allowsOrderFront: Bool
     private let haptics: any IslandHapticPerforming
     private let makeLyricsStore: () throws -> LocalLyricsStore
+    private let makeLyricsProvider: () -> any OnlineLyricsProviding
     private var hapticToken = 0
     let model = IslandModel()
     /// Tests may inject a private instance.
@@ -105,6 +106,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var didShutdown = false
     private var lyricsRuntimeDemand: UUID?
     private var lyricsStore: LocalLyricsStore?
+    private var lyricsManager: LyricsManager?
     private var currentLyricsTrackKey: LyricsTrackKey?
     /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
     private var frameAnimationGeneration = 0
@@ -140,6 +142,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         defaults: UserDefaults = .standard,
         nowPlaying: NowPlayingService? = nil,
         lyricsStoreFactory: (() throws -> LocalLyricsStore)? = nil,
+        lyricsProviderFactory: (() -> any OnlineLyricsProviding)? = nil,
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
         allowsOrderFront: Bool = true,
         /// When false, load prefs and configure the panel but defer screen evaluation until
@@ -151,6 +154,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         self.defaults = defaults
         self.nowPlaying = nowPlaying ?? NowPlayingService()
         self.makeLyricsStore = lyricsStoreFactory ?? { try LocalLyricsStore.applicationStore() }
+        self.makeLyricsProvider = lyricsProviderFactory ?? { LRCLIBLyricsProvider() }
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
         self.haptics = haptics
@@ -200,6 +204,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         expandTask = nil
         saveTask?.cancel()
         saveTask = nil
+        lyricsManager?.deactivate()
+        lyricsManager = nil
         model.nowPlaying = .idle
         model.isFullScreen = false
         lyricsRuntimeDemand = nil
@@ -296,6 +302,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             collapseTask = nil
         } else {
             model.fullScreenScene = .visualizer
+            lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
         }
         syncNowPlayingListening()
@@ -319,6 +326,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if scene == .lyrics {
             refreshLyricsForCurrentTrack()
         } else {
+            lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
         }
     }
@@ -337,22 +345,44 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         panel.title = String(localized: "Import Lyrics")
         panel.message = String(localized: "Choose an LRC lyrics file for the current song.")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        importLyrics(at: url)
+        Task { [weak self] in
+            await self?.importLyrics(at: url)
+        }
     }
 
-    func importLyrics(at url: URL) {
+    func importLyrics(at url: URL) async {
         updateLyricsPresentation()
         guard let currentLyricsTrackKey else {
             model.lyricsState = .metadataUnavailable
             return
         }
         do {
-            let document = try localLyricsStore().importLRC(at: url, for: currentLyricsTrackKey)
-            model.lyricsState = .local(document)
+            let manager = try resolvedLyricsManager()
+            _ = try await manager.importLocal(url: url, for: currentLyricsTrackKey)
             setActiveLyricsLineIndex(nil)
             updateLyricsLinePosition()
         } catch {
-            model.lyricsState = .error(error.localizedDescription)
+            model.lyricsState = .importError(importErrorMessage(error))
+        }
+    }
+
+    private func importErrorMessage(_ error: Error) -> String {
+        guard let importError = error as? LyricsImportError else {
+            return error.localizedDescription
+        }
+        switch importError {
+        case .noTimedLines:
+            return String(localized: "This LRC file has no timed lyric lines.")
+        case .invalidEncoding:
+            return String(localized: "This lyrics file uses an unsupported text encoding.")
+        case .emptyFile:
+            return String(localized: "This lyrics file is empty.")
+        case .unreadableFile:
+            return String(localized: "Audune could not read this lyrics file.")
+        case .storageUnavailable:
+            return String(localized: "Audune could not save imported lyrics.")
+        case .documentNotFound:
+            return String(localized: "The saved lyrics entry could not be found.")
         }
     }
 
@@ -363,7 +393,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         else {
             return
         }
-        model.lyricsState = .local(document)
+        try? resolvedLyricsManager().selectCandidate(document)
         setActiveLyricsLineIndex(nil)
         updateLyricsLinePosition()
     }
@@ -372,25 +402,26 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         updateLyricsPresentation()
         let isCurrentDocument: Bool
         switch model.lyricsState {
-        case .local(let document):
+        case .local(let document), .found(let document):
             isCurrentDocument = document.id == documentID
         case .ambiguous(let documents):
             isCurrentDocument = documents.contains(where: { $0.id == documentID })
-        case .noTrack, .nowPlayingUnavailable, .metadataUnavailable, .onlineUnavailable, .error:
+        default:
             isCurrentDocument = false
         }
         guard isCurrentDocument else { return }
         do {
-            try localLyricsStore().delete(documentID: documentID)
-            if let currentLyricsTrackKey {
-                resolveLyrics(for: currentLyricsTrackKey)
-            } else {
-                model.lyricsState = .noTrack
-            }
+            try resolvedLyricsManager().deleteLocalDocument(documentID)
             updateLyricsLinePosition()
         } catch {
             model.lyricsState = .error(error.localizedDescription)
         }
+    }
+
+    func setAutomaticOnlineLyricsEnabled(_ enabled: Bool) {
+        model.prefs.automaticOnlineLyricsEnabled = enabled
+        savePreferences()
+        lyricsManager?.updateAutomaticOnlineEnabled(enabled)
     }
 
     private func escapeExpandedPresentation() {
@@ -525,6 +556,29 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         return store
     }
 
+    private func resolvedLyricsManager() throws -> LyricsManager {
+        if let lyricsManager { return lyricsManager }
+        let manager = LyricsManager(
+            store: try localLyricsStore(),
+            provider: makeLyricsProvider(),
+            automaticOnlineEnabled: model.prefs.automaticOnlineLyricsEnabled
+        )
+        manager.onStateChange = { [weak self] in
+            self?.applyLyricsManagerState()
+        }
+        lyricsManager = manager
+        return manager
+    }
+
+    private func applyLyricsManagerState() {
+        guard let lyricsManager else { return }
+        if model.lyricsState != lyricsManager.state {
+            model.lyricsState = lyricsManager.state
+            setActiveLyricsLineIndex(nil)
+        }
+        updateLyricsLinePosition()
+    }
+
     private func refreshLyricsForCurrentTrack() {
         currentLyricsTrackKey = nil
         updateLyricsPresentation()
@@ -534,6 +588,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let snapshot = nowPlaying.snapshot
         guard snapshot.availability != .unavailable else {
             currentLyricsTrackKey = nil
+            lyricsManager?.deactivate()
             model.lyricsState = .nowPlayingUnavailable
             setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
@@ -541,6 +596,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
         guard let trackKey = lyricsTrackKey(from: snapshot) else {
             currentLyricsTrackKey = nil
+            lyricsManager?.deactivate()
             model.lyricsState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
             setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
@@ -551,8 +607,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             currentLyricsTrackKey = trackKey
             model.lyricsTrackRevision &+= 1
             setActiveLyricsLineIndex(nil)
-            resolveLyrics(for: trackKey)
         }
+        beginLyricsLookup(for: trackKey)
         updateLyricsLinePosition()
     }
 
@@ -571,16 +627,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         )
     }
 
-    private func resolveLyrics(for trackKey: LyricsTrackKey) {
+    private func beginLyricsLookup(for trackKey: LyricsTrackKey) {
         do {
-            switch try localLyricsStore().resolve(trackKey: trackKey) {
-            case .local(let document):
-                model.lyricsState = .local(document)
-            case .ambiguous(let documents):
-                model.lyricsState = .ambiguous(documents)
-            case .noLocalMatch:
-                model.lyricsState = .onlineUnavailable
-            }
+            try resolvedLyricsManager().activate(
+                trackKey: trackKey,
+                automaticOnlineEnabled: model.prefs.automaticOnlineLyricsEnabled
+            )
         } catch {
             model.lyricsState = .error(error.localizedDescription)
         }
@@ -596,7 +648,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             nowUptime: ProcessInfo.processInfo.systemUptime
         )
         model.lyricsPositionSeconds = position
-        guard case .local(let document) = model.lyricsState else {
+        guard let document = model.lyricsState.document else {
             setActiveLyricsLineIndex(nil)
             return
         }
@@ -735,6 +787,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             deleteLyrics: { [weak self] documentID in
                 self?.deleteLyrics(documentID)
+            },
+            retryLyrics: { [weak self] in
+                self?.lyricsManager?.retry()
             }
         )
         let host = IslandHostingView(rootView: root)
@@ -809,6 +864,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if stateContext.state.isExpandedOrPinned == false {
             model.isFullScreen = false
             model.fullScreenScene = .visualizer
+            lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
         }
         model.pointerInside = stateContext.pointerInside

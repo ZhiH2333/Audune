@@ -4074,6 +4074,416 @@
           }
         }
       }
+    },
+    "Audune cannot read the current song from the system right now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 目前无法从系统读取当前歌曲。"
+          }
+        }
+      }
+    },
+    "Song information is incomplete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌曲信息不完整"
+          }
+        }
+      }
+    },
+    "The current song is missing a title or artist, so lyrics cannot be matched.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前歌曲缺少标题或艺人，无法匹配歌词。"
+          }
+        }
+      }
+    },
+    "Finding lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在查找歌词"
+          }
+        }
+      }
+    },
+    "Identifying the current song.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在识别当前歌曲。"
+          }
+        }
+      }
+    },
+    "Checking your imported lyrics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查已导入的歌词。"
+          }
+        }
+      }
+    },
+    "Searching for lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在搜索歌词"
+          }
+        }
+      }
+    },
+    "Looking for the current song on LRCLIB.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在 LRCLIB 上查找当前歌曲。"
+          }
+        }
+      }
+    },
+    "Preparing synchronized lyrics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在准备同步歌词。"
+          }
+        }
+      }
+    },
+    "Online lyrics are off": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在线歌词已关闭"
+          }
+        }
+      }
+    },
+    "Turn on Automatic Online Lyrics in Settings, or import an LRC file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在设置中开启自动在线歌词，或导入 LRC 文件。"
+          }
+        }
+      }
+    },
+    "Instrumental track": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "纯音乐"
+          }
+        }
+      }
+    },
+    "This song has no lyrics to display.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这首歌曲没有可显示的歌词。"
+          }
+        }
+      }
+    },
+    "No lyrics found": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到歌词"
+          }
+        }
+      }
+    },
+    "No matching lyrics were found for this song.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有找到与当前歌曲匹配的歌词。"
+          }
+        }
+      }
+    },
+    "You are offline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前处于离线状态"
+          }
+        }
+      }
+    },
+    "Connect to the internet to search for lyrics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接互联网后即可搜索歌词。"
+          }
+        }
+      }
+    },
+    "Lyrics service unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词服务不可用"
+          }
+        }
+      }
+    },
+    "LRCLIB is not responding right now. Try again in a moment.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LRCLIB 暂时没有响应，请稍后重试。"
+          }
+        }
+      }
+    },
+    "Too many lyrics requests": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词请求过于频繁"
+          }
+        }
+      }
+    },
+    "Could not reach the lyrics service": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接歌词服务"
+          }
+        }
+      }
+    },
+    "Check your connection, then try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请检查网络连接后重试。"
+          }
+        }
+      }
+    },
+    "Lyrics could not be read": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取歌词"
+          }
+        }
+      }
+    },
+    "The lyrics service returned a format Audune cannot display.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词服务返回了 Audune 无法显示的格式。"
+          }
+        }
+      }
+    },
+    "Lyrics search stopped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词搜索已停止"
+          }
+        }
+      }
+    },
+    "Try searching again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新搜索。"
+          }
+        }
+      }
+    },
+    "Lyrics file could not be imported": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法导入歌词文件"
+          }
+        }
+      }
+    },
+    "Lyrics could not be loaded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载歌词"
+          }
+        }
+      }
+    },
+    "Try again in a moment.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请稍后再试。"
+          }
+        }
+      }
+    },
+    "Try again in about %lld seconds.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在约 %lld 秒后重试。"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "Search for lyrics again": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新搜索歌词"
+          }
+        }
+      }
+    },
+    "Import a local LRC lyrics file": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入本地 LRC 歌词文件"
+          }
+        }
+      }
+    },
+    "Automatic Online Lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动在线歌词"
+          }
+        }
+      }
+    },
+    "Audune sends the song title, artist, album, and duration to LRCLIB to find lyrics. Imported lyrics always take priority, and online results are never saved.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 会将歌曲标题、艺人、专辑和时长发送至 LRCLIB 以查找歌词。已导入的歌词始终优先，在线结果不会被保存。"
+          }
+        }
+      }
+    },
+    "This LRC file has no timed lyric lines.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个 LRC 文件没有带时间轴的歌词行。"
+          }
+        }
+      }
+    },
+    "This lyrics file uses an unsupported text encoding.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个歌词文件使用了不支持的文本编码。"
+          }
+        }
+      }
+    },
+    "This lyrics file is empty.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个歌词文件是空的。"
+          }
+        }
+      }
+    },
+    "Audune could not read this lyrics file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 无法读取这个歌词文件。"
+          }
+        }
+      }
+    },
+    "Audune could not save imported lyrics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audune 无法保存已导入的歌词。"
+          }
+        }
+      }
+    },
+    "The saved lyrics entry could not be found.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到已保存的歌词条目。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

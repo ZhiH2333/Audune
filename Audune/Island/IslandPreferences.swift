@@ -13,6 +13,7 @@ nonisolated enum IslandPreferenceKey {
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
     static let nowPlayingEnabled = "island.nowPlayingEnabled"
+    static let automaticOnlineLyrics = "island.automaticOnlineLyrics"
     static let showArtwork = "island.nowPlayingLayout.showArtwork"
     static let showTitleArtist = "island.nowPlayingLayout.showTitleArtist"
     static let showProgress = "island.nowPlayingLayout.showProgress"
@@ -60,6 +61,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var followsReduceMotion: Bool
     /// Experimental system Now Playing in Expanded/Pinned. Default off. Does not change Expanded frame size.
     var nowPlayingEnabled: Bool
+    /// Lyrics Scene may query the reviewed online provider automatically for the current song.
+    var automaticOnlineLyricsEnabled: Bool
     /// Which Expanded Now Playing chrome pieces are shown when listening.
     var nowPlayingLayout: IslandNowPlayingLayout
 
@@ -81,6 +84,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         showsInFullScreen: false,
         followsReduceMotion: true,
         nowPlayingEnabled: false,
+        automaticOnlineLyricsEnabled: true,
         nowPlayingLayout: .standard
     )
 
@@ -148,6 +152,9 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         let nowPlayingEnabled = defaults.object(forKey: IslandPreferenceKey.nowPlayingEnabled) == nil
             ? standard.nowPlayingEnabled
             : defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled)
+        let automaticOnlineLyricsEnabled = defaults.object(forKey: IslandPreferenceKey.automaticOnlineLyrics) == nil
+            ? standard.automaticOnlineLyricsEnabled
+            : defaults.bool(forKey: IslandPreferenceKey.automaticOnlineLyrics)
         let nowPlayingLayout = IslandNowPlayingLayout(
             showArtwork: defaults.object(forKey: IslandPreferenceKey.showArtwork) == nil
                 ? standard.nowPlayingLayout.showArtwork
@@ -179,6 +186,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion,
             nowPlayingEnabled: nowPlayingEnabled,
+            automaticOnlineLyricsEnabled: automaticOnlineLyricsEnabled,
             nowPlayingLayout: nowPlayingLayout
         ).normalized()
     }
@@ -226,6 +234,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
         defaults.set(normalized.nowPlayingEnabled, forKey: IslandPreferenceKey.nowPlayingEnabled)
+        defaults.set(normalized.automaticOnlineLyricsEnabled, forKey: IslandPreferenceKey.automaticOnlineLyrics)
         defaults.set(normalized.nowPlayingLayout.showArtwork, forKey: IslandPreferenceKey.showArtwork)
         defaults.set(normalized.nowPlayingLayout.showTitleArtist, forKey: IslandPreferenceKey.showTitleArtist)
         defaults.set(normalized.nowPlayingLayout.showProgress, forKey: IslandPreferenceKey.showProgress)

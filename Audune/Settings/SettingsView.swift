@@ -614,6 +614,16 @@ struct SettingsView: View {
                 }
             }
         }
+        Section("Lyrics") {
+            Toggle("Automatic Online Lyrics", isOn: Binding(
+                get: { islandModel.prefs.automaticOnlineLyricsEnabled },
+                set: { island.setAutomaticOnlineLyricsEnabled($0) }
+            ))
+            Text("Audune sends the song title, artist, album, and duration to LRCLIB to find lyrics. Imported lyrics always take priority, and online results are never saved.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         Section("Now Playing layout") {
             Toggle("Artwork", isOn: $islandModel.prefs.nowPlayingLayout.showArtwork)
             Toggle("Title & Artist", isOn: $islandModel.prefs.nowPlayingLayout.showTitleArtist)

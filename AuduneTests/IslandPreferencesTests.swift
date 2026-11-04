@@ -29,6 +29,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.showsInFullScreen)
         XCTAssertTrue(loaded.followsReduceMotion)
         XCTAssertFalse(loaded.nowPlayingEnabled)
+        XCTAssertTrue(loaded.automaticOnlineLyricsEnabled)
         XCTAssertEqual(loaded.nowPlayingLayout, .standard)
     }
 
@@ -68,6 +69,7 @@ final class IslandPreferencesTests: XCTestCase {
             showsInFullScreen: true,
             followsReduceMotion: false,
             nowPlayingEnabled: true,
+            automaticOnlineLyricsEnabled: false,
             nowPlayingLayout: IslandNowPlayingLayout(
                 showArtwork: false,
                 showTitleArtist: true,
@@ -84,6 +86,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.nowPlayingLayout.showArtwork)
         XCTAssertFalse(loaded.nowPlayingLayout.showProgress)
         XCTAssertFalse(loaded.nowPlayingLayout.showVisualization)
+        XCTAssertFalse(loaded.automaticOnlineLyricsEnabled)
     }
 
     func testInvalidValuesClampAndNormalize() {

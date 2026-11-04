@@ -49,7 +49,7 @@ nonisolated enum OnlineLyricsLookup: Equatable, Sendable {
     case cancelled
 }
 
-protocol OnlineLyricsProviding: Sendable {
+nonisolated protocol OnlineLyricsProviding: Sendable {
     var descriptor: LyricsProviderDescriptor { get }
     func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup
 }
@@ -469,7 +469,7 @@ nonisolated enum LRCParser {
     }
 }
 
-struct LocalLyricsStore {
+struct LocalLyricsStore: Sendable {
     let fileURL: URL
 
     static func applicationStore() throws -> LocalLyricsStore {

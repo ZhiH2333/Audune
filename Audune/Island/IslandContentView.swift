@@ -16,13 +16,39 @@ nonisolated enum IslandFullScreenScene: String, CaseIterable, Identifiable {
 }
 
 nonisolated enum LyricsPresentationState: Equatable {
+    case idle
     case noTrack
     case nowPlayingUnavailable
     case metadataUnavailable
+    case identifyingTrack
+    case checkingLocal
+    case searchingOnline
+    case loading
+    case onlineDisabled
     case local(LyricsDocument)
+    case found(LyricsDocument)
     case ambiguous([LyricsDocument])
-    case onlineUnavailable
+    case instrumental
+    case notFound
+    case offline
+    case providerUnavailable
+    case rateLimited(retryAfterSeconds: TimeInterval?)
+    case networkError
+    case parseError
+    case importError(String)
+    case cancelled
     case error(String)
+
+    var document: LyricsDocument? {
+        switch self {
+        case .local(let document), .found(let document):
+            return document
+        case .ambiguous(let documents):
+            return documents.count == 1 ? documents[0] : nil
+        default:
+            return nil
+        }
+    }
 }
 
 @MainActor
@@ -198,6 +224,7 @@ struct IslandContentView: View {
     var importLyrics: () -> Void = {}
     var chooseLyricsCandidate: (UUID) -> Void = { _ in }
     var deleteLyrics: (UUID) -> Void = { _ in }
+    var retryLyrics: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -346,7 +373,8 @@ struct IslandContentView: View {
                             model: model,
                             importLyrics: importLyrics,
                             chooseCandidate: chooseLyricsCandidate,
-                            deleteLyrics: deleteLyrics
+                            deleteLyrics: deleteLyrics,
+                            retryLyrics: retryLyrics
                         )
                         .transition(.opacity.combined(with: .offset(y: 8)))
                     }

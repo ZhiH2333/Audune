@@ -6,6 +6,7 @@ struct IslandFullscreenLyricsView: View {
     var importLyrics: () -> Void
     var chooseCandidate: (UUID) -> Void
     var deleteLyrics: (UUID) -> Void
+    var retryLyrics: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -114,31 +115,172 @@ struct IslandFullscreenLyricsView: View {
     @ViewBuilder
     private var lyricsContent: some View {
         switch model.lyricsState {
-        case .local(let document):
+        case .local(let document), .found(let document):
             lyricLines(document)
         case .ambiguous(let documents):
             ambiguousChoices(documents)
         case .noTrack:
-            emptyState(String(localized: "Play music to view lyrics."))
+            statusState(
+                title: String(localized: "Nothing playing"),
+                message: String(localized: "Play music to view lyrics."),
+                showsRetry: false
+            )
         case .nowPlayingUnavailable:
-            emptyState(String(localized: "Now Playing unavailable"))
+            statusState(
+                title: String(localized: "Now Playing unavailable"),
+                message: String(localized: "Audune cannot read the current song from the system right now."),
+                showsRetry: false
+            )
         case .metadataUnavailable:
-            emptyState(String(localized: "Track information is incomplete."))
-        case .onlineUnavailable:
-            VStack(alignment: .leading, spacing: 10) {
-                emptyState(String(localized: "Online lyrics lookup is unavailable."))
-                Text(String(localized: "Import an LRC file to continue."))
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
-            }
+            statusState(
+                title: String(localized: "Song information is incomplete"),
+                message: String(localized: "The current song is missing a title or artist, so lyrics cannot be matched."),
+                showsRetry: false
+            )
+        case .idle, .identifyingTrack:
+            statusState(
+                title: String(localized: "Finding lyrics"),
+                message: String(localized: "Identifying the current song."),
+                showsRetry: false,
+                isLoading: true
+            )
+        case .checkingLocal:
+            statusState(
+                title: String(localized: "Finding lyrics"),
+                message: String(localized: "Checking your imported lyrics."),
+                showsRetry: false,
+                isLoading: true
+            )
+        case .searchingOnline:
+            statusState(
+                title: String(localized: "Searching for lyrics"),
+                message: String(localized: "Looking for the current song on LRCLIB."),
+                showsRetry: false,
+                isLoading: true
+            )
+        case .loading:
+            statusState(
+                title: String(localized: "Finding lyrics"),
+                message: String(localized: "Preparing synchronized lyrics."),
+                showsRetry: false,
+                isLoading: true
+            )
+        case .onlineDisabled:
+            statusState(
+                title: String(localized: "Online lyrics are off"),
+                message: String(localized: "Turn on Automatic Online Lyrics in Settings, or import an LRC file."),
+                showsRetry: false
+            )
+        case .instrumental:
+            statusState(
+                title: String(localized: "Instrumental track"),
+                message: String(localized: "This song has no lyrics to display."),
+                showsRetry: false
+            )
+        case .notFound:
+            statusState(
+                title: String(localized: "No lyrics found"),
+                message: String(localized: "No matching lyrics were found for this song."),
+                showsRetry: true
+            )
+        case .offline:
+            statusState(
+                title: String(localized: "You are offline"),
+                message: String(localized: "Connect to the internet to search for lyrics."),
+                showsRetry: true
+            )
+        case .providerUnavailable:
+            statusState(
+                title: String(localized: "Lyrics service unavailable"),
+                message: String(localized: "LRCLIB is not responding right now. Try again in a moment."),
+                showsRetry: true
+            )
+        case .rateLimited(let retryAfterSeconds):
+            statusState(
+                title: String(localized: "Too many lyrics requests"),
+                message: retryAfterMessage(retryAfterSeconds),
+                showsRetry: true
+            )
+        case .networkError:
+            statusState(
+                title: String(localized: "Could not reach the lyrics service"),
+                message: String(localized: "Check your connection, then try again."),
+                showsRetry: true
+            )
+        case .parseError:
+            statusState(
+                title: String(localized: "Lyrics could not be read"),
+                message: String(localized: "The lyrics service returned a format Audune cannot display."),
+                showsRetry: true
+            )
+        case .cancelled:
+            statusState(
+                title: String(localized: "Lyrics search stopped"),
+                message: String(localized: "Try searching again."),
+                showsRetry: true
+            )
+        case .importError(let message):
+            statusState(
+                title: String(localized: "Lyrics file could not be imported"),
+                message: message,
+                showsRetry: false
+            )
         case .error(let message):
-            VStack(alignment: .leading, spacing: 8) {
-                emptyState(String(localized: "Lyrics could not be loaded."))
-                Text(message)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+            statusState(
+                title: String(localized: "Lyrics could not be loaded"),
+                message: message,
+                showsRetry: true
+            )
         }
+    }
+
+    private func retryAfterMessage(_ seconds: TimeInterval?) -> String {
+        guard let seconds, seconds.isFinite, seconds > 0 else {
+            return String(localized: "Try again in a moment.")
+        }
+        let rounded = max(1, Int(seconds.rounded(.up)))
+        return String(localized: "Try again in about \(rounded) seconds.")
+    }
+
+    private func statusState(
+        title: String,
+        message: String,
+        showsRetry: Bool,
+        isLoading: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white.opacity(0.7))
+            }
+            Text(title)
+                .font(.system(size: 30, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.92))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(message)
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 560, alignment: .leading)
+            HStack(spacing: 18) {
+                if showsRetry {
+                    Button(String(localized: "Try Again"), action: retryLyrics)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.white.opacity(0.16))
+                        .foregroundStyle(.white)
+                        .accessibilityLabel(String(localized: "Search for lyrics again"))
+                }
+                if canImportLyrics {
+                    Button(String(localized: "Import LRC"), action: importLyrics)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .accessibilityLabel(String(localized: "Import a local LRC lyrics file"))
+                }
+            }
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
     private func lyricLines(_ document: LyricsDocument) -> some View {

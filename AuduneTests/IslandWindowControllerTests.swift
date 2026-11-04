@@ -34,6 +34,19 @@ private final class FakeIslandNowPlayingController: NowPlayingControlling {
     }
 }
 
+private struct ImmediateNotFoundLyricsProvider: OnlineLyricsProviding {
+    nonisolated let descriptor = LyricsProviderDescriptor(
+        kind: .lrclib,
+        displayName: "LRCLIB",
+        websiteURL: URL(string: "https://lrclib.net")!,
+        queryFields: [.title, .artist]
+    )
+
+    func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup {
+        .notFound
+    }
+}
+
 final class IslandWindowControllerTests: XCTestCase {
     private let suite = "AuduneIslandWindowControllerTests"
     private var defaults: UserDefaults!
@@ -41,6 +54,8 @@ final class IslandWindowControllerTests: XCTestCase {
     override func setUp() {
         defaults = UserDefaults(suiteName: suite)
         defaults.removePersistentDomain(forName: suite)
+        // Controller tests exercise local resolution without external network access.
+        defaults.set(false, forKey: IslandPreferenceKey.automaticOnlineLyrics)
     }
 
     override func tearDown() {
@@ -192,6 +207,50 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testLyricsSceneAutomaticallySearchesWhenLocalLyricsAreMissing() async {
+        let screen = notchedScreen()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        defaults.set(true, forKey: IslandPreferenceKey.automaticOnlineLyrics)
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            lyricsProviderFactory: { ImmediateNotFoundLyricsProvider() },
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 10,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline, controller.model.lyricsState != .notFound {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(controller.model.lyricsState, .notFound)
+        XCTAssertGreaterThanOrEqual(controller.model.lyricsPositionSeconds, 10)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+    }
+
+    @MainActor
     func testLyricsSceneUsesTemporaryNowPlayingDemandWithoutChangingSavedPreference() {
         let screen = notchedScreen()
         let spike = ProcessTapSpike()
@@ -248,7 +307,7 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
-    func testLyricsSceneImportsMatchesAcrossPlayersAndDeletesTheCurrentDocument() throws {
+    func testLyricsSceneImportsMatchesAcrossPlayersAndDeletesTheCurrentDocument() async throws {
         let screen = notchedScreen()
         let spike = ProcessTapSpike()
         let directory = FileManager.default.temporaryDirectory
@@ -290,10 +349,10 @@ final class IslandWindowControllerTests: XCTestCase {
             )
         )
         controller.refreshNowPlayingSnapshot()
-        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertEqual(controller.model.lyricsState, .onlineDisabled)
         let initialTrackRevision = controller.model.lyricsTrackRevision
 
-        controller.importLyrics(at: sourceURL)
+        await controller.importLyrics(at: sourceURL)
         guard case .local(let document) = controller.model.lyricsState else {
             return XCTFail("Expected imported local lyrics")
         }
@@ -339,7 +398,7 @@ final class IslandWindowControllerTests: XCTestCase {
             )
         )
         controller.refreshNowPlayingSnapshot()
-        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertEqual(controller.model.lyricsState, .onlineDisabled)
         XCTAssertGreaterThan(controller.model.lyricsTrackRevision, initialTrackRevision)
         XCTAssertLessThan(controller.model.lyricsPositionSeconds, 0.1)
         controller.deleteLyrics(document.id)
@@ -372,7 +431,7 @@ final class IslandWindowControllerTests: XCTestCase {
         )
         controller.refreshNowPlayingSnapshot()
         controller.deleteLyrics(document.id)
-        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertEqual(controller.model.lyricsState, .onlineDisabled)
     }
 
     @MainActor
@@ -409,7 +468,7 @@ final class IslandWindowControllerTests: XCTestCase {
 
         controller.refreshNowPlayingSnapshot()
 
-        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertEqual(controller.model.lyricsState, .onlineDisabled)
         XCTAssertGreaterThanOrEqual(controller.model.lyricsPositionSeconds, 42)
         XCTAssertLessThan(controller.model.lyricsPositionSeconds, 43)
         XCTAssertEqual(
