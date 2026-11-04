@@ -296,7 +296,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             collapseTask = nil
         } else {
             model.fullScreenScene = .visualizer
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
         }
         syncNowPlayingListening()
         if model.isFullScreen, model.fullScreenScene == .lyrics {
@@ -319,7 +319,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if scene == .lyrics {
             refreshLyricsForCurrentTrack()
         } else {
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
         }
     }
 
@@ -349,6 +349,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         do {
             let document = try localLyricsStore().importLRC(at: url, for: currentLyricsTrackKey)
             model.lyricsState = .local(document)
+            setActiveLyricsLineIndex(nil)
             updateLyricsLinePosition()
         } catch {
             model.lyricsState = .error(error.localizedDescription)
@@ -363,6 +364,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             return
         }
         model.lyricsState = .local(document)
+        setActiveLyricsLineIndex(nil)
         updateLyricsLinePosition()
     }
 
@@ -533,20 +535,22 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         guard snapshot.availability != .unavailable else {
             currentLyricsTrackKey = nil
             model.lyricsState = .nowPlayingUnavailable
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
             return
         }
         guard let trackKey = lyricsTrackKey(from: snapshot) else {
             currentLyricsTrackKey = nil
             model.lyricsState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
             return
         }
 
         if currentLyricsTrackKey != trackKey {
             currentLyricsTrackKey = trackKey
+            model.lyricsTrackRevision &+= 1
+            setActiveLyricsLineIndex(nil)
             resolveLyrics(for: trackKey)
         }
         updateLyricsLinePosition()
@@ -584,7 +588,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     private func updateLyricsLinePosition() {
         guard case .local(let document) = model.lyricsState else {
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
             return
         }
@@ -597,10 +601,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             nowUptime: ProcessInfo.processInfo.systemUptime
         )
         model.lyricsPositionSeconds = position
-        model.activeLyricsLineIndex = LyricsPlaybackClock.activeLineIndex(
+        setActiveLyricsLineIndex(LyricsPlaybackClock.activeLineIndex(
             in: document.lines,
             at: position
-        )
+        ))
+    }
+
+    private func setActiveLyricsLineIndex(_ index: Int?) {
+        guard model.activeLyricsLineIndex != index else { return }
+        model.activeLyricsLineIndex = index
+        model.activeLyricsLineChangedAtUptime = ProcessInfo.processInfo.systemUptime
     }
 
     #if DEBUG
@@ -800,7 +810,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if stateContext.state.isExpandedOrPinned == false {
             model.isFullScreen = false
             model.fullScreenScene = .visualizer
-            model.activeLyricsLineIndex = nil
+            setActiveLyricsLineIndex(nil)
         }
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown

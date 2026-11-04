@@ -24,6 +24,9 @@ struct IslandFullscreenLyricsView: View {
                 lyricsContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.leading, 48)
+                    .id(model.lyricsTrackRevision)
+                    .transition(.opacity)
+                    .animation(trackAnimation, value: model.lyricsTrackRevision)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
@@ -47,6 +50,9 @@ struct IslandFullscreenLyricsView: View {
             .frame(width: artworkSide, height: artworkSide)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .accessibilityLabel(String(localized: "Album artwork"))
+            .id(model.lyricsTrackRevision)
+            .transition(.opacity)
+            .animation(trackAnimation, value: model.lyricsTrackRevision)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(model.nowPlaying.title.isEmpty ? String(localized: "Unknown Title") : model.nowPlaying.title)
@@ -135,28 +141,51 @@ struct IslandFullscreenLyricsView: View {
     private func lyricLines(_ document: LyricsDocument) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                LazyVStack(alignment: .leading, spacing: 28) {
                     ForEach(Array(document.lines.enumerated()), id: \.offset) { index, line in
                         let distance = model.activeLyricsLineIndex.map { abs(index - $0) } ?? 2
+                        let opacity = lineOpacity(distance: distance)
+                        let translationReveal = shouldReduceMotion || index != model.activeLyricsLineIndex
+                            ? 1
+                            : translationOpacity
                         VStack(alignment: .leading, spacing: 7) {
-                            Text(line.text)
-                                .font(.system(
-                                    size: index == model.activeLyricsLineIndex ? 32 : 23,
-                                    weight: index == model.activeLyricsLineIndex ? .semibold : .medium,
-                                    design: .rounded
-                                ))
-                                .foregroundStyle(.white.opacity(lineOpacity(distance: distance)))
-                                .fixedSize(horizontal: false, vertical: true)
+                            Group {
+                                if let words = line.words, words.isEmpty == false {
+                                    LyricsTimedWordLine(
+                                        words: words,
+                                        position: model.lyricsPositionSeconds,
+                                        fontSize: index == model.activeLyricsLineIndex ? 32 : 23,
+                                        weight: index == model.activeLyricsLineIndex ? .semibold : .medium,
+                                        opacity: opacity,
+                                        accessibilityLabel: line.text
+                                    )
+                                } else {
+                                    Text(line.text)
+                                        .font(.system(
+                                            size: index == model.activeLyricsLineIndex ? 32 : 23,
+                                            weight: index == model.activeLyricsLineIndex ? .semibold : .medium,
+                                            design: .rounded
+                                        ))
+                                        .foregroundStyle(.white.opacity(opacity))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                             if let translation = line.translation, translation.isEmpty == false {
                                 Text(translation)
                                     .font(.system(size: 16, weight: .regular, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.4 * lineOpacity(distance: distance)))
+                                    .foregroundStyle(.white.opacity(0.4 * opacity * translationReveal))
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .offset(y: shouldReduceMotion ? 0 : (1 - translationReveal) * 5)
+                                    .animation(
+                                        shouldReduceMotion ? nil : .linear(duration: 1.0 / 30),
+                                        value: translationReveal
+                                    )
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .id(index)
                         .accessibilityElement(children: .combine)
+                        .animation(lineAnimation, value: model.activeLyricsLineIndex)
                     }
                 }
                 .padding(.vertical, 120)
@@ -168,10 +197,10 @@ struct IslandFullscreenLyricsView: View {
             }
             .onChange(of: model.activeLyricsLineIndex) { _, index in
                 guard let index else { return }
-                if reduceMotion {
+                if shouldReduceMotion {
                     proxy.scrollTo(index, anchor: .center)
                 } else {
-                    withAnimation(.easeInOut(duration: 0.42)) {
+                    withAnimation(.easeInOut(duration: IslandMotion.lyricsLineSeconds)) {
                         proxy.scrollTo(index, anchor: .center)
                     }
                 }
@@ -248,6 +277,24 @@ struct IslandFullscreenLyricsView: View {
         return "\(current) / \(timeLabel(model.nowPlaying.durationSeconds))"
     }
 
+    private var translationOpacity: Double {
+        LyricsPresentationTiming.translationOpacity(
+            sinceLineFocus: ProcessInfo.processInfo.systemUptime - model.activeLyricsLineChangedAtUptime
+        )
+    }
+
+    private var shouldReduceMotion: Bool {
+        reduceMotion && model.prefs.followsReduceMotion
+    }
+
+    private var lineAnimation: Animation? {
+        shouldReduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsLineSeconds)
+    }
+
+    private var trackAnimation: Animation? {
+        shouldReduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsTrackSeconds)
+    }
+
     private func lineOpacity(distance: Int) -> Double {
         switch distance {
         case 0: 1
@@ -260,6 +307,104 @@ struct IslandFullscreenLyricsView: View {
     private func timeLabel(_ time: TimeInterval) -> String {
         let seconds = Int(max(0, time))
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+private struct LyricsTimedWordLine: View {
+    var words: [LyricsWord]
+    var position: TimeInterval
+    var fontSize: CGFloat
+    var weight: Font.Weight
+    var opacity: Double
+    var accessibilityLabel: String
+
+    var body: some View {
+        LyricsTokenFlowLayout {
+            ForEach(words) { word in
+                LyricsWordFill(
+                    word: word,
+                    progress: LyricsPlaybackClock.wordProgress(for: word, at: position),
+                    font: .system(size: fontSize, weight: weight, design: .rounded),
+                    opacity: opacity
+                )
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+private struct LyricsWordFill: View {
+    var word: LyricsWord
+    var progress: Double
+    var font: Font
+    var opacity: Double
+
+    var body: some View {
+        Text(word.text)
+            .font(font)
+            .foregroundStyle(.white.opacity(opacity * 0.34))
+            .fixedSize()
+            .overlay(alignment: .leading) {
+                Text(word.text)
+                    .font(font)
+                    .foregroundStyle(.white.opacity(opacity))
+                    .fixedSize()
+                    .mask(alignment: .leading) {
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .frame(width: geometry.size.width * min(max(progress, 0), 1))
+                        }
+                    }
+            }
+    }
+}
+
+private struct LyricsTokenFlowLayout: Layout {
+    var lineSpacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let availableWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var widestRow: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > availableWidth {
+                widestRow = max(widestRow, x)
+                y += rowHeight + lineSpacing
+                x = 0
+                rowHeight = 0
+            }
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
+        widestRow = max(widestRow, x)
+        return CGSize(width: proposal.width ?? widestRow, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + lineSpacing
+                rowHeight = 0
+            }
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 #endif

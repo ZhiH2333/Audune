@@ -48,6 +48,15 @@ nonisolated struct LyricsPlaybackClock {
     }
 }
 
+nonisolated enum LyricsPresentationTiming {
+    static func translationOpacity(sinceLineFocus: TimeInterval) -> Double {
+        guard sinceLineFocus.isFinite else { return 0 }
+        let progress = (sinceLineFocus - IslandMotion.lyricsTranslationDelaySeconds)
+            / IslandMotion.lyricsTranslationFadeSeconds
+        return min(max(progress, 0), 1)
+    }
+}
+
 nonisolated struct LyricsTrackKey: Codable, Equatable, Hashable, Sendable {
     var isrc: String?
     var title: String

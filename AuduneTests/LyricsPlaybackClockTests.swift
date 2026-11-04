@@ -73,6 +73,22 @@ final class LyricsPlaybackClockTests: XCTestCase {
         XCTAssertEqual(LyricsPlaybackClock.wordProgress(for: word, at: 1), 0)
     }
 
+    func testTranslationWaitsThenFadesInAfterLineFocus() {
+        XCTAssertEqual(
+            LyricsPresentationTiming.translationOpacity(sinceLineFocus: 0.1),
+            0
+        )
+        XCTAssertEqual(
+            LyricsPresentationTiming.translationOpacity(sinceLineFocus: 0.2),
+            0.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPresentationTiming.translationOpacity(sinceLineFocus: 0.3),
+            1
+        )
+    }
+
     func testLyricsTrackKeyIsIndependentOfPlaybackAppIdentity() {
         let appleMusic = LyricsTrackKey(
             isrc: nil,

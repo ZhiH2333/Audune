@@ -291,12 +291,17 @@ final class IslandWindowControllerTests: XCTestCase {
         )
         controller.refreshNowPlayingSnapshot()
         XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        let initialTrackRevision = controller.model.lyricsTrackRevision
 
         controller.importLyrics(at: sourceURL)
         guard case .local(let document) = controller.model.lyricsState else {
             return XCTFail("Expected imported local lyrics")
         }
         XCTAssertEqual(controller.model.activeLyricsLineIndex, 0)
+
+        service.seek(to: 3.2)
+        controller.refreshNowPlayingSnapshot()
+        XCTAssertEqual(controller.model.activeLyricsLineIndex, 1)
 
         fake.emit(
             NowPlayingTrackPayload(
@@ -317,6 +322,7 @@ final class IslandWindowControllerTests: XCTestCase {
             return XCTFail("Expected the saved lyrics to match across players")
         }
         XCTAssertEqual(matchedDocument.id, document.id)
+        XCTAssertEqual(controller.model.lyricsTrackRevision, initialTrackRevision)
 
         fake.emit(
             NowPlayingTrackPayload(
@@ -334,6 +340,8 @@ final class IslandWindowControllerTests: XCTestCase {
         )
         controller.refreshNowPlayingSnapshot()
         XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertGreaterThan(controller.model.lyricsTrackRevision, initialTrackRevision)
+        XCTAssertEqual(controller.model.lyricsPositionSeconds, 0)
         controller.deleteLyrics(document.id)
         XCTAssertEqual(
             try LocalLyricsStore(fileURL: storeURL).resolve(

@@ -56,6 +56,8 @@ final class IslandModel {
     var lyricsState: LyricsPresentationState = .noTrack
     var lyricsPositionSeconds: TimeInterval = 0
     var activeLyricsLineIndex: Int?
+    var activeLyricsLineChangedAtUptime: TimeInterval = 0
+    var lyricsTrackRevision: UInt64 = 0
 
     var isSupported: Bool {
         geometry != nil && unsupportedReason == nil
@@ -338,6 +340,7 @@ struct IslandContentView: View {
                     if model.fullScreenScene == .visualizer {
                         expandedVisualization(opacityOverride: nil, orbitBoost: false)
                             .allowsHitTesting(false)
+                            .transition(.opacity.combined(with: .offset(y: -8)))
                     } else {
                         IslandFullscreenLyricsView(
                             model: model,
@@ -345,11 +348,13 @@ struct IslandContentView: View {
                             chooseCandidate: chooseLyricsCandidate,
                             deleteLyrics: deleteLyrics
                         )
+                        .transition(.opacity.combined(with: .offset(y: 8)))
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, model.fullScreenScene == .visualizer ? 72 : 48)
                 .padding(.vertical, 32)
+                .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
 
                 HStack(alignment: .center, spacing: 18) {
                     if model.fullScreenScene == .visualizer {
@@ -695,6 +700,11 @@ struct IslandContentView: View {
         )
         guard duration > 0 else { return nil }
         return .easeOut(duration: duration)
+    }
+
+    private var fullScreenSceneAnimation: Animation? {
+        guard reduceMotion == false || model.prefs.followsReduceMotion == false else { return nil }
+        return .easeInOut(duration: IslandMotion.lyricsSceneSeconds)
     }
 
     private var drawsBars: Bool {

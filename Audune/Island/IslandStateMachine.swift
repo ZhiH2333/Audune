@@ -42,6 +42,11 @@ nonisolated enum IslandMotion {
     static let expandSeconds = 0.20
     /// Snappier than expand — retracting a wide Expanded shell should not linger.
     static let collapseSeconds = 0.12
+    static let lyricsSceneSeconds = 0.40
+    static let lyricsLineSeconds = 0.42
+    static let lyricsTrackSeconds = 0.36
+    static let lyricsTranslationDelaySeconds = 0.12
+    static let lyricsTranslationFadeSeconds = 0.16
     static let defaultCollapseDelaySeconds = 0.35
     static let defaultExpandDelaySeconds = 0.35
     static let maxPrefeedbackSeconds = 0.12
