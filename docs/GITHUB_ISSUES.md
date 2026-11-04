@@ -564,7 +564,7 @@ Optional system Now Playing on Notch Island Expanded/Pinned: artwork, title, art
 - [x] Add `ejbills/mediaremote-adapter` SPM; implement `NowPlayingService` lifecycle gated by `island.nowPlayingEnabled`.
 - [x] Expanded/Pinned UI + geometry height bump; Compact zero change; never start/stop Process Tap.
 - [x] Seek-unsupported per-bundle fallback to display-only scrubber; empty/unavailable states; unit tests + manual matrix.
-- [x] Full-screen left-corner metadata display follows the existing Now Playing and artwork/title visibility preferences.
+- [x] Compact full-screen metadata sits below the visualization and follows the existing Now Playing and artwork/title visibility preferences.
 
 ### Acceptance criteria
 - [x] Default off: Expanded Island matches prior layout (preference + UI gated).

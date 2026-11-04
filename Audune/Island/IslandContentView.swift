@@ -287,12 +287,6 @@ struct IslandContentView: View {
                 startRadius: 0,
                 endRadius: 720
             )
-            expandedVisualization(opacityOverride: nil, orbitBoost: false)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 72)
-                .padding(.vertical, 76)
-                .allowsHitTesting(false)
-
             VStack(spacing: 0) {
                 HStack {
                     modeIconRow
@@ -307,16 +301,21 @@ struct IslandContentView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 24)
 
-                Spacer()
+                expandedVisualization(opacityOverride: nil, orbitBoost: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 72)
+                    .padding(.vertical, 32)
+                    .allowsHitTesting(false)
 
                 HStack(alignment: .center, spacing: 18) {
                     fullScreenNowPlayingMetadata
                     Spacer()
                     Text(model.captureLabel(phase: spike.phase))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(warmWhite.opacity(0.7))
                 }
                 .padding(.horizontal, 36)
+                .frame(minHeight: 64)
                 .padding(.bottom, 24)
             }
         }
@@ -334,22 +333,22 @@ struct IslandContentView: View {
                 fullScreenNowPlayingStatus(String(localized: "Nothing playing"))
             case .listening:
                 if model.nowPlaying.hasTrack {
-                    HStack(alignment: .center, spacing: 20) {
+                    HStack(alignment: .center, spacing: 12) {
                         if model.prefs.nowPlayingLayout.showArtwork {
                             fullScreenArtwork
                         }
                         if model.prefs.nowPlayingLayout.showTitleArtist {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(model.nowPlaying.title.isEmpty ? String(localized: "Unknown Title") : model.nowPlaying.title)
-                                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                                    .font(.system(size: 17, weight: .medium, design: .rounded))
                                     .foregroundStyle(warmWhite)
                                     .lineLimit(1)
                                 Text(model.nowPlaying.artist.isEmpty ? String(localized: "Unknown Artist") : model.nowPlaying.artist)
-                                    .font(.system(size: 19, weight: .medium, design: .rounded))
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
                                     .foregroundStyle(warmWhite.opacity(0.65))
                                     .lineLimit(1)
                             }
-                            .frame(maxWidth: 360, alignment: .leading)
+                            .frame(maxWidth: 280, alignment: .leading)
                         }
                     }
                     .accessibilityElement(children: .combine)
@@ -376,15 +375,15 @@ struct IslandContentView: View {
                     }
             }
         }
-        .frame(width: 96, height: 96)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+        .frame(width: 56, height: 56)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
         .accessibilityHidden(true)
     }
 
     private func fullScreenNowPlayingStatus(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 12, weight: .medium))
             .foregroundStyle(warmWhite.opacity(0.72))
             .accessibilityAddTraits(.isStaticText)
     }
