@@ -341,7 +341,7 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.refreshNowPlayingSnapshot()
         XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
         XCTAssertGreaterThan(controller.model.lyricsTrackRevision, initialTrackRevision)
-        XCTAssertEqual(controller.model.lyricsPositionSeconds, 0)
+        XCTAssertLessThan(controller.model.lyricsPositionSeconds, 0.1)
         controller.deleteLyrics(document.id)
         XCTAssertEqual(
             try LocalLyricsStore(fileURL: storeURL).resolve(
@@ -373,6 +373,53 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.refreshNowPlayingSnapshot()
         controller.deleteLyrics(document.id)
         XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+    }
+
+    @MainActor
+    func testLyricsPlaybackProgressUpdatesWithoutLocalLyrics() {
+        let screen = notchedScreen()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 42,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+
+        controller.refreshNowPlayingSnapshot()
+
+        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        XCTAssertGreaterThanOrEqual(controller.model.lyricsPositionSeconds, 42)
+        XCTAssertLessThan(controller.model.lyricsPositionSeconds, 43)
+        XCTAssertEqual(
+            LyricsPlaybackClock.progress(
+                position: controller.model.lyricsPositionSeconds,
+                duration: controller.model.nowPlaying.durationSeconds
+            ) ?? -1,
+            controller.model.lyricsPositionSeconds / 180,
+            accuracy: 0.001
+        )
     }
 
     @MainActor

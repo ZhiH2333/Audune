@@ -31,6 +31,13 @@ nonisolated struct LyricsPlaybackClock {
         return min(finitePosition, durationSeconds)
     }
 
+    static func progress(position: TimeInterval, duration: TimeInterval) -> Double? {
+        guard position.isFinite, duration.isFinite, duration > 0 else {
+            return nil
+        }
+        return min(max(position / duration, 0), 1)
+    }
+
     static func activeLineIndex(in lines: [LyricsLine], at position: TimeInterval) -> Int? {
         guard position.isFinite, let index = lines.lastIndex(where: { $0.startSeconds <= position }) else {
             return nil

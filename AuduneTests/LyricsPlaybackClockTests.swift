@@ -59,6 +59,15 @@ final class LyricsPlaybackClockTests: XCTestCase {
         XCTAssertEqual(invalid, 0)
     }
 
+    func testProgressClampsAndHidesUnknownOrInvalidDuration() {
+        XCTAssertEqual(LyricsPlaybackClock.progress(position: 25, duration: 100), 0.25)
+        XCTAssertEqual(LyricsPlaybackClock.progress(position: -1, duration: 100), 0)
+        XCTAssertEqual(LyricsPlaybackClock.progress(position: 120, duration: 100), 1)
+        XCTAssertNil(LyricsPlaybackClock.progress(position: 10, duration: 0))
+        XCTAssertNil(LyricsPlaybackClock.progress(position: 10, duration: .infinity))
+        XCTAssertNil(LyricsPlaybackClock.progress(position: .nan, duration: 100))
+    }
+
     func testActiveLineAndWordProgressUseSamePosition() {
         let lines = [
             LyricsLine(id: 0, startSeconds: 1, endSeconds: 2, text: "First", translation: nil, words: nil),

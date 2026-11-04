@@ -66,8 +66,11 @@ struct IslandFullscreenLyricsView: View {
             }
             .accessibilityElement(children: .combine)
 
-            if model.nowPlaying.durationSeconds > 0 {
-                ProgressView(value: min(max(model.lyricsPositionSeconds / model.nowPlaying.durationSeconds, 0), 1))
+            if let progress = LyricsPlaybackClock.progress(
+                position: model.lyricsPositionSeconds,
+                duration: model.nowPlaying.durationSeconds
+            ) {
+                ProgressView(value: progress)
                     .tint(.white.opacity(0.75))
                     .accessibilityLabel(String(localized: "Playback progress"))
             }
@@ -273,7 +276,7 @@ struct IslandFullscreenLyricsView: View {
 
     private var playbackPositionLabel: String {
         let current = timeLabel(model.lyricsPositionSeconds)
-        guard model.nowPlaying.durationSeconds > 0 else { return current }
+        guard model.nowPlaying.durationSeconds.isFinite, model.nowPlaying.durationSeconds > 0 else { return current }
         return "\(current) / \(timeLabel(model.nowPlaying.durationSeconds))"
     }
 

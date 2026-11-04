@@ -587,11 +587,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func updateLyricsLinePosition() {
-        guard case .local(let document) = model.lyricsState else {
-            setActiveLyricsLineIndex(nil)
-            model.lyricsPositionSeconds = 0
-            return
-        }
         let snapshot = nowPlaying.snapshot
         let position = LyricsPlaybackClock.position(
             anchor: snapshot.playbackClockAnchor,
@@ -601,6 +596,10 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             nowUptime: ProcessInfo.processInfo.systemUptime
         )
         model.lyricsPositionSeconds = position
+        guard case .local(let document) = model.lyricsState else {
+            setActiveLyricsLineIndex(nil)
+            return
+        }
         setActiveLyricsLineIndex(LyricsPlaybackClock.activeLineIndex(
             in: document.lines,
             at: position
