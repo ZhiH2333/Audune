@@ -60,6 +60,31 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(service.snapshot.availability, .idle)
     }
 
+    func testRuntimeDemandKeepsListeningWithoutChangingPreferenceDemand() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+
+        let lyricsDemand = service.acquireRuntimeDemand()
+        XCTAssertTrue(service.isListening)
+        XCTAssertEqual(fake.startCount, 1)
+
+        service.syncDesiredListening(shouldListen: false)
+        XCTAssertTrue(service.isListening)
+        XCTAssertEqual(fake.stopCount, 0)
+
+        service.releaseRuntimeDemand(lyricsDemand)
+        XCTAssertFalse(service.isListening)
+        XCTAssertEqual(fake.stopCount, 1)
+
+        service.syncDesiredListening(shouldListen: true)
+        let anotherLyricsDemand = service.acquireRuntimeDemand()
+        service.syncDesiredListening(shouldListen: false)
+        service.releaseRuntimeDemand(anotherLyricsDemand)
+        XCTAssertFalse(service.isListening)
+        XCTAssertEqual(fake.startCount, 2)
+        XCTAssertEqual(fake.stopCount, 2)
+    }
+
     func testTrackMappingAndUnavailableOnTerminate() {
         let fake = FakeNowPlayingController()
         let service = NowPlayingService(controllerFactory: { fake })

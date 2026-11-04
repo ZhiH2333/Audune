@@ -15,6 +15,25 @@ final class SilentIslandHaptics: IslandHapticPerforming {
     func perform(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {}
 }
 
+@MainActor
+private final class FakeIslandNowPlayingController: NowPlayingControlling {
+    var onTrackReceived: ((NowPlayingTrackPayload?) -> Void)?
+    var onListenerTerminated: (() -> Void)?
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func startListening() { startCount += 1 }
+    func stopListening() { stopCount += 1 }
+    func togglePlayPause() {}
+    func nextTrack() {}
+    func previousTrack() {}
+    func setTime(seconds: Double) {}
+
+    func emit(_ payload: NowPlayingTrackPayload?) {
+        onTrackReceived?(payload)
+    }
+}
+
 final class IslandWindowControllerTests: XCTestCase {
     private let suite = "AuduneIslandWindowControllerTests"
     private var defaults: UserDefaults!
@@ -170,6 +189,182 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.compactFrame)
         XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
         XCTAssertEqual(spike.phase, .idle)
+    }
+
+    @MainActor
+    func testLyricsSceneUsesTemporaryNowPlayingDemandWithoutChangingSavedPreference() {
+        let screen = notchedScreen()
+        let spike = ProcessTapSpike()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let controller = IslandWindowController(
+            spike: spike,
+            defaults: defaults,
+            nowPlaying: service,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.selectMode(.orbit)
+        controller.setFullScreenScene(.lyrics)
+
+        XCTAssertTrue(service.isListening)
+        XCTAssertEqual(fake.startCount, 1)
+        XCTAssertEqual(controller.model.prefs.mode, .orbit)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+        XCTAssertFalse(defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled))
+
+        controller.setNowPlayingEnabled(true)
+        controller.setFullScreenScene(.visualizer)
+        XCTAssertTrue(service.isListening)
+        XCTAssertEqual(controller.model.prefs.mode, .orbit)
+        XCTAssertTrue(controller.model.prefs.nowPlayingEnabled)
+        XCTAssertTrue(defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled))
+
+        controller.setNowPlayingEnabled(false)
+        XCTAssertFalse(service.isListening)
+        XCTAssertEqual(fake.stopCount, 1)
+
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertTrue(service.isListening)
+        controller.toggleFullScreenView()
+        XCTAssertFalse(service.isListening)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+        XCTAssertEqual(fake.startCount, 2)
+        XCTAssertEqual(fake.stopCount, 2)
+
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertTrue(service.isListening)
+        controller.setEnabled(false)
+        XCTAssertFalse(service.isListening)
+        XCTAssertFalse(controller.model.isFullScreen)
+        XCTAssertEqual(controller.model.fullScreenScene, .visualizer)
+        XCTAssertEqual(fake.startCount, 3)
+        XCTAssertEqual(fake.stopCount, 3)
+    }
+
+    @MainActor
+    func testLyricsSceneImportsMatchesAcrossPlayersAndDeletesTheCurrentDocument() throws {
+        let screen = notchedScreen()
+        let spike = ProcessTapSpike()
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AuduneLyricsControllerTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("song.lrc")
+        try Data("[00:01.00]First line\n[00:03.00]Second line".utf8).write(to: sourceURL)
+
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let storeURL = directory.appendingPathComponent("lyrics.json")
+        let controller = IslandWindowController(
+            spike: spike,
+            defaults: defaults,
+            nowPlaying: service,
+            lyricsStoreFactory: { LocalLyricsStore(fileURL: storeURL) },
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        let timestamp = Date()
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 1.2,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player.one",
+                artwork: nil,
+                timestamp: timestamp
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+
+        controller.importLyrics(at: sourceURL)
+        guard case .local(let document) = controller.model.lyricsState else {
+            return XCTFail("Expected imported local lyrics")
+        }
+        XCTAssertEqual(controller.model.activeLyricsLineIndex, 0)
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 1.2,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player.two",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+        guard case .local(let matchedDocument) = controller.model.lyricsState else {
+            return XCTFail("Expected the saved lyrics to match across players")
+        }
+        XCTAssertEqual(matchedDocument.id, document.id)
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Another Song",
+                artist: "Another Artist",
+                album: "Another Album",
+                isPlaying: true,
+                elapsedSeconds: 0,
+                durationSeconds: 200,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player.two",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
+        controller.deleteLyrics(document.id)
+        XCTAssertEqual(
+            try LocalLyricsStore(fileURL: storeURL).resolve(
+                trackKey: LyricsTrackKey(
+                    isrc: nil,
+                    title: "Song",
+                    artist: "Artist",
+                    album: "Album",
+                    durationSeconds: 180
+                )
+            ),
+            .local(document)
+        )
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 1.2,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player.three",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+        controller.deleteLyrics(document.id)
+        XCTAssertEqual(controller.model.lyricsState, .onlineUnavailable)
     }
 
     @MainActor

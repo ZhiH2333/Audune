@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 #if DEBUG
 struct IslandWindowInspection: Equatable {
@@ -80,6 +81,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private let screenProvider: () -> [IslandScreenDescriptor]
     private let allowsOrderFront: Bool
     private let haptics: any IslandHapticPerforming
+    private let makeLyricsStore: () throws -> LocalLyricsStore
     private var hapticToken = 0
     let model = IslandModel()
     /// Tests may inject a private instance.
@@ -101,6 +103,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var spectrumState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
+    private var lyricsRuntimeDemand: UUID?
+    private var lyricsStore: LocalLyricsStore?
+    private var currentLyricsTrackKey: LyricsTrackKey?
     /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
     private var frameAnimationGeneration = 0
     /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
@@ -134,6 +139,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         spike: ProcessTapSpike,
         defaults: UserDefaults = .standard,
         nowPlaying: NowPlayingService? = nil,
+        lyricsStoreFactory: (() throws -> LocalLyricsStore)? = nil,
         screenProvider: @escaping () -> [IslandScreenDescriptor] = IslandWindowController.systemScreens,
         allowsOrderFront: Bool = true,
         /// When false, load prefs and configure the panel but defer screen evaluation until
@@ -144,6 +150,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         self.spike = spike
         self.defaults = defaults
         self.nowPlaying = nowPlaying ?? NowPlayingService()
+        self.makeLyricsStore = lyricsStoreFactory ?? { try LocalLyricsStore.applicationStore() }
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
         self.haptics = haptics
@@ -195,6 +202,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         saveTask = nil
         model.nowPlaying = .idle
         model.isFullScreen = false
+        lyricsRuntimeDemand = nil
         nowPlaying.stop()
         stopDisplayTimer()
         updateKeyMonitor(active: false)
@@ -286,6 +294,13 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if model.isFullScreen {
             collapseTask?.cancel()
             collapseTask = nil
+        } else {
+            model.fullScreenScene = .visualizer
+            model.activeLyricsLineIndex = nil
+        }
+        syncNowPlayingListening()
+        if model.isFullScreen, model.fullScreenScene == .lyrics {
+            refreshLyricsForCurrentTrack()
         }
         updatePanelFrame(
             model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
@@ -295,6 +310,85 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             hapticPattern: nil,
             hapticToken: hapticToken
         )
+    }
+
+    func setFullScreenScene(_ scene: IslandFullScreenScene) {
+        guard model.isFullScreen else { return }
+        model.fullScreenScene = scene
+        syncNowPlayingListening()
+        if scene == .lyrics {
+            refreshLyricsForCurrentTrack()
+        } else {
+            model.activeLyricsLineIndex = nil
+        }
+    }
+
+    func importLyricsFromFile() {
+        updateLyricsPresentation()
+        guard currentLyricsTrackKey != nil else {
+            model.lyricsState = .metadataUnavailable
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "lrc") ?? .plainText]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.title = String(localized: "Import Lyrics")
+        panel.message = String(localized: "Choose an LRC lyrics file for the current song.")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        importLyrics(at: url)
+    }
+
+    func importLyrics(at url: URL) {
+        updateLyricsPresentation()
+        guard let currentLyricsTrackKey else {
+            model.lyricsState = .metadataUnavailable
+            return
+        }
+        do {
+            let document = try localLyricsStore().importLRC(at: url, for: currentLyricsTrackKey)
+            model.lyricsState = .local(document)
+            updateLyricsLinePosition()
+        } catch {
+            model.lyricsState = .error(error.localizedDescription)
+        }
+    }
+
+    func chooseLyricsCandidate(_ documentID: UUID) {
+        updateLyricsPresentation()
+        guard case .ambiguous(let documents) = model.lyricsState,
+              let document = documents.first(where: { $0.id == documentID })
+        else {
+            return
+        }
+        model.lyricsState = .local(document)
+        updateLyricsLinePosition()
+    }
+
+    func deleteLyrics(_ documentID: UUID) {
+        updateLyricsPresentation()
+        let isCurrentDocument: Bool
+        switch model.lyricsState {
+        case .local(let document):
+            isCurrentDocument = document.id == documentID
+        case .ambiguous(let documents):
+            isCurrentDocument = documents.contains(where: { $0.id == documentID })
+        case .noTrack, .nowPlayingUnavailable, .metadataUnavailable, .onlineUnavailable, .error:
+            isCurrentDocument = false
+        }
+        guard isCurrentDocument else { return }
+        do {
+            try localLyricsStore().delete(documentID: documentID)
+            if let currentLyricsTrackKey {
+                resolveLyrics(for: currentLyricsTrackKey)
+            } else {
+                model.lyricsState = .noTrack
+            }
+            updateLyricsLinePosition()
+        } catch {
+            model.lyricsState = .error(error.localizedDescription)
+        }
     }
 
     private func escapeExpandedPresentation() {
@@ -394,12 +488,119 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func syncNowPlayingListening() {
+        syncLyricsRuntimeDemand()
         nowPlaying.syncDesiredListening(shouldListen: wantsNowPlayingListening)
         refreshNowPlayingSnapshot()
     }
 
+    private func syncLyricsRuntimeDemand() {
+        let shouldListenForLyrics = didShutdown == false
+            && model.isFullScreen
+            && model.fullScreenScene == .lyrics
+            && isEffectivelyEnabled
+            && model.isSupported
+        if shouldListenForLyrics, lyricsRuntimeDemand == nil {
+            lyricsRuntimeDemand = nowPlaying.acquireRuntimeDemand()
+        } else if shouldListenForLyrics == false, let lyricsRuntimeDemand {
+            nowPlaying.releaseRuntimeDemand(lyricsRuntimeDemand)
+            self.lyricsRuntimeDemand = nil
+        }
+    }
+
     func refreshNowPlayingSnapshot() {
-        model.nowPlaying = wantsNowPlayingListening ? nowPlaying.snapshot : .idle
+        model.nowPlaying = wantsNowPlayingListening || lyricsRuntimeDemand != nil
+            ? nowPlaying.snapshot
+            : .idle
+        if model.isFullScreen, model.fullScreenScene == .lyrics {
+            updateLyricsPresentation()
+        }
+    }
+
+    private func localLyricsStore() throws -> LocalLyricsStore {
+        if let lyricsStore { return lyricsStore }
+        let store = try makeLyricsStore()
+        lyricsStore = store
+        return store
+    }
+
+    private func refreshLyricsForCurrentTrack() {
+        currentLyricsTrackKey = nil
+        updateLyricsPresentation()
+    }
+
+    private func updateLyricsPresentation() {
+        let snapshot = nowPlaying.snapshot
+        guard snapshot.availability != .unavailable else {
+            currentLyricsTrackKey = nil
+            model.lyricsState = .nowPlayingUnavailable
+            model.activeLyricsLineIndex = nil
+            model.lyricsPositionSeconds = 0
+            return
+        }
+        guard let trackKey = lyricsTrackKey(from: snapshot) else {
+            currentLyricsTrackKey = nil
+            model.lyricsState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
+            model.activeLyricsLineIndex = nil
+            model.lyricsPositionSeconds = 0
+            return
+        }
+
+        if currentLyricsTrackKey != trackKey {
+            currentLyricsTrackKey = trackKey
+            resolveLyrics(for: trackKey)
+        }
+        updateLyricsLinePosition()
+    }
+
+    private func lyricsTrackKey(from snapshot: NowPlayingSnapshot) -> LyricsTrackKey? {
+        guard snapshot.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
+              snapshot.artist.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        else {
+            return nil
+        }
+        return LyricsTrackKey(
+            isrc: nil,
+            title: snapshot.title,
+            artist: snapshot.artist,
+            album: snapshot.album.isEmpty ? nil : snapshot.album,
+            durationSeconds: snapshot.durationSeconds > 0 ? snapshot.durationSeconds : nil
+        )
+    }
+
+    private func resolveLyrics(for trackKey: LyricsTrackKey) {
+        do {
+            switch try localLyricsStore().resolve(trackKey: trackKey) {
+            case .local(let document):
+                model.lyricsState = .local(document)
+            case .ambiguous(let documents):
+                model.lyricsState = .ambiguous(documents)
+            case .onlineUnavailable:
+                model.lyricsState = .onlineUnavailable
+            }
+        } catch {
+            model.lyricsState = .error(error.localizedDescription)
+        }
+    }
+
+    private func updateLyricsLinePosition() {
+        guard case .local(let document) = model.lyricsState else {
+            model.activeLyricsLineIndex = nil
+            model.lyricsPositionSeconds = 0
+            return
+        }
+        let snapshot = nowPlaying.snapshot
+        let position = LyricsPlaybackClock.position(
+            anchor: snapshot.playbackClockAnchor,
+            isPlaying: snapshot.isPlaying,
+            playbackRate: snapshot.playbackRate,
+            durationSeconds: snapshot.durationSeconds,
+            nowUptime: ProcessInfo.processInfo.systemUptime
+        )
+        model.lyricsPositionSeconds = position
+        model.activeLyricsLineIndex = LyricsPlaybackClock.activeLineIndex(
+            in: document.lines,
+            at: position
+        )
     }
 
     #if DEBUG
@@ -513,6 +714,18 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             seekNowPlaying: { [weak self] seconds in
                 self?.nowPlaying.seek(to: seconds)
+            },
+            selectFullScreenScene: { [weak self] scene in
+                self?.setFullScreenScene(scene)
+            },
+            importLyrics: { [weak self] in
+                self?.importLyricsFromFile()
+            },
+            chooseLyricsCandidate: { [weak self] documentID in
+                self?.chooseLyricsCandidate(documentID)
+            },
+            deleteLyrics: { [weak self] documentID in
+                self?.deleteLyrics(documentID)
             }
         )
         let host = IslandHostingView(rootView: root)
@@ -586,6 +799,8 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.state = stateContext.state
         if stateContext.state.isExpandedOrPinned == false {
             model.isFullScreen = false
+            model.fullScreenScene = .visualizer
+            model.activeLyricsLineIndex = nil
         }
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown
@@ -824,8 +1039,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let dt = lastTick.map { Double((now - $0).components.seconds) + Double((now - $0).components.attoseconds) / 1e18 } ?? 0
         lastTick = now
         model.snapshot = spike.snapshots.load()
-        if model.prefs.nowPlayingEnabled {
+        if model.prefs.nowPlayingEnabled || lyricsRuntimeDemand != nil {
             model.nowPlaying = nowPlaying.snapshot
+        }
+        if model.isFullScreen, model.fullScreenScene == .lyrics {
+            updateLyricsPresentation()
         }
         if allowsOrderFront,
            stateContext.state == .expanded,

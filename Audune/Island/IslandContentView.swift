@@ -1,6 +1,30 @@
 #if os(macOS)
 import SwiftUI
 
+nonisolated enum IslandFullScreenScene: String, CaseIterable, Identifiable {
+    case visualizer
+    case lyrics
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .visualizer: "waveform"
+        case .lyrics: "text.quote"
+        }
+    }
+}
+
+nonisolated enum LyricsPresentationState: Equatable {
+    case noTrack
+    case nowPlayingUnavailable
+    case metadataUnavailable
+    case local(LyricsDocument)
+    case ambiguous([LyricsDocument])
+    case onlineUnavailable
+    case error(String)
+}
+
 @MainActor
 @Observable
 final class IslandModel {
@@ -26,8 +50,12 @@ final class IslandModel {
     /// Drives Compact/Expanded chrome. Stays expanded through collapse frame animation so content doesn't pop early.
     var showsExpandedChrome = false
     var isFullScreen = false
+    var fullScreenScene: IslandFullScreenScene = .visualizer
     /// Experimental Now Playing snapshot mirrored from `NowPlayingService` for Expanded UI.
     var nowPlaying = NowPlayingSnapshot.idle
+    var lyricsState: LyricsPresentationState = .noTrack
+    var lyricsPositionSeconds: TimeInterval = 0
+    var activeLyricsLineIndex: Int?
 
     var isSupported: Bool {
         geometry != nil && unsupportedReason == nil
@@ -164,6 +192,10 @@ struct IslandContentView: View {
     var previousTrack: () -> Void = {}
     var nextTrack: () -> Void = {}
     var seekNowPlaying: (Double) -> Void = { _ in }
+    var selectFullScreenScene: (IslandFullScreenScene) -> Void = { _ in }
+    var importLyrics: () -> Void = {}
+    var chooseLyricsCandidate: (UUID) -> Void = { _ in }
+    var deleteLyrics: (UUID) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -289,6 +321,7 @@ struct IslandContentView: View {
             )
             VStack(spacing: 0) {
                 HStack {
+                    fullScreenScenePicker
                     modeIconRow
                     Spacer()
                     IslandIconButton(
@@ -301,14 +334,27 @@ struct IslandContentView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 24)
 
-                expandedVisualization(opacityOverride: nil, orbitBoost: false)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 72)
-                    .padding(.vertical, 32)
-                    .allowsHitTesting(false)
+                Group {
+                    if model.fullScreenScene == .visualizer {
+                        expandedVisualization(opacityOverride: nil, orbitBoost: false)
+                            .allowsHitTesting(false)
+                    } else {
+                        IslandFullscreenLyricsView(
+                            model: model,
+                            importLyrics: importLyrics,
+                            chooseCandidate: chooseLyricsCandidate,
+                            deleteLyrics: deleteLyrics
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, model.fullScreenScene == .visualizer ? 72 : 48)
+                .padding(.vertical, 32)
 
                 HStack(alignment: .center, spacing: 18) {
-                    fullScreenNowPlayingMetadata
+                    if model.fullScreenScene == .visualizer {
+                        fullScreenNowPlayingMetadata
+                    }
                     Spacer()
                     fullScreenPlaybackButton
                 }
@@ -319,6 +365,22 @@ struct IslandContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+    }
+
+    private var fullScreenScenePicker: some View {
+        HStack(spacing: 2) {
+            ForEach(IslandFullScreenScene.allCases) { scene in
+                IslandIconButton(
+                    symbol: scene.symbol,
+                    label: scene == .visualizer
+                        ? String(localized: "Visualizer")
+                        : String(localized: "Lyrics"),
+                    selected: model.fullScreenScene == scene,
+                    action: { selectFullScreenScene(scene) }
+                )
+            }
+        }
+        .padding(.trailing, 8)
     }
 
     @ViewBuilder
@@ -401,13 +463,13 @@ struct IslandContentView: View {
     }
 
     private var canToggleFullScreenPlayback: Bool {
-        model.prefs.nowPlayingEnabled
+        (model.prefs.nowPlayingEnabled || model.fullScreenScene == .lyrics)
             && model.nowPlaying.availability == .listening
             && model.nowPlaying.hasTrack
     }
 
     private var fullScreenPlaybackHelp: String {
-        guard model.prefs.nowPlayingEnabled else {
+        guard model.prefs.nowPlayingEnabled || model.fullScreenScene == .lyrics else {
             return String(localized: "Enable Now Playing in Notch Island settings to control playback.")
         }
         switch model.nowPlaying.availability {

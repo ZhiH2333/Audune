@@ -13,6 +13,8 @@ final class NowPlayingService {
     private var seekUnsupportedBundles: Set<String> = []
     private var pendingSeek: (bundleID: String, expectedElapsed: Double, issuedAt: Date)?
     private let makeController: () -> any NowPlayingControlling
+    private var preferenceRequestsListening = false
+    private var runtimeDemands: Set<UUID> = []
 
     /// Ignore MediaRemote elapsed corrections smaller than this (seconds) to stop scrubber twitch.
     static let elapsedSmoothingTolerance: TimeInterval = 1.75
@@ -23,11 +25,21 @@ final class NowPlayingService {
 
     /// Start or stop based on Island enablement, notch support, and the preference switch.
     func syncDesiredListening(shouldListen: Bool) {
-        if shouldListen {
-            startIfNeeded()
-        } else {
-            stop()
-        }
+        preferenceRequestsListening = shouldListen
+        reconcileListening()
+    }
+
+    @discardableResult
+    func acquireRuntimeDemand() -> UUID {
+        let token = UUID()
+        runtimeDemands.insert(token)
+        reconcileListening()
+        return token
+    }
+
+    func releaseRuntimeDemand(_ token: UUID) {
+        runtimeDemands.remove(token)
+        reconcileListening()
     }
 
     func startIfNeeded() {
@@ -52,7 +64,22 @@ final class NowPlayingService {
     }
 
     func stop() {
-        guard isListening || controller != nil else {
+        preferenceRequestsListening = false
+        runtimeDemands.removeAll()
+        stopListening()
+    }
+
+    private func reconcileListening() {
+        if preferenceRequestsListening || runtimeDemands.isEmpty == false {
+            startIfNeeded()
+        } else {
+            stopListening()
+        }
+    }
+
+    private func stopListening() {
+        guard isListening else {
+            pendingSeek = nil
             snapshot = .idle
             return
         }

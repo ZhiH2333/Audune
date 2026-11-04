@@ -3819,6 +3819,216 @@
           }
         }
       }
+    },
+    "Album artwork": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专辑封面"
+          }
+        }
+      }
+    },
+    "Choose an LRC lyrics file for the current song.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为当前歌曲选择一个 LRC 歌词文件。"
+          }
+        }
+      }
+    },
+    "Choose the matching local lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择匹配的本地歌词"
+          }
+        }
+      }
+    },
+    "Delete imported lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除已导入的歌词"
+          }
+        }
+      }
+    },
+    "Import an LRC file to continue.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入 LRC 文件以继续。"
+          }
+        }
+      }
+    },
+    "Import a local LRC file for this song": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入这首歌曲的本地 LRC 文件"
+          }
+        }
+      }
+    },
+    "Import LRC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入 LRC"
+          }
+        }
+      }
+    },
+    "Import Lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入歌词"
+          }
+        }
+      }
+    },
+    "LYRICS": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词"
+          }
+        }
+      }
+    },
+    "Lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词"
+          }
+        }
+      }
+    },
+    "Lyrics could not be loaded.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载歌词。"
+          }
+        }
+      }
+    },
+    "Lyrics uses Now Playing metadata while this scene is open. Online lookup is unavailable.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此场景打开时，歌词会使用“正在播放”元数据。在线查询目前不可用。"
+          }
+        }
+      }
+    },
+    "Lyric lines": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行歌词"
+          }
+        }
+      }
+    },
+    "Online lyrics lookup is unavailable.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在线歌词查询不可用。"
+          }
+        }
+      }
+    },
+    "Play music to view lyrics.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放音乐以查看歌词。"
+          }
+        }
+      }
+    },
+    "Playback progress": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放进度"
+          }
+        }
+      }
+    },
+    "Track information is incomplete.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌曲信息不完整。"
+          }
+        }
+      }
+    },
+    "Unknown Album": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知专辑"
+          }
+        }
+      }
+    },
+    "Use": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用"
+          }
+        }
+      }
+    },
+    "Use these lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用这些歌词"
+          }
+        }
+      }
+    },
+    "Visualizer": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可视化"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
