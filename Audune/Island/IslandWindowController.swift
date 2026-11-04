@@ -659,9 +659,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private func setActiveLyricsLineIndex(_ index: Int?) {
-        guard model.activeLyricsLineIndex != index else { return }
         model.activeLyricsLineIndex = index
-        model.activeLyricsLineChangedAtUptime = ProcessInfo.processInfo.systemUptime
     }
 
     #if DEBUG

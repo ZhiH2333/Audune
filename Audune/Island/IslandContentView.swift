@@ -82,7 +82,6 @@ final class IslandModel {
     var lyricsState: LyricsPresentationState = .noTrack
     var lyricsPositionSeconds: TimeInterval = 0
     var activeLyricsLineIndex: Int?
-    var activeLyricsLineChangedAtUptime: TimeInterval = 0
     var lyricsTrackRevision: UInt64 = 0
 
     var isSupported: Bool {

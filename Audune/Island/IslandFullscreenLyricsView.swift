@@ -364,6 +364,14 @@ struct IslandFullscreenLyricsView: View {
 
             lyricsContent(size: size)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(
+                    shouldReduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsTrackSeconds),
+                    value: model.lyricsTrackRevision
+                )
+                .animation(
+                    shouldReduceMotion ? nil : .easeInOut(duration: 0.28),
+                    value: model.lyricsState
+                )
         }
     }
 
@@ -592,7 +600,10 @@ struct IslandFullscreenLyricsView: View {
         let opacity = lyricOpacity(distance: distance)
         let translationReveal = shouldReduceMotion || isActive == false
             ? 1
-            : translationOpacity
+            : LyricsPresentationTiming.translationOpacity(
+                lineStartSeconds: line.startSeconds,
+                positionSeconds: model.lyricsPositionSeconds
+            )
         let hasWords = line.words?.isEmpty == false
 
         return VStack(spacing: max(7, activeSize * 0.2)) {
@@ -628,10 +639,6 @@ struct IslandFullscreenLyricsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .offset(y: shouldReduceMotion ? 0 : (1 - translationReveal) * 6)
                     .opacity(translationReveal)
-                    .animation(
-                        shouldReduceMotion ? nil : .easeOut(duration: IslandMotion.lyricsTranslationFadeSeconds),
-                        value: translationReveal
-                    )
             }
         }
         .frame(maxWidth: contentMaxWidth)
@@ -730,6 +737,7 @@ struct IslandFullscreenLyricsView: View {
             .padding(.vertical, 20)
         }
         .scrollIndicators(.hidden)
+        .transition(.opacity)
     }
 
     private func statusState(
@@ -808,6 +816,7 @@ struct IslandFullscreenLyricsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 16)
+        .transition(.opacity)
     }
 
     // MARK: - Derived values
@@ -843,12 +852,6 @@ struct IslandFullscreenLyricsView: View {
 
     private var canImportLyrics: Bool {
         model.nowPlaying.title.isEmpty == false && model.nowPlaying.artist.isEmpty == false
-    }
-
-    private var translationOpacity: Double {
-        LyricsPresentationTiming.translationOpacity(
-            sinceLineFocus: ProcessInfo.processInfo.systemUptime - model.activeLyricsLineChangedAtUptime
-        )
     }
 
     private var shouldReduceMotion: Bool {

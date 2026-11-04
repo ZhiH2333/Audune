@@ -63,6 +63,18 @@ nonisolated enum LyricsPresentationTiming {
             / IslandMotion.lyricsTranslationFadeSeconds
         return min(max(progress, 0), 1)
     }
+
+    /// Reveal follows playback position, so pausing freezes the translation and
+    /// seeking jumps straight to the correct reveal state.
+    static func translationOpacity(
+        lineStartSeconds: Double?,
+        positionSeconds: Double
+    ) -> Double {
+        guard let lineStartSeconds, lineStartSeconds.isFinite, positionSeconds.isFinite else {
+            return 1
+        }
+        return translationOpacity(sinceLineFocus: max(0, positionSeconds - lineStartSeconds))
+    }
 }
 
 nonisolated struct LyricsTrackKey: Codable, Equatable, Hashable, Sendable {
