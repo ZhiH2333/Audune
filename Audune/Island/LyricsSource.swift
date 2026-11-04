@@ -4,6 +4,7 @@ nonisolated enum LyricsImportError: Error, Equatable {
     case noTimedLines
     case invalidEncoding
     case emptyFile
+    case unreadableFile
     case storageUnavailable
     case documentNotFound
 }
@@ -69,11 +70,21 @@ nonisolated enum LyricsTrackMatcher {
             return .ambiguous(exact)
         }
 
+        let currentTitle = normalized(trackKey.title)
+        let currentArtist = normalized(trackKey.artist)
+        let currentBaseTitle = baseTitle(currentTitle)
         let sameRecording = documents.filter {
-            normalized($0.trackKey.title) == normalized(trackKey.title)
-                && normalized($0.trackKey.artist) == normalized(trackKey.artist)
-                && normalized(trackKey.title).isEmpty == false
-                && normalized(trackKey.artist).isEmpty == false
+            let storedTitle = normalized($0.trackKey.title)
+            guard normalized($0.trackKey.artist) == currentArtist,
+                  currentArtist.isEmpty == false,
+                  storedTitle.isEmpty == false
+            else {
+                return false
+            }
+            if storedTitle == currentTitle {
+                return true
+            }
+            return currentBaseTitle.isEmpty == false && baseTitle(storedTitle) == currentBaseTitle
         }
         return sameRecording.isEmpty ? .none : .ambiguous(sameRecording)
     }
@@ -89,17 +100,28 @@ nonisolated enum LyricsTrackMatcher {
     /// Removes a trailing edition qualifier such as "(Remastered 2011)" for loose comparison only.
     static func baseTitle(_ value: String) -> String {
         let normalizedValue = normalized(value)
-        guard let open = normalizedValue.lastIndex(where: { $0 == "(" || $0 == "[" }) else {
-            return normalizedValue
+        if let open = normalizedValue.lastIndex(where: { $0 == "(" || $0 == "[" }) {
+            let suffix = normalizedValue[open...].lowercased()
+            if baseTitleQualifiers.contains(where: { suffix.contains($0) }) {
+                return String(normalizedValue[..<open]).trimmingCharacters(in: .whitespaces)
+            }
         }
-        let suffix = normalizedValue[open...].lowercased()
-        let qualifiers = [
-            "remaster", "live", "acoustic", "radio edit", "demo", "instrumental",
-            "deluxe", "edit", "version", "mix", "mono", "stereo",
-        ]
-        guard qualifiers.contains(where: { suffix.contains($0) }) else { return normalizedValue }
-        return String(normalizedValue[..<open]).trimmingCharacters(in: .whitespaces)
+        if let separator = normalizedValue.range(of: " - ", options: .backwards) {
+            let suffix = normalizedValue[separator.upperBound...].lowercased()
+            if baseTitleQualifiers.contains(where: { suffix.contains($0) }) {
+                return String(normalizedValue[..<separator.lowerBound]).trimmingCharacters(in: .whitespaces)
+            }
+        }
+        return normalizedValue
     }
+
+    private static let baseTitleQualifiers = [
+        "remaster", "live", "acoustic", "radio edit", "demo", "instrumental",
+        "deluxe", "edit", "version", "mix", "mono", "stereo",
+    ]
+
+    /// Players can report slightly different track lengths for the same recording.
+    static let durationTolerance: Double = 2
 
     private static func isExactMatch(_ current: LyricsTrackKey, _ stored: LyricsTrackKey) -> Bool {
         if let currentISRC = normalizedISRC(current.isrc),
@@ -125,7 +147,7 @@ nonisolated enum LyricsTrackMatcher {
 
         if let currentDuration = validDuration(current.durationSeconds),
            let storedDuration = validDuration(stored.durationSeconds),
-           currentDuration != storedDuration
+           abs(currentDuration - storedDuration) > durationTolerance
         {
             return false
         }
@@ -516,7 +538,12 @@ struct LocalLyricsStore {
             }
         }
 
-        let data = try Data(contentsOf: url)
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            throw LyricsImportError.unreadableFile
+        }
         guard data.isEmpty == false else { throw LyricsImportError.emptyFile }
         guard let contents = decodeText(data) else {
             throw LyricsImportError.invalidEncoding
@@ -544,9 +571,30 @@ struct LocalLyricsStore {
             return leftISRC == rightISRC
         }
 
-        return LyricsTrackMatcher.normalized(lhs.title) == LyricsTrackMatcher.normalized(rhs.title)
-            && LyricsTrackMatcher.normalized(lhs.artist) == LyricsTrackMatcher.normalized(rhs.artist)
-            && LyricsTrackMatcher.normalized(lhs.album) == LyricsTrackMatcher.normalized(rhs.album)
-            && LyricsTrackMatcher.validDuration(lhs.durationSeconds) == LyricsTrackMatcher.validDuration(rhs.durationSeconds)
+        let leftTitle = LyricsTrackMatcher.normalized(lhs.title)
+        let rightTitle = LyricsTrackMatcher.normalized(rhs.title)
+        let leftArtist = LyricsTrackMatcher.normalized(lhs.artist)
+        let rightArtist = LyricsTrackMatcher.normalized(rhs.artist)
+        guard leftTitle.isEmpty == false,
+              leftTitle == rightTitle,
+              leftArtist.isEmpty == false,
+              leftArtist == rightArtist
+        else {
+            return false
+        }
+
+        let leftAlbum = LyricsTrackMatcher.normalized(lhs.album)
+        let rightAlbum = LyricsTrackMatcher.normalized(rhs.album)
+        if leftAlbum.isEmpty == false, rightAlbum.isEmpty == false, leftAlbum != rightAlbum {
+            return false
+        }
+
+        if let leftDuration = LyricsTrackMatcher.validDuration(lhs.durationSeconds),
+           let rightDuration = LyricsTrackMatcher.validDuration(rhs.durationSeconds),
+           abs(leftDuration - rightDuration) > LyricsTrackMatcher.durationTolerance
+        {
+            return false
+        }
+        return true
     }
 }

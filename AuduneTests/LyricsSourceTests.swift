@@ -42,7 +42,7 @@ final class LyricsSourceTests: XCTestCase {
         }
     }
 
-    func testLyricsTrackMatcherUsesCrossPlayerKeyAndDoesNotGuessDurationTolerance() {
+    func testLyricsTrackMatcherUsesCrossPlayerKeyWithDurationTolerance() {
         let imported = document(for: LyricsTrackKey(
             isrc: nil,
             title: "Beyoncé",
@@ -65,8 +65,74 @@ final class LyricsSourceTests: XCTestCase {
             durationSeconds: 180.25
         )
 
+        let differentVersion = LyricsTrackKey(
+            isrc: nil,
+            title: "Beyonce",
+            artist: "Artist",
+            album: "Album",
+            durationSeconds: 205
+        )
+
         XCTAssertEqual(LyricsTrackMatcher.match(sameTrackFromAnotherPlayer, in: [imported]), .exact(imported))
-        XCTAssertEqual(LyricsTrackMatcher.match(changedDuration, in: [imported]), .ambiguous([imported]))
+        XCTAssertEqual(LyricsTrackMatcher.match(changedDuration, in: [imported]), .exact(imported))
+        XCTAssertEqual(LyricsTrackMatcher.match(differentVersion, in: [imported]), .ambiguous([imported]))
+    }
+
+    func testEditionSuffixRequiresSelectionInsteadOfMatchingSilently() {
+        let live = document(for: LyricsTrackKey(
+            isrc: nil,
+            title: "Track (Live)",
+            artist: "Artist",
+            album: "Album",
+            durationSeconds: 181
+        ))
+        let current = LyricsTrackKey(
+            isrc: nil,
+            title: "Track",
+            artist: "Artist",
+            album: nil,
+            durationSeconds: nil
+        )
+
+        XCTAssertEqual(LyricsTrackMatcher.match(current, in: [live]), .ambiguous([live]))
+    }
+
+    func testISRCTakesPriorityOverDisplayMetadata() {
+        let imported = document(for: LyricsTrackKey(
+            isrc: "US-ABC-12-34567",
+            title: "Stored title",
+            artist: "Stored artist",
+            album: "Stored album",
+            durationSeconds: 180
+        ))
+        let current = LyricsTrackKey(
+            isrc: "usabc1234567",
+            title: "Different metadata",
+            artist: "Different artist",
+            album: nil,
+            durationSeconds: 200
+        )
+
+        XCTAssertEqual(LyricsTrackMatcher.match(current, in: [imported]), .exact(imported))
+    }
+
+    func testAlbumDifferenceIsNeverAnExactMatch() {
+        let imported = document(for: LyricsTrackKey(
+            isrc: nil,
+            title: "Track",
+            artist: "Artist",
+            album: "Studio Album",
+            durationSeconds: 180
+        ))
+        let current = LyricsTrackKey(
+            isrc: nil,
+            title: "Track",
+            artist: "Artist",
+            album: "Deluxe Album",
+            durationSeconds: 180
+        )
+
+        XCTAssertEqual(LyricsTrackMatcher.match(current, in: [imported]), .ambiguous([imported]))
     }
 
     func testAmbiguousVersionsRequireSelection() {
@@ -141,7 +207,117 @@ final class LyricsSourceTests: XCTestCase {
         let imported = try store.importLRC(at: sourceURL, for: trackKey)
 
         XCTAssertEqual(imported.lines.first?.text, "Imported line")
+        XCTAssertEqual(imported.source?.kind, .localImport)
+        XCTAssertTrue(imported.isPersistedLocally)
         XCTAssertEqual(try store.load(), [imported])
+    }
+
+    func testReimportReplacesTheStoredSongEvenWhenPlayerDurationDrifts() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+        let sourceURL = directory.appendingPathComponent("track.lrc")
+        try Data("[00:01.00]First import".utf8).write(to: sourceURL)
+        let first = try store.importLRC(at: sourceURL, for: trackKey)
+
+        try Data("[00:01.00]Second import".utf8).write(to: sourceURL)
+        let driftedKey = LyricsTrackKey(
+            isrc: nil,
+            title: "Track",
+            artist: "Artist",
+            album: "Album",
+            durationSeconds: 180.5
+        )
+        let second = try store.importLRC(at: sourceURL, for: driftedKey)
+
+        XCTAssertNotEqual(first.id, second.id)
+        XCTAssertEqual(try store.load().count, 1)
+        XCTAssertEqual(try store.load().first?.lines.first?.text, "Second import")
+    }
+
+    func testDifferentAlbumIsStoredSeparately() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+        let first = document(for: trackKey)
+        let deluxe = document(for: LyricsTrackKey(
+            isrc: nil,
+            title: "Track",
+            artist: "Artist",
+            album: "Deluxe Album",
+            durationSeconds: 180
+        ))
+
+        try store.save(first)
+        try store.save(deluxe)
+
+        XCTAssertEqual(try store.load(), [first, deluxe])
+    }
+
+    func testImportHandlesUTF16BOMAndCRLF() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+        let sourceURL = directory.appendingPathComponent("track.lrc")
+        var data = Data([0xFF, 0xFE])
+        data.append("[00:01.00]UTF16 line".data(using: .utf16LittleEndian)!)
+
+        try data.write(to: sourceURL)
+        let document = try store.importLRC(at: sourceURL, for: trackKey)
+
+        XCTAssertEqual(document.lines.first?.text, "UTF16 line")
+    }
+
+    func testImportHandlesUTF8BOMAndCRLF() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+        let sourceURL = directory.appendingPathComponent("track.lrc")
+        var data = Data([0xEF, 0xBB, 0xBF])
+        data.append("[00:02.00]Windows line\r\n[00:03.00]Next line\r\n".data(using: .utf8)!)
+        try data.write(to: sourceURL)
+
+        let document = try store.importLRC(at: sourceURL, for: trackKey)
+
+        XCTAssertEqual(document.lines.map(\.text), ["Windows line", "Next line"])
+        XCTAssertEqual(document.lines.first?.startSeconds, 2)
+    }
+
+    func testImportRejectsEmptyInvalidAndUntimedFilesWithoutSaving() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+        let sourceURL = directory.appendingPathComponent("track.lrc")
+
+        try Data().write(to: sourceURL)
+        XCTAssertThrowsError(try store.importLRC(at: sourceURL, for: trackKey)) {
+            XCTAssertEqual($0 as? LyricsImportError, .emptyFile)
+        }
+
+        try Data([0xFF, 0x00]).write(to: sourceURL)
+        XCTAssertThrowsError(try store.importLRC(at: sourceURL, for: trackKey)) {
+            XCTAssertEqual($0 as? LyricsImportError, .invalidEncoding)
+        }
+
+        try Data("[ti:Only metadata]\nplain text".utf8).write(to: sourceURL)
+        XCTAssertThrowsError(try store.importLRC(at: sourceURL, for: trackKey)) {
+            XCTAssertEqual($0 as? LyricsImportError, .noTimedLines)
+        }
+
+        XCTAssertEqual(try store.load(), [])
+    }
+
+    func testImportReportsMissingFileInsteadOfCreatingLyrics() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalLyricsStore(fileURL: directory.appendingPathComponent("lyrics.json"))
+
+        XCTAssertThrowsError(
+            try store.importLRC(at: directory.appendingPathComponent("missing.lrc"), for: trackKey)
+        ) {
+            XCTAssertEqual($0 as? LyricsImportError, .unreadableFile)
+        }
+        XCTAssertEqual(try store.load(), [])
     }
 
     func testCorruptStoreFailsInsteadOfSilentlyReplacingUserData() throws {
@@ -156,6 +332,13 @@ final class LyricsSourceTests: XCTestCase {
 
         XCTAssertThrowsError(try store.save(document(for: trackKey)))
         XCTAssertEqual(try Data(contentsOf: fileURL), corrupt)
+    }
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AuduneLyricsTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func document(for key: LyricsTrackKey) -> LyricsDocument {
