@@ -165,6 +165,52 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(service.snapshot.elapsedSeconds, 45, accuracy: 0.001)
         XCTAssertFalse(service.snapshot.isPlaying)
         XCTAssertEqual(service.snapshot.playbackRate, 0)
+        XCTAssertEqual(service.snapshot.playbackClockAnchor.elapsedSeconds, 45, accuracy: 0.001)
+        XCTAssertEqual(
+            LyricsPlaybackClock.position(
+                anchor: service.snapshot.playbackClockAnchor,
+                isPlaying: service.snapshot.isPlaying,
+                playbackRate: service.snapshot.playbackRate,
+                durationSeconds: service.snapshot.durationSeconds,
+                nowUptime: service.snapshot.playbackClockAnchor.monotonicUptime
+            ),
+            45,
+            accuracy: 0.001
+        )
+    }
+
+    func testPlaybackClockAnchorProjectsCurrentMetadataWithoutOwningPlaybackState() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+        let revisionBefore = service.snapshot.playbackClockAnchor.revision
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "Artist",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 10,
+                durationSeconds: 120,
+                playbackRate: 1.5,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date().addingTimeInterval(-2)
+            )
+        )
+
+        let anchor = service.snapshot.playbackClockAnchor
+        let projected = LyricsPlaybackClock.position(
+            anchor: anchor,
+            isPlaying: service.snapshot.isPlaying,
+            playbackRate: service.snapshot.playbackRate,
+            durationSeconds: service.snapshot.durationSeconds,
+            nowUptime: anchor.monotonicUptime + 4
+        )
+        XCTAssertGreaterThan(anchor.revision, revisionBefore)
+        XCTAssertEqual(anchor.elapsedSeconds, 13, accuracy: 0.25)
+        XCTAssertEqual(projected, 19, accuracy: 0.25)
     }
 
     func testDisplayElapsedAdvancesWhilePlaying() {

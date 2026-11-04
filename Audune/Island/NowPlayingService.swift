@@ -85,7 +85,13 @@ final class NowPlayingService {
         guard snapshot.seekSupported else { return }
         pendingSeek = (bundleID: bundleID, expectedElapsed: clamped, issuedAt: Date())
         snapshot.elapsedSeconds = clamped
-        snapshot.lastUpdated = Date()
+        let now = Date()
+        snapshot.lastUpdated = now
+        snapshot.playbackClockAnchor = PlaybackClockAnchor(
+            elapsedSeconds: clamped,
+            monotonicUptime: ProcessInfo.processInfo.systemUptime,
+            revision: snapshot.playbackClockAnchor.revision &+ 1
+        )
         controller?.setTime(seconds: clamped)
     }
 
@@ -164,7 +170,32 @@ final class NowPlayingService {
             bundleIdentifier: payload.bundleIdentifier,
             artwork: payload.artwork ?? snapshot.artwork,
             seekSupported: seekOK,
-            lastUpdated: mergedClock.anchor
+            lastUpdated: mergedClock.anchor,
+            playbackClockAnchor: makePlaybackClockAnchor(
+                elapsed: mergedClock.elapsed,
+                wallClockAnchor: mergedClock.anchor,
+                isPlaying: payload.isPlaying,
+                playbackRate: payload.playbackRate,
+                durationSeconds: payload.durationSeconds
+            )
+        )
+    }
+
+    private func makePlaybackClockAnchor(
+        elapsed: Double,
+        wallClockAnchor: Date,
+        isPlaying: Bool,
+        playbackRate: Double,
+        durationSeconds: Double
+    ) -> PlaybackClockAnchor {
+        let now = Date()
+        let age = max(0, now.timeIntervalSince(wallClockAnchor))
+        let advanced = isPlaying ? elapsed + age * max(0, playbackRate) : elapsed
+        let position = durationSeconds > 0 ? min(max(0, advanced), durationSeconds) : max(0, advanced)
+        return PlaybackClockAnchor(
+            elapsedSeconds: position.isFinite ? position : max(0, elapsed),
+            monotonicUptime: ProcessInfo.processInfo.systemUptime,
+            revision: snapshot.playbackClockAnchor.revision &+ 1
         )
     }
 

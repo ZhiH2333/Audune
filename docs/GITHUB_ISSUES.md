@@ -653,8 +653,8 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Keep 
 
 ### Tasks
 - [ ] Add independent Visualizer / Lyrics scene selection while preserving Spectrum / Waveform / Orbit selection.
-- [ ] Add normalized line and optional timed-word data with line-only behavior when no word timestamps exist.
-- [ ] Implement a read-only continuous lyric time sampler that follows `NowPlayingService`; do not duplicate playback metadata/correction ownership.
+- [x] Add normalized line and optional timed-word data with line-only behavior when no word timestamps exist.
+- [x] Implement a read-only continuous lyric time sampler that follows `NowPlayingService`; do not duplicate playback metadata/correction ownership.
 - [ ] Implement user-selected local LRC import, security-scoped file access, and persistent cross-player track association.
 - [ ] Keep Playback Identity (session change/request validation) separate from Lyrics Track Key (song association); never include player bundle identifier in the lyrics key.
 - [ ] Verify title/artist normalization and duration/album disambiguation using actual metadata. Do not invent matching tolerances; offer a compact choice when candidates are ambiguous.

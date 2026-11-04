@@ -22,6 +22,7 @@ struct NowPlayingSnapshot: Equatable {
     var artwork: NSImage?
     var seekSupported: Bool
     var lastUpdated: Date
+    var playbackClockAnchor = PlaybackClockAnchor.zero
 
     static let idle = NowPlayingSnapshot(
         availability: .idle,
@@ -43,6 +44,7 @@ struct NowPlayingSnapshot: Equatable {
     }
 
     var trackIdentity: String {
+        // Playback identity intentionally includes the source app; lyric matching does not.
         "\(bundleIdentifier)|\(title)|\(artist)|\(album)"
     }
 
