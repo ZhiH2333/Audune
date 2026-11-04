@@ -374,7 +374,8 @@ struct IslandContentView: View {
                             importLyrics: importLyrics,
                             chooseCandidate: chooseLyricsCandidate,
                             deleteLyrics: deleteLyrics,
-                            retryLyrics: retryLyrics
+                            retryLyrics: retryLyrics,
+                            seek: seekNowPlaying
                         )
                         .transition(.opacity.combined(with: .offset(y: 8)))
                     }

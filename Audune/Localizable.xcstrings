@@ -4484,6 +4484,106 @@
           }
         }
       }
+    },
+    "Playback position": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放位置"
+          }
+        }
+      }
+    },
+    "No lyrics loaded yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未载入歌词"
+          }
+        }
+      }
+    },
+    "Lyrics source: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词来源：%@"
+          }
+        }
+      }
+    },
+    "Imported LRC": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 LRC"
+          }
+        }
+      }
+    },
+    "LRCLIB": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LRCLIB"
+          }
+        }
+      }
+    },
+    "Word-by-word synchronized lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐字同步歌词"
+          }
+        }
+      }
+    },
+    "Line-synchronized lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐行同步歌词"
+          }
+        }
+      }
+    },
+    "Plain lyrics without timing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无时间轴的纯文本歌词"
+          }
+        }
+      }
+    },
+    "Following playback": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随播放"
+          }
+        }
+      }
+    },
+    "Several imported files match this song. Pick the version you want to follow.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有多个已导入文件与这首歌曲匹配，请选择要跟随的版本。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
