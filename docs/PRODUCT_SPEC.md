@@ -135,7 +135,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 ### Experimental — Island Now Playing（可选，默认关闭）
 
 - **不属于 Core MVP。** 用户可在 Settings → Notch Island 开启「Show Now Playing when expanded」。
-- Expanded / Pinned 显示系统 Now Playing：歌名、歌手、封面、可拖动进度条、上一曲 / 播放暂停 / 下一曲；其全屏模式在可视化下方左侧留白处以紧凑布局显示封面、歌名与歌手。
+- Expanded / Pinned 显示系统 Now Playing：歌名、歌手、封面、可拖动进度条、上一曲 / 播放暂停 / 下一曲；其全屏可视化 Scene 在下方左侧留白处以紧凑布局显示封面、歌名与歌手，并在右下角提供悬浮播放/暂停按钮（Lyrics Scene 的播放控制在左侧播放列内，不再重复显示该悬浮按钮）。
 - Compact 仍只显示频谱侧翼，不显示曲名或封面。
 - 技术路径：私有 `MediaRemote` 经 `mediaremote-adapter`（系统 `/usr/bin/perl` 旁路）读取；**不**使用分源 Apple Events / Automation。
 - 明确限制：实验性；不可承诺 Mac App Store；系统升级可能导致短暂不可用；个别播放器 seek 可能降级为只读进度条。
@@ -146,7 +146,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 - Lyrics 是现有 Island Fullscreen 的第二个 Scene；保留窗口、背景、封面和 Spectrum / Waveform / Orbit 选择，不创建独立播放器，也不影响 Compact wings。
 - 进入 Lyrics 后自动读取 Now Playing 当前曲目，先查本地导入，再按设置查询在线来源；切歌自动重新查询。用户不需要每次播放都导入 LRC。本地导入仍是离线补充和在线失败时的可靠回退。
-- 全屏布局约 30% / 70%：左侧为封面、专辑、标题、艺人、连续进度、来源与导入操作；右侧为歌词舞台，固定显示当前行及前后各约三行。当前行是视觉焦点，翻译位于原文下方并使用次级层级。窄或矮窗口自动切换为紧凑纵向布局。
+- 全屏布局约 30% / 70%：左侧播放列对齐封面左右边界，自上而下为封面、专辑、标题、艺人、连续进度条与其下方的已播/剩余时间、上一曲 / 播放暂停 / 下一曲，以及来源与导入操作；控件位置参照 Apple Music 的 Now Playing 面板，背景与歌词舞台样式不变。不提供随机 / 循环按钮，因为 `NowPlayingControlling` 不暴露且快照不含这些状态，避免出现无效控件。右侧为歌词舞台，固定显示当前行及前后各约三行。当前行是视觉焦点，翻译位于原文下方并使用次级层级。窄或矮窗口自动切换为紧凑纵向布局。
 - 本地 LRC 使用安全文件访问读取，解析后保存在本机，并以跨播放器稳定的 Lyrics Track Key（规范化标题 + 艺人，专辑/时长用于消歧）关联；Playback Identity 与 Track Key 不混用。重复导入替换同曲目的本地歌词，可单独删除。
 - 在线来源为 LRCLIB 公开 API（`/api/get`，404 时 `/api/search`），默认开启，可在 Settings → Notch Island → Lyrics 关闭。请求只发送标题、艺人、专辑和时长，使用标准 User-Agent，遵守超时、429 `Retry-After` 与 503 重试边界；解析后仅在会话内缓存，不写入磁盘、不上传、不打包歌词。
 - 同步类型明确区分 Unsynced / Line Synced / Word Synced。仅当来源提供真实逐字时间时才启用逐字填充；普通 LRC 不伪造字级时间。播放时间以 NowPlayingService 为权威，PlaybackClock 只做连续投影。暂停冻结、恢复继续、Seek 重定位、切歌重置；翻译入场同样由播放位置驱动。
