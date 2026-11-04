@@ -34,6 +34,34 @@ private final class FakeIslandNowPlayingController: NowPlayingControlling {
     }
 }
 
+private struct ImmediateFoundLyricsProvider: OnlineLyricsProviding {
+    nonisolated let descriptor = LyricsProviderDescriptor(
+        kind: .lrclib,
+        displayName: "LRCLIB",
+        websiteURL: URL(string: "https://lrclib.net")!,
+        queryFields: [.title, .artist]
+    )
+
+    func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup {
+        .found(LyricsDocument(
+            id: UUID(),
+            trackKey: trackKey,
+            language: "en",
+            lines: [
+                LyricsLine(id: 0, startSeconds: 0, endSeconds: 10, text: "First"),
+                LyricsLine(id: 1, startSeconds: 10, endSeconds: 20, text: "Second"),
+                LyricsLine(id: 2, startSeconds: 20, endSeconds: 30, text: "Third")
+            ],
+            source: LyricsSourceInfo(
+                kind: .lrclib,
+                providerName: "LRCLIB",
+                providerRecordIdentifier: "1",
+                isPersisted: false
+            )
+        ))
+    }
+}
+
 private struct ImmediateNotFoundLyricsProvider: OnlineLyricsProviding {
     nonisolated let descriptor = LyricsProviderDescriptor(
         kind: .lrclib,
@@ -204,6 +232,76 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.compactFrame)
         XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
         XCTAssertEqual(spike.phase, .idle)
+    }
+
+    @MainActor
+    func testOnlineLyricsFollowPlaybackPauseSeekAndLineBoundaries() async {
+        let screen = notchedScreen()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        defaults.set(true, forKey: IslandPreferenceKey.automaticOnlineLyrics)
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            lyricsProviderFactory: { ImmediateFoundLyricsProvider() },
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 25,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline, controller.model.lyricsState.document == nil {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNotNil(controller.model.lyricsState.document)
+        XCTAssertEqual(controller.model.activeLyricsLineIndex, 2)
+        XCTAssertEqual(controller.model.lyricsPositionSeconds, 25, accuracy: 0.1)
+
+        controller.nowPlaying.seek(to: 5)
+        controller.refreshNowPlayingSnapshot()
+        XCTAssertEqual(controller.model.activeLyricsLineIndex, 0)
+        XCTAssertEqual(controller.model.lyricsPositionSeconds, 5, accuracy: 0.1)
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: false,
+                elapsedSeconds: 5,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+        let pausedPosition = controller.model.lyricsPositionSeconds
+        try? await Task.sleep(for: .milliseconds(50))
+        controller.refreshNowPlayingSnapshot()
+        XCTAssertEqual(controller.model.lyricsPositionSeconds, pausedPosition, accuracy: 0.01)
+        XCTAssertEqual(controller.model.activeLyricsLineIndex, 0)
     }
 
     @MainActor

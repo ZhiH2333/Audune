@@ -82,6 +82,35 @@ final class LyricsPlaybackClockTests: XCTestCase {
         XCTAssertEqual(LyricsPlaybackClock.wordProgress(for: word, at: 1), 0)
     }
 
+
+    func testActiveLineHandlesIntroGapsAndUnsyncedLines() {
+        let lines = [
+            LyricsLine(id: 0, startSeconds: nil, endSeconds: nil, text: "Plain", translation: nil, words: nil),
+            LyricsLine(id: 1, startSeconds: 5, endSeconds: 8, text: "First", translation: nil, words: nil),
+            LyricsLine(id: 2, startSeconds: 12, endSeconds: 16, text: "Second", translation: nil, words: nil)
+        ]
+
+        XCTAssertNil(LyricsPlaybackClock.activeLineIndex(in: lines, at: 4.99))
+        XCTAssertEqual(LyricsPlaybackClock.activeLineIndex(in: lines, at: 5), 1)
+        XCTAssertEqual(LyricsPlaybackClock.activeLineIndex(in: lines, at: 9), 1)
+        XCTAssertEqual(LyricsPlaybackClock.activeLineIndex(in: lines, at: 12), 2)
+        XCTAssertEqual(LyricsPlaybackClock.activeLineIndex(in: lines, at: 60), 2)
+
+        let unsynced = lines.map { line in
+            LyricsLine(id: line.id, startSeconds: nil, endSeconds: nil, text: line.text)
+        }
+        XCTAssertNil(LyricsPlaybackClock.activeLineIndex(in: unsynced, at: 10))
+        XCTAssertNil(LyricsPlaybackClock.activeLineIndex(in: lines, at: .nan))
+    }
+
+    func testWordProgressDoesNotInventTiming() {
+        let zeroDuration = LyricsWord(id: 0, text: "word", startSeconds: 4, durationSeconds: 0)
+        let invalidStart = LyricsWord(id: 1, text: "word", startSeconds: .nan, durationSeconds: 2)
+
+        XCTAssertEqual(LyricsPlaybackClock.wordProgress(for: zeroDuration, at: 4), 0)
+        XCTAssertEqual(LyricsPlaybackClock.wordProgress(for: invalidStart, at: 5), 0)
+    }
+
     func testTranslationWaitsThenFadesInAfterLineFocus() {
         XCTAssertEqual(
             LyricsPresentationTiming.translationOpacity(sinceLineFocus: 0.1),
