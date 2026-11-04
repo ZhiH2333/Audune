@@ -4,7 +4,7 @@
 
 ## Suggested labels
 
-`P0`, `P1`, `audio`, `dsp`, `visualization`, `ui`, `menu-bar`, `island`, `desktop-magnet`, `settings`, `performance`, `test`, `docs`, `release`, `spike`.
+`P0`, `P1`, `audio`, `dsp`, `visualization`, `ui`, `menu-bar`, `island`, `lyrics`, `desktop-magnet`, `settings`, `performance`, `test`, `docs`, `release`, `spike`.
 
 ## Suggested milestones
 
@@ -640,6 +640,39 @@ Core MVP released and profiled. Preset import/export lives in Settings Visual pr
 
 ### Dependencies
 AUD-09, AUD-13.
+
+---
+
+## AUD-27 — [FUTURE] Island Fullscreen Lyrics scene
+
+**Labels:** `P2`, `island`, `lyrics`, `ui`, `test`
+**Milestone:** Future — Island Fullscreen Lyrics
+
+### Goal
+Add Lyrics as a second scene inside the existing Island Fullscreen window. Keep it separate from Compact/Expanded wings, Studio, Menu Bar, and Desktop Magnet. Preserve the existing Now Playing preference and use the existing service only while a runtime Lyrics demand exists.
+
+### Tasks
+- [ ] Add independent Visualizer / Lyrics scene selection while preserving Spectrum / Waveform / Orbit selection.
+- [ ] Add normalized line and optional timed-word data with line-only behavior when no word timestamps exist.
+- [ ] Implement a read-only continuous lyric time sampler that follows `NowPlayingService`; do not duplicate playback metadata/correction ownership.
+- [ ] Implement user-selected local LRC import, security-scoped file access, and persistent cross-player track association.
+- [ ] Keep Playback Identity (session change/request validation) separate from Lyrics Track Key (song association); never include player bundle identifier in the lyrics key.
+- [ ] Verify title/artist normalization and duration/album disambiguation using actual metadata. Do not invent matching tolerances; offer a compact choice when candidates are ambiguous.
+- [ ] Add a focused action to delete the current track's imported lyrics.
+- [ ] Acquire/release a temporary Now Playing runtime demand without changing or locking `Show Now Playing when expanded`; restore effective listening to the user's existing preference after leaving Lyrics.
+- [ ] Add synchronized scrolling, true timed-word fill where available, translation display, Reduce Motion, accessibility, localization, and empty/error states.
+- [ ] Review an online lyrics provider's documented API, terms/license, attribution, maintenance, and privacy before integration. Until reviewed, make no lyric network requests and show online lookup as unavailable. If approved later, query only the minimum required track fields and reject stale responses.
+
+### Acceptance criteria
+- [ ] Lyrics is a Fullscreen-only scene; existing visualizer controls, window geometry, Now Playing preference, Compact UI, and Process Tap lifecycle remain independent.
+- [ ] Pause freezes, resume continues, seek relocates, and track changes reset lyric presentation using `NowPlayingService` as the sole playback authority.
+- [ ] Local LRC is persisted against a cross-player song key, wins over any future online result, can be removed per track, and is read through the selected-file security scope.
+- [ ] Ambiguous local versions are never silently selected; match normalization and duration rules are backed by observed metadata.
+- [ ] No online lyrics traffic occurs until provider review is complete. Empty, offline, unavailable, and malformed-file states are explicit.
+- [ ] Automated tests pass; real Now Playing clients, file access, layout, and accessibility behavior are recorded honestly in `docs/MANUAL_TESTS.md`.
+
+### Dependencies
+AUD-17, AUD-NP-01.
 
 ---
 

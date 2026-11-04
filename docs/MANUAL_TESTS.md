@@ -300,6 +300,20 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 - [ ] `NOT TESTED` — Empty (nothing reporting Now Playing) and unavailable (adapter failure) states show clear copy and do not crash or misplace the island.
 - [ ] `NOT TESTED` — Sleep/wake and display reconfiguration leave Now Playing usable again or show unavailable cleanly without a second Process Tap.
 
+### Island Fullscreen Lyrics (AUD-27; online provider review pending)
+
+Automated parser/clock/controller tests do not verify real MediaRemote clients, macOS file access, typography, or full-screen motion. Keep GUI rows `NOT TESTED` until checked in a real macOS session. No online provider is currently integrated; verify that no lyrics network request occurs.
+
+- [ ] `NOT TESTED` — Switching between Visualizer and Lyrics changes only the Fullscreen scene; Spectrum / Waveform / Orbit selection, window size/background, Expanded/Compact presentation, and Process Tap remain unchanged.
+- [ ] `NOT TESTED` — Entering Lyrics acquires a temporary Now Playing demand while leaving `Show Now Playing when expanded` unchanged; exiting releases the demand and leaves listening active only if the saved preference was already on.
+- [ ] `NOT TESTED` — With a real Now Playing client, lyric time follows play, pause, resume, seek, playback-rate changes (when reported), and track changes without a separate timer visibly drifting.
+- [ ] `NOT TESTED` — Import a valid LRC while a track is active; file permission/access succeeds, lines and translations parse, and the imported text remains associated with that song after leaving and reopening Lyrics.
+- [ ] `NOT TESTED` — A song imported in one player is matched from another player using Lyrics Track Key, not player bundle identifier; versions with ambiguous title/artist metadata require explicit selection.
+- [ ] `NOT TESTED` — Malformed/empty LRC presents a clear error without replacing a previously saved lyric.
+- [ ] `NOT TESTED` — Removing an imported lyric affects only the current song and shows the truthful online-unavailable state; no request is sent.
+- [ ] `NOT TESTED` — Line-only LRC uses line highlighting/scrolling and never shows fake word-level fill; real timed-word data (if later available) fills continuously.
+- [ ] `NOT TESTED` — Narrow/short display, VoiceOver labels, keyboard scene switching, and Reduce Motion remain usable and legible.
+
 ## G. Desktop Magnet (only after the Magnet milestone)
 
 - [ ] `NOT TESTED` — Magnet can be dragged and resized.

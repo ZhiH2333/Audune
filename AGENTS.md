@@ -35,6 +35,7 @@ Read `docs/PRODUCT_SPEC.md` and `docs/GITHUB_ISSUES.md` before changing code. Th
 - Menu Bar and Studio belong to Core MVP. Island and Desktop Magnet are later staged features defined by the product spec; do not silently scope-creep.
 - Island must use public screen geometry and degrade safely where notch positioning cannot be supported.
 - Experimental Island Now Playing (Expanded/Pinned only, default off) may use MediaRemote through `mediaremote-adapter`. It must never start/stop Process Tap, must not appear in Compact wings, and must degrade to a clear unavailable/empty state without crashing Island.
+- Island Fullscreen Lyrics is a separate approved scope (AUD-27), not a general Now Playing promotion. It must consume NowPlayingService as the authoritative playback state through a temporary runtime demand, without mutating the persistent Expanded-display preference. Keep Playback Identity distinct from a cross-player Lyrics Track Key. Persist only user-imported, locally parsed lyrics; use security-scoped access for the selected file. Do not make online lyric requests until a provider's API, terms/license, maintenance, and privacy have been reviewed; otherwise show a truthful unavailable state.
 - Desktop Magnet uses normal window level and can be covered by regular app windows; it must not be implemented as an always-on-top overlay or a private desktop-layer hack.
 - Maintain truthful product docs and manual acceptance records.
 
