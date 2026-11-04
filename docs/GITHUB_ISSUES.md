@@ -656,7 +656,7 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Keep 
 - [x] Add normalized line and optional timed-word data with line-only behavior when no word timestamps exist.
 - [x] Implement a read-only continuous lyric time sampler that follows `NowPlayingService`; do not duplicate playback metadata/correction ownership.
 - [ ] Implement user-selected local LRC import, security-scoped file access, and persistent cross-player track association.
-- [ ] Keep Playback Identity (session change/request validation) separate from Lyrics Track Key (song association); never include player bundle identifier in the lyrics key.
+- [x] Keep Playback Identity (session change/request validation) separate from Lyrics Track Key (song association); never include player bundle identifier in the lyrics key.
 - [ ] Verify title/artist normalization and duration/album disambiguation using actual metadata. Do not invent matching tolerances; offer a compact choice when candidates are ambiguous.
 - [ ] Add a focused action to delete the current track's imported lyrics.
 - [ ] Acquire/release a temporary Now Playing runtime demand without changing or locking `Show Now Playing when expanded`; restore effective listening to the user's existing preference after leaving Lyrics.
