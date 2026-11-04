@@ -15,6 +15,8 @@ Not included in Core MVP: Desktop Magnet, volume or mute control, microphone inp
 
 Optional / Experimental: Notch Island can show system Now Playing (title, artwork, transport, scrubber) when enabled under Settings → Notch Island. It uses [mediaremote-adapter](https://github.com/ejbills/mediaremote-adapter) (private MediaRemote helper). Default off; not App Store–ready. See `docs/THIRD_PARTY_NOTICES.md`.
 
+Island Fullscreen also has a Lyrics scene. Entering it automatically identifies the current song, checks imported LRC files first, and searches [LRCLIB](https://lrclib.net) when enabled under Settings → Notch Island → Lyrics. Only title, artist, album, and duration are sent; online lyrics stay in memory and are never saved or uploaded. Local LRC import remains available. See `docs/THIRD_PARTY_NOTICES.md` for the provider's licensing caveats.
+
 ## Requirements
 
 - macOS 27.0 or later (the current deployment target; `docs/PRODUCT_SPEC.md` still lists 14.2 as the goal pending verification).

@@ -860,10 +860,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         )
         model.state = stateContext.state
         if stateContext.state.isExpandedOrPinned == false {
+            let wasFullScreen = model.isFullScreen
             model.isFullScreen = false
             model.fullScreenScene = .visualizer
             lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
+            if wasFullScreen {
+                // Collapsing the Island tears down the fullscreen surface, so the
+                // Lyrics runtime demand must be released with it.
+                syncNowPlayingListening()
+            }
         }
         model.pointerInside = stateContext.pointerInside
         model.pointerDown = stateContext.pointerDown

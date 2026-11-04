@@ -643,34 +643,36 @@ AUD-09, AUD-13.
 
 ---
 
-## AUD-27 — [FUTURE] Island Fullscreen Lyrics scene
+## AUD-27 — Island Fullscreen Lyrics scene (shipped on `dev`)
 
 **Labels:** `P2`, `island`, `lyrics`, `ui`, `test`
-**Milestone:** Future — Island Fullscreen Lyrics
+**Milestone:** Island Fullscreen Lyrics — shipped on `dev`
 
 ### Goal
-Add Lyrics as a second scene inside the existing Island Fullscreen window. Keep it separate from Compact/Expanded wings, Studio, Menu Bar, and Desktop Magnet. Preserve the existing Now Playing preference and use the existing service only while a runtime Lyrics demand exists.
+Add Lyrics as a second scene inside the existing Island Fullscreen window. Entering Lyrics automatically identifies the current song, resolves local lyrics first, then searches an approved online provider. Keep Lyrics separate from Compact/Expanded wings, Studio, Menu Bar, and Desktop Magnet. Preserve the existing Now Playing preference and use the existing service only while a runtime Lyrics demand exists.
 
 ### Tasks
 - [x] Add independent Visualizer / Lyrics scene selection while preserving Spectrum / Waveform / Orbit selection.
 - [x] Add normalized line and optional timed-word data with line-only behavior when no word timestamps exist.
 - [x] Implement a read-only continuous lyric time sampler that follows `NowPlayingService`; do not duplicate playback metadata/correction ownership.
-- [x] Implement user-selected local LRC import, security-scoped file access, and persistent cross-player track association.
+- [x] Implement user-selected local LRC import, security-scoped file access, and persistent cross-player track association, including BOM/CRLF/UTF-16, multi-timestamp, offset, translation, duplicate replacement, and delete.
 - [x] Keep Playback Identity (session change/request validation) separate from Lyrics Track Key (song association); never include player bundle identifier in the lyrics key.
-- [ ] Verify title/artist normalization and duration/album disambiguation using actual metadata. Do not invent matching tolerances; offer a compact choice when candidates are ambiguous.
+- [x] Normalize title/artist and use album/duration to disambiguate; edition suffixes and competing recordings surface as an explicit choice instead of silently selecting a version.
 - [x] Add a focused action to delete the current track's imported lyrics.
-- [x] Acquire/release a temporary Now Playing runtime demand without changing or locking `Show Now Playing when expanded`; restore effective listening to the user's existing preference after leaving Lyrics.
-- [x] Add synchronized scrolling, true timed-word fill where available, translation display, Reduce Motion, accessibility, localization, and empty/error states.
-- [x] Evaluate LRCLIB and Musixmatch as online-provider candidates. LRCLIB's documented API is live, but its lyrics-record license and substantive privacy/usage terms could not be verified; the repository MIT license covers server code, not the returned lyrics. Musixmatch documents licensed data but requires registration, a private API key, and an applicable plan/terms; no Audune authorization is available.
-- [ ] Approve a provider whose lyrics rights, privacy terms, maintenance, and client authentication fit Audune before integration. Until then, the app must make no lyric network requests and show online lookup as unavailable.
+- [x] Acquire/release a temporary Now Playing runtime demand without changing or locking `Show Now Playing when expanded`; release it on scene exit, fullscreen exit, Island collapse/disable, and shutdown.
+- [x] Add a dedicated lyrics layout with current/previous/next hierarchy, translation, continuous progress, source badge, scene switching, track transitions, pause freeze, Reduce Motion, accessibility labels, localization, and designed loading/empty/error states.
+- [x] Integrate LRCLIB's documented public API as the online provider (`/api/get`, 404 `/api/search`), with real request/response parsing, title/artist/album/duration matching, word-sync `lyricsfile` parsing with LRC fallback, cancellation, stale-response rejection, timeout, 429/`Retry-After`, bounded 503 retry, and truthful error mapping.
+- [x] Add `LyricsManager` for automatic local-first lookup, session-only online cache, per-track deduplication, generation checks, retry, and cancellation; expose an "Automatic Online Lyrics" setting (default on) with a privacy caption listing the fields sent.
+- [x] Document LRCLIB, its API source, query fields, licensing uncertainty, no persistence/upload policy, and residual risk in `docs/THIRD_PARTY_NOTICES.md`.
 
 ### Acceptance criteria
-- [x] Lyrics is a Fullscreen-only scene; existing visualizer controls, window geometry, Now Playing preference, Compact UI, and Process Tap lifecycle remain independent.
+- [x] Lyrics is integrated as a Fullscreen-only scene; automated coverage confirms visualizer mode preservation, window lifecycle, Now Playing preference isolation, and separate Process Tap behavior.
 - [x] Pause freezes, resume continues, seek relocates, and track changes reset lyric presentation using `NowPlayingService` as the sole playback authority.
-- [x] Local LRC is persisted against a cross-player song key, wins over any future online result, can be removed per track, and is read through the selected-file security scope.
-- [ ] Ambiguous local versions are never silently selected; match normalization and duration rules are backed by observed metadata.
-- [x] No online lyrics traffic occurs until provider review is complete. Empty, offline, unavailable, and malformed-file states are explicit.
-- [x] Lyrics-focused automated tests pass; real Now Playing clients, file access, layout, and accessibility behavior are recorded honestly in `docs/MANUAL_TESTS.md`.
+- [x] Local LRC is persisted against a cross-player song key, wins over online results, can be removed per track, and is read through the selected-file security scope.
+- [x] Ambiguous local versions are never silently selected; normalization and duration tolerance are covered by tests.
+- [x] Online requests send only title/artist/album/duration; results are displayed transiently and are never persisted, bundled, uploaded, or shared.
+- [x] Lyrics-focused automated tests pass (clock, parser, provider, manager, controller, localization, presentation timing).
+- [ ] Real Now Playing clients, VoiceOver, Reduce Motion, multi-display layout, and live visual motion are recorded honestly in `docs/MANUAL_TESTS.md`; only the live LRCLIB HTTP check has been performed outside the app.
 
 ### Dependencies
 AUD-17, AUD-NP-01.

@@ -235,6 +235,63 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testCollapsingIslandReleasesLyricsRuntimeDemand() {
+        let screen = notchedScreen()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertTrue(controller.model.isFullScreen)
+        XCTAssertTrue(service.isListening)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+        XCTAssertEqual(fake.startCount, 1)
+
+        controller.simulatePointerExited(at: 0)
+        controller.simulateCollapseTimerFired(now: 10)
+
+        XCTAssertFalse(controller.model.isFullScreen)
+        XCTAssertEqual(controller.model.fullScreenScene, .visualizer)
+        XCTAssertFalse(service.isListening)
+        XCTAssertEqual(fake.stopCount, 1)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+    }
+
+    @MainActor
+    func testSceneSwitchPreservesVisualizerMode() {
+        let screen = notchedScreen()
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: NowPlayingService(controllerFactory: { FakeIslandNowPlayingController() }),
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.selectMode(.orbit)
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertEqual(controller.model.prefs.mode, .orbit)
+
+        controller.setFullScreenScene(.visualizer)
+        XCTAssertEqual(controller.model.prefs.mode, .orbit)
+
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertEqual(controller.model.prefs.mode, .orbit)
+    }
+
+    @MainActor
     func testOnlineLyricsFollowPlaybackPauseSeekAndLineBoundaries() async {
         let screen = notchedScreen()
         let fake = FakeIslandNowPlayingController()

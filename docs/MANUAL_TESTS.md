@@ -300,29 +300,34 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 - [ ] `NOT TESTED` — Empty (nothing reporting Now Playing) and unavailable (adapter failure) states show clear copy and do not crash or misplace the island.
 - [ ] `NOT TESTED` — Sleep/wake and display reconfiguration leave Now Playing usable again or show unavailable cleanly without a second Process Tap.
 
-### Island Fullscreen Lyrics (AUD-27; provider approval pending)
+### Island Fullscreen Lyrics (AUD-27; shipped on `dev`)
 
-Automated parser/clock/controller tests do not verify real MediaRemote clients, macOS file access, typography, or full-screen motion. Keep GUI rows `NOT TESTED` until checked in a real macOS session. No online provider is currently approved or integrated; the app must not make lyrics network requests.
+Automated parser, clock, provider, manager, controller, localization, and presentation-timing tests do not verify real MediaRemote clients, macOS file dialogs, VoiceOver, typography, or full-screen motion. The only live external verification performed below is the LRCLIB HTTP request. Runtime GUI rows remain `NOT TESTED` until checked in a real macOS session.
 
-Provider review: LRCLIB's documented `GET /api/get?track_name=…&artist_name=…` API is live and returns synchronized lyrics. A direct, one-off request using only title and artist returned HTTP 200 with a valid JSON record (title/artist matched; 338-second duration; synchronized lyrics present). This was an API probe outside Audune, not an app search or UI test. LRCLIB's API docs require an identifying User-Agent and honoring `Retry-After` for 429/503; its service source is MIT, but no license for returned lyrics or substantive privacy/usage terms could be verified. Musixmatch documents a fully licensed catalog but requires registration, a private API key, and a suitable plan/terms. No provider is approved, so application-level online lookup remains `NOT TESTED` and unavailable.
+Real provider check (2026-11-04, outside the app): `curl` to `https://lrclib.net/api/get?track_name=Still%20Alive&artist_name=Portal&duration=185` with `User-Agent: Audune/1.0 (macOS lyrics client)` returned HTTP 200, `content-type: application/json`, Cloudflare, record `13709040`, duration `185.0`, `instrumental: false`, `hasWordSync: false`. `syncedLyrics` begins `[00:11.37] This was a triumph!` / `[00:14.95] I'm making a note here`. Automated provider tests parse this response shape and cover 404 search fallback, 429/503/500, timeout, offline, cancellation, HTML/JSON errors, wrong-duration rejection, instrumental, plain-only, and word-sync preference with mocks. The live request was **not** made through the app UI.
 
-Code-path diagnosis: when the local store has no match, `LocalLyricsStore.resolve` returns `.onlineUnavailable`; `IslandWindowController.resolveLyrics` displays that state directly. The controller does not hold or call `OnlineLyricsProviding`, and the default `UnconfiguredOnlineLyricsProvider` always returns unavailable. Therefore no HTTP request, response parsing, song matching, or network-result UI update occurs in Audune today.
+- [x] `PASS` — Live LRCLIB API reachable with documented query parameters and returns parseable synchronized lyrics; HTTP status and sanitized result recorded above.
+- [ ] `NOT TESTED` — Apple Music or another real playback client populates Now Playing metadata; Audune identifies title/artist/album/duration correctly.
+- [ ] `NOT TESTED` — Entering Lyrics automatically starts a lookup for the current song without pressing Import; changing songs automatically starts a new lookup.
+- [ ] `NOT TESTED` — Synchronized lyrics appear in the lyric stage and the current line follows playback; line-only sources never show fabricated word fill.
+- [ ] `NOT TESTED` — No-match state is distinct from offline, provider unavailable, rate limit, network error, and parse error; Retry issues a new request.
+- [ ] `NOT TESTED` — Offline behavior shows the offline state, keeps song identity/progress usable, and retries successfully after reconnection.
+- [ ] `NOT TESTED` — Local LRC import through the file picker succeeds with security-scoped access; BOM/CRLF/UTF-16/multi-timestamp/offset/translation files parse as expected.
+- [ ] `NOT TESTED` — Imported local lyrics win over an online result; deleting them allows a new online lookup and affects only that song.
+- [ ] `NOT TESTED` — Settings → Notch Island → Lyrics shows "Automatic Online Lyrics" default on and the privacy caption names LRCLIB and the sent fields; turning it off keeps local lyrics available.
+- [ ] `NOT TESTED` — Progress advances continuously while local lyrics, online lyrics, searching, or no lyrics are shown; it freezes on pause, resumes, resets on track change, and clamps unknown/invalid durations.
+- [ ] `NOT TESTED` — Pause freezes lyric focus, word fill, and translation reveal; resume continues from the same position.
+- [ ] `NOT TESTED` — External seek immediately relocates the active line and word progress, including seeking into gaps and past the final line.
+- [ ] `NOT TESTED` — Track changes cancel the previous request, clear the previous document, and never let a late response overwrite the new song.
+- [ ] `NOT TESTED` — Remix/live/remaster/acoustic versions with ambiguous metadata are not silently matched; competing local imports require a choice.
+- [ ] `NOT TESTED` — 15" / 13" / ultrawide / short displays switch between split and compact layouts without clipping; offscreen renders at 1952×1040 and 820×620 were inspected, but no live display matrix was run.
+- [ ] `NOT TESTED` — Notched and non-notched displays enter/exit Fullscreen Lyrics without geometry regressions.
+- [ ] `NOT TESTED` — VoiceOver reads scene buttons, progress (adjustable ±5 s), lyric lines, source, retry, import, and delete controls with useful labels.
+- [ ] `NOT TESTED` — Reduce Motion disables scene/line/translation movement while preserving lyric timing and word fill.
+- [ ] `NOT TESTED` — Compact wings, Expanded Island, Studio, Menu Bar, and Visualizer behavior are unchanged in a live session.
+- [ ] `NOT TESTED` — Process Tap starts/stops exactly as before; entering/exiting Lyrics does not start, stop, or duplicate audio capture.
 
-Automated check on `dev` at `4d9ca18`: `xcodebuild test -project Audune.xcodeproj -scheme Audune -destination 'platform=macOS' -only-testing:AuduneTests/NowPlayingServiceTests -only-testing:AuduneTests/IslandWindowControllerTests -only-testing:AuduneTests/LyricsSourceTests -only-testing:AuduneTests/LyricsPlaybackClockTests` passed (31 tests, 0 failures). This does not change the manual rows below from `NOT TESTED`.
-
-Regression check after the Lyrics implementation: the full `xcodebuild test -project Audune.xcodeproj -scheme Audune -destination 'platform=macOS'` run executed 329 tests; all Lyrics, Now Playing, controller, and localization suites passed, with one failure in the unrelated `StudioPassthroughTests.testCanvasPointResolvesToTheWindowUnderTheVisualPanel` window-server test. The Release build (`xcodebuild build -project Audune.xcodeproj -scheme Audune -configuration Release -destination 'platform=macOS'`) succeeded. The window-server failure is not counted as a Lyrics test pass.
-
-Playback-progress regression check after `20b6c7e`: `xcodebuild test -project Audune.xcodeproj -scheme Audune -destination 'platform=macOS' -only-testing:AuduneTests/LyricsPlaybackClockTests -only-testing:AuduneTests/IslandWindowControllerTests` passed (16 tests, 0 failures), including playback projection when the lyric state is online-unavailable and progress clamping for invalid durations. `xcodebuild build -project Audune.xcodeproj -scheme Audune -configuration Release -destination 'platform=macOS'` succeeded. Visual confirmation with a real player remains `NOT TESTED`.
-
-- [ ] `NOT TESTED` — Switching between Visualizer and Lyrics changes only the Fullscreen scene; Spectrum / Waveform / Orbit selection, window size/background, Expanded/Compact presentation, and Process Tap remain unchanged.
-- [ ] `NOT TESTED` — Entering Lyrics acquires a temporary Now Playing demand while leaving `Show Now Playing when expanded` unchanged; exiting releases the demand and leaves listening active only if the saved preference was already on.
-- [ ] `NOT TESTED` — With a real Now Playing client, lyric time follows play, pause, resume, seek, playback-rate changes (when reported), and track changes without a separate timer visibly drifting.
-- [ ] `NOT TESTED` — Import a valid LRC while a track is active; file permission/access succeeds, lines and translations parse, and the imported text remains associated with that song after leaving and reopening Lyrics.
-- [ ] `NOT TESTED` — A song imported in one player is matched from another player using Lyrics Track Key, not player bundle identifier; versions with ambiguous title/artist metadata require explicit selection.
-- [ ] `NOT TESTED` — Malformed/empty LRC presents a clear error without replacing a previously saved lyric.
-- [ ] `NOT TESTED` — Removing an imported lyric affects only the current song and shows the truthful online-unavailable state; no request is sent.
-- [ ] `NOT TESTED` — Line-only LRC uses line highlighting/scrolling and never shows fake word-level fill; real timed-word data (if later available) fills continuously.
-- [ ] `NOT TESTED` — Narrow/short display, VoiceOver labels, keyboard scene switching, and Reduce Motion remain usable and legible.
+Regression evidence from `dev`: full `xcodebuild test -project Audune.xcodeproj -scheme Audune -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO` executes 381 tests with 1 failure, the pre-existing window-server test `StudioPassthroughTests.testCanvasPointResolvesToTheWindowUnderTheVisualPanel` (`AuduneTests/StudioPassthroughTests.swift:213`), which fails identically when run alone and is unrelated to Lyrics. Excluding that suite, `-skip-testing:AuduneTests/StudioPassthroughTests` executes 374 tests with 0 failures. All Lyrics, Now Playing, controller, localization, and presentation-timing suites pass. Debug and Release builds succeed. These automated results do not upgrade the runtime rows above.
 
 ## G. Desktop Magnet (only after the Magnet milestone)
 

@@ -99,6 +99,8 @@ nonisolated struct LyricsLine: Codable, Equatable, Identifiable, Sendable {
     var endSeconds: Double?
     var text: String
     var translation: String?
+    /// Optional pronunciation/romanization. Kept separate from the translation tier.
+    var pronunciation: String? = nil
     var words: [LyricsWord]?
 }
 

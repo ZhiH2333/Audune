@@ -142,15 +142,17 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
 - 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
 
-### In progress — Island Fullscreen Lyrics（AUD-27）
+### Available — Island Fullscreen Lyrics（AUD-27）
 
-- Lyrics 是现有 Island Fullscreen 的第二个 Scene；保留窗口、背景和视觉化器选择，不创建独立播放器，也不影响 Compact wings。
-- Lyrics 读取现有 Now Playing 服务。进入时通过临时 runtime demand 确保服务运行，不改写 `Show Now Playing when expanded` 持久偏好；退出时释放 demand，监听是否保留由原偏好决定。
-- 首个实现范围为用户选择并导入本地 LRC：使用安全文件访问、解析后在本机保存，并按跨播放器稳定的歌曲身份关联；Playback Identity 与 Lyrics Track Key 不得混用。
-- 行时间和逐字/音节时间必须区分；LRC 不得伪装成逐字时间数据。播放时间以 NowPlayingService 为权威，展示时钟只负责连续采样。
-- 自动在线查词仅为未来回退路径。已验证 LRCLIB 的公开 API 可返回同步歌词，但其歌词记录授权和实质性隐私/使用条款无法核验；其仓库 MIT 许可仅覆盖服务端代码。Musixmatch 声明其数据已获许可，但接入需要注册、私有 API Key 和适用计划/条款。当前没有可批准的 Provider，因此本版本不集成在线 Provider、不从应用发出歌词网络请求；界面必须明确报告在线来源不可用。批准合适来源后，另行实施并披露最少必要的查询字段。
-- 本地歌词优先于在线来源；用户可删除当前歌曲已导入的歌词，删除后在线回退仍受 Provider 审核门槛约束。
-- 当前 `dev` 已实现 Fullscreen 场景切换、本地 LRC 导入/删除、行级同步、可选时间戳逐词填充及临时 Now Playing demand。Provider 候选审查已记录，但没有通过授权/隐私门槛的来源；当前 LRC 不含逐词时间。真实播放器、文件授权和屏幕动效仍需按 `docs/MANUAL_TESTS.md` 手动验收。
+- Lyrics 是现有 Island Fullscreen 的第二个 Scene；保留窗口、背景、封面和 Spectrum / Waveform / Orbit 选择，不创建独立播放器，也不影响 Compact wings。
+- 进入 Lyrics 后自动读取 Now Playing 当前曲目，先查本地导入，再按设置查询在线来源；切歌自动重新查询。用户不需要每次播放都导入 LRC。本地导入仍是离线补充和在线失败时的可靠回退。
+- 全屏布局约 30% / 70%：左侧为封面、专辑、标题、艺人、连续进度、来源与导入操作；右侧为歌词舞台，固定显示当前行及前后各约三行。当前行是视觉焦点，翻译位于原文下方并使用次级层级。窄或矮窗口自动切换为紧凑纵向布局。
+- 本地 LRC 使用安全文件访问读取，解析后保存在本机，并以跨播放器稳定的 Lyrics Track Key（规范化标题 + 艺人，专辑/时长用于消歧）关联；Playback Identity 与 Track Key 不混用。重复导入替换同曲目的本地歌词，可单独删除。
+- 在线来源为 LRCLIB 公开 API（`/api/get`，404 时 `/api/search`），默认开启，可在 Settings → Notch Island → Lyrics 关闭。请求只发送标题、艺人、专辑和时长，使用标准 User-Agent，遵守超时、429 `Retry-After` 与 503 重试边界；解析后仅在会话内缓存，不写入磁盘、不上传、不打包歌词。
+- 同步类型明确区分 Unsynced / Line Synced / Word Synced。仅当来源提供真实逐字时间时才启用逐字填充；普通 LRC 不伪造字级时间。播放时间以 NowPlayingService 为权威，PlaybackClock 只做连续投影。暂停冻结、恢复继续、Seek 重定位、切歌重置；翻译入场同样由播放位置驱动。
+- 状态包括识别歌曲、检查本地、在线搜索、加载、找到、纯音乐、未找到、离线、Provider 不可用、限流、网络错误、解析失败、导入失败与取消；所有状态都有独立文案和重试/导入入口，不使用统一的「在线不可用」。
+- 进入 Lyrics 只获取临时 Now Playing runtime demand，不改写或锁定 `Show Now Playing when expanded`；退出、Island 折叠/禁用、窗口销毁或服务 shutdown 时释放。Island 的 Experimental Now Playing 产品状态不变，Process Tap 生命周期不受影响。
+- 已知限制：LRCLIB 的歌词记录授权与正式隐私条款仍无法完全核验；仓库 MIT 许可只覆盖服务端代码。Audune 因此不打包、不持久化、不再分发在线歌词，只做会话内展示，并在 `docs/THIRD_PARTY_NOTICES.md` 记录剩余风险。逐字数据是否可用取决于具体曲目。真实播放器、VoiceOver、Reduce Motion 与多显示器行为仍需按 `docs/MANUAL_TESTS.md` 手动验收。
 
 ### v0.4+ — 其他播放器 / 视觉扩展
 
