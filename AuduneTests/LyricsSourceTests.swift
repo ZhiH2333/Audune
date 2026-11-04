@@ -123,7 +123,7 @@ final class LyricsSourceTests: XCTestCase {
 
         try store.delete(documentID: replacement.id)
         XCTAssertEqual(try store.load(), [second])
-        XCTAssertEqual(try store.resolve(trackKey: trackKey), .onlineUnavailable)
+        XCTAssertEqual(try store.resolve(trackKey: trackKey), .noLocalMatch)
         XCTAssertThrowsError(try store.delete(documentID: replacement.id)) {
             XCTAssertEqual($0 as? LyricsImportError, .documentNotFound)
         }
@@ -142,11 +142,6 @@ final class LyricsSourceTests: XCTestCase {
 
         XCTAssertEqual(imported.lines.first?.text, "Imported line")
         XCTAssertEqual(try store.load(), [imported])
-    }
-
-    func testUnconfiguredOnlineProviderIsExplicitlyUnavailable() async {
-        let result = await UnconfiguredOnlineLyricsProvider().lookup(for: trackKey)
-        XCTAssertEqual(result, .unavailable)
     }
 
     func testCorruptStoreFailsInsteadOfSilentlyReplacingUserData() throws {

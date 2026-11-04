@@ -3,6 +3,7 @@ import Foundation
 nonisolated enum LyricsImportError: Error, Equatable {
     case noTimedLines
     case invalidEncoding
+    case emptyFile
     case storageUnavailable
     case documentNotFound
 }
@@ -10,23 +11,46 @@ nonisolated enum LyricsImportError: Error, Equatable {
 nonisolated enum LyricsResolution: Equatable {
     case local(LyricsDocument)
     case ambiguous([LyricsDocument])
-    case onlineUnavailable
+    case noLocalMatch
 }
 
+/// Query fields an online provider may send. Keep this list in sync with what the UI discloses.
+nonisolated enum LyricsQueryField: String, CaseIterable, Equatable, Sendable {
+    case title
+    case artist
+    case album
+    case duration
+}
+
+nonisolated struct LyricsProviderDescriptor: Equatable, Sendable {
+    nonisolated enum Kind: String, Equatable, Sendable {
+        case lrclib
+    }
+
+    var kind: Kind
+    var displayName: String
+    var websiteURL: URL
+    var queryFields: [LyricsQueryField]
+}
+
+/// Every failure is distinct so the UI can explain what actually happened.
 nonisolated enum OnlineLyricsLookup: Equatable, Sendable {
     case found(LyricsDocument)
+    case instrumental
     case notFound
-    case unavailable
+    case rateLimited(retryAfterSeconds: TimeInterval?)
+    case offline
+    case timedOut
+    case networkError
+    case providerUnavailable
+    case serverError(statusCode: Int)
+    case parseError
+    case cancelled
 }
 
 protocol OnlineLyricsProviding: Sendable {
+    var descriptor: LyricsProviderDescriptor { get }
     func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup
-}
-
-struct UnconfiguredOnlineLyricsProvider: OnlineLyricsProviding {
-    func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup {
-        .unavailable
-    }
 }
 
 nonisolated enum LyricsTrackMatch: Equatable {
@@ -60,6 +84,21 @@ nonisolated enum LyricsTrackMatcher {
             .precomposedStringWithCanonicalMapping
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
         return folded.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    /// Removes a trailing edition qualifier such as "(Remastered 2011)" for loose comparison only.
+    static func baseTitle(_ value: String) -> String {
+        let normalizedValue = normalized(value)
+        guard let open = normalizedValue.lastIndex(where: { $0 == "(" || $0 == "[" }) else {
+            return normalizedValue
+        }
+        let suffix = normalizedValue[open...].lowercased()
+        let qualifiers = [
+            "remaster", "live", "acoustic", "radio edit", "demo", "instrumental",
+            "deluxe", "edit", "version", "mix", "mono", "stereo",
+        ]
+        guard qualifiers.contains(where: { suffix.contains($0) }) else { return normalizedValue }
+        return String(normalizedValue[..<open]).trimmingCharacters(in: .whitespaces)
     }
 
     private static func isExactMatch(_ current: LyricsTrackKey, _ stored: LyricsTrackKey) -> Bool {
@@ -105,7 +144,7 @@ nonisolated enum LyricsTrackMatcher {
         return normalized.isEmpty ? nil : normalized
     }
 
-    private static func validDuration(_ value: Double?) -> Double? {
+    static func validDuration(_ value: Double?) -> Double? {
         guard let value, value.isFinite, value > 0 else { return nil }
         return value
     }
@@ -113,24 +152,28 @@ nonisolated enum LyricsTrackMatcher {
 
 nonisolated enum LRCParser {
     static func parse(_ contents: String, trackKey: LyricsTrackKey) throws -> LyricsDocument {
-        let lines = contents
-            .replacingOccurrences(of: "\u{feff}", with: "")
-            .components(separatedBy: .newlines)
-        let offsetMilliseconds = lines.compactMap(parseOffset).last ?? 0
+        let sourceLines = normalize(contents)
+        let offsetMilliseconds = sourceLines.compactMap(parseOffset).last ?? 0
         let offsetSeconds = Double(offsetMilliseconds) / 1_000
-        var entries: [(time: TimeInterval, text: String, order: Int)] = []
+        let language = parseMetadata(sourceLines, tag: "la")
+        var entries: [(time: TimeInterval, text: String, order: Int, words: [WordTiming]?)] = []
 
-        for (lineIndex, line) in lines.enumerated() {
+        for (lineIndex, line) in sourceLines.enumerated() {
             var remainder = Substring(line)
             var timestamps: [TimeInterval] = []
             while let timestamp = takeTimestamp(from: &remainder) {
                 timestamps.append(timestamp)
             }
             guard timestamps.isEmpty == false else { continue }
-            let text = remainder.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard text.isEmpty == false else { continue }
+            let parsed = parseEnhancedText(remainder)
+            guard parsed.text.isEmpty == false else { continue }
             for timestamp in timestamps {
-                entries.append((max(0, timestamp + offsetSeconds), text, lineIndex))
+                entries.append((
+                    max(0, timestamp + offsetSeconds),
+                    parsed.text,
+                    lineIndex,
+                    parsed.words
+                ))
             }
         }
 
@@ -140,34 +183,212 @@ nonisolated enum LRCParser {
             return $0.time < $1.time
         }
 
-        var grouped: [(time: TimeInterval, texts: [String])] = []
+        var grouped: [(time: TimeInterval, texts: [String], words: [WordTiming]?)] = []
         for entry in entries {
             if grouped.last?.time == entry.time {
                 grouped[grouped.count - 1].texts.append(entry.text)
             } else {
-                grouped.append((entry.time, [entry.text]))
+                grouped.append((entry.time, [entry.text], entry.words))
             }
         }
 
-        let parsedLines = grouped.enumerated().map { index, group in
-            LyricsLine(
+        let parsedLines = grouped.enumerated().map { index, group -> LyricsLine in
+            let lineEnd = grouped.indices.contains(index + 1) ? grouped[index + 1].time : nil
+            return LyricsLine(
                 id: index,
                 startSeconds: group.time,
-                endSeconds: grouped.indices.contains(index + 1) ? grouped[index + 1].time : nil,
+                endSeconds: lineEnd,
                 text: group.texts[0],
                 translation: group.texts.count > 1
                     ? group.texts.dropFirst().joined(separator: "\n")
                     : nil,
-                words: nil
+                words: makeWords(
+                    group.words,
+                    offsetSeconds: offsetSeconds,
+                    lineStart: group.time,
+                    lineEnd: lineEnd
+                )
             )
         }
 
         return LyricsDocument(
             id: UUID(),
             trackKey: trackKey,
-            language: nil,
-            lines: parsedLines
+            language: language,
+            lines: parsedLines,
+            source: nil
         )
+    }
+
+    /// Plain provider lyrics have no timing at all. Store them as unsynchronized lines.
+    static func parsePlain(_ contents: String, trackKey: LyricsTrackKey) throws -> LyricsDocument {
+        let sourceLines = normalize(contents)
+        let language = parseMetadata(sourceLines, tag: "la")
+        let textLines = sourceLines.compactMap { line -> String? in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.isEmpty == false, isMetadataLine(trimmed) == false else { return nil }
+            return trimmed
+        }
+        guard textLines.isEmpty == false else { throw LyricsImportError.emptyFile }
+        let lines = textLines.enumerated().map { index, text in
+            LyricsLine(
+                id: index,
+                startSeconds: nil,
+                endSeconds: nil,
+                text: text,
+                translation: nil,
+                words: nil
+            )
+        }
+        return LyricsDocument(
+            id: UUID(),
+            trackKey: trackKey,
+            language: language,
+            lines: lines,
+            source: nil
+        )
+    }
+
+    // MARK: - Enhanced (word) timestamps
+
+    private struct WordTiming {
+        var startSeconds: TimeInterval
+        var text: String
+    }
+
+    private struct ParsedText {
+        var text: String
+        var words: [WordTiming]?
+    }
+
+    /// Parses `<mm:ss.xx>` word markers. Their timing is real data; nothing is inferred from text.
+    private static func parseEnhancedText(_ remainder: Substring) -> ParsedText {
+        guard remainder.contains("<") else {
+            return ParsedText(
+                text: remainder.trimmingCharacters(in: .whitespacesAndNewlines),
+                words: nil
+            )
+        }
+
+        var preamble = ""
+        var tokens: [(time: TimeInterval, text: String)] = []
+        var currentTime: TimeInterval?
+        var textStart = remainder.startIndex
+        var cursor = remainder.startIndex
+
+        while cursor < remainder.endIndex {
+            guard remainder[cursor] == "<",
+                  let parsed = takeAngleTimestamp(from: remainder, at: cursor)
+            else {
+                cursor = remainder.index(after: cursor)
+                continue
+            }
+            let segment = String(remainder[textStart..<cursor])
+            if let currentTime {
+                tokens.append((currentTime, segment))
+            } else {
+                preamble += segment
+            }
+            currentTime = parsed.timestamp
+            cursor = parsed.nextIndex
+            textStart = parsed.nextIndex
+        }
+
+        let tail = String(remainder[textStart...])
+        if let currentTime {
+            tokens.append((currentTime, tail))
+        } else {
+            preamble += tail
+        }
+
+        let displayText = (preamble + tokens.map(\.text).joined())
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let wordTimings = tokens
+            .map { (time: $0.time, text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            .filter { $0.text.isEmpty == false }
+        let ordered = zip(wordTimings, wordTimings.dropFirst()).allSatisfy { current, next in
+            next.time > current.time
+        }
+        guard wordTimings.count >= 2, ordered else {
+            return ParsedText(text: displayText, words: nil)
+        }
+        return ParsedText(
+            text: displayText,
+            words: wordTimings.map { WordTiming(startSeconds: $0.time, text: $0.text) }
+        )
+    }
+
+    private static func makeWords(
+        _ timings: [WordTiming]?,
+        offsetSeconds: TimeInterval,
+        lineStart: TimeInterval,
+        lineEnd: TimeInterval?
+    ) -> [LyricsWord]? {
+        guard let timings, timings.count >= 2 else { return nil }
+        var words: [LyricsWord] = []
+        for (index, timing) in timings.enumerated() {
+            let start = max(lineStart, max(0, timing.startSeconds + offsetSeconds))
+            let rawEnd: TimeInterval
+            if timings.indices.contains(index + 1) {
+                rawEnd = max(0, timings[index + 1].startSeconds + offsetSeconds)
+            } else if let lineEnd {
+                rawEnd = lineEnd
+            } else {
+                rawEnd = start
+            }
+            let end = max(start, rawEnd)
+            words.append(LyricsWord(
+                id: index,
+                text: timing.text,
+                startSeconds: start,
+                durationSeconds: end - start
+            ))
+        }
+        return words
+    }
+
+    private static func takeAngleTimestamp(
+        from text: Substring,
+        at index: String.Index
+    ) -> (timestamp: TimeInterval, nextIndex: String.Index)? {
+        guard text[index] == "<",
+              let closing = text[index...].firstIndex(of: ">")
+        else {
+            return nil
+        }
+        let content = text[text.index(after: index)..<closing]
+        guard let timestamp = parseTimeValue(content) else { return nil }
+        return (timestamp, text.index(after: closing))
+    }
+
+    // MARK: - Line timestamps
+
+    private static func normalize(_ contents: String) -> [String] {
+        contents
+            .replacingOccurrences(of: "\u{feff}", with: "")
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .components(separatedBy: "\n")
+    }
+
+    private static func isMetadataLine(_ line: String) -> Bool {
+        guard line.hasPrefix("["), line.hasSuffix("]") else { return false }
+        let tag = line.dropFirst().dropLast()
+        guard let colon = tag.firstIndex(of: ":") else { return false }
+        let name = tag[..<colon].lowercased()
+        return ["ti", "ar", "al", "by", "offset", "re", "ve", "la", "length", "au"].contains(name)
+    }
+
+    private static func parseMetadata(_ lines: [String], tag: String) -> String? {
+        let prefix = "[\(tag.lowercased()):"
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.lowercased().hasPrefix(prefix), trimmed.hasSuffix("]") else { continue }
+            let value = trimmed.dropFirst(prefix.count).dropLast()
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if value.isEmpty == false { return value }
+        }
+        return nil
     }
 
     private static func parseOffset(_ line: String) -> Int? {
@@ -185,6 +406,12 @@ nonisolated enum LRCParser {
         }
         let tagStart = remainder.index(after: remainder.startIndex)
         let tag = remainder[tagStart..<closingBracket]
+        guard let timestamp = parseTimeValue(tag) else { return nil }
+        remainder = remainder[remainder.index(after: closingBracket)...]
+        return timestamp
+    }
+
+    private static func parseTimeValue(_ tag: Substring) -> TimeInterval? {
         guard let colon = tag.firstIndex(of: ":") else { return nil }
         let minuteText = tag[..<colon]
         let timeText = tag[tag.index(after: colon)...]
@@ -216,7 +443,6 @@ nonisolated enum LRCParser {
             fraction = Double(fractionValue) / denominator
         }
 
-        remainder = remainder[remainder.index(after: closingBracket)...]
         return Double(minutes * 60 + seconds) + fraction
     }
 }
@@ -278,7 +504,7 @@ struct LocalLyricsStore {
         case .ambiguous(let documents):
             return .ambiguous(documents)
         case .none:
-            return .onlineUnavailable
+            return .noLocalMatch
         }
     }
 
@@ -291,12 +517,24 @@ struct LocalLyricsStore {
         }
 
         let data = try Data(contentsOf: url)
-        guard let contents = String(data: data, encoding: .utf8) else {
+        guard data.isEmpty == false else { throw LyricsImportError.emptyFile }
+        guard let contents = decodeText(data) else {
             throw LyricsImportError.invalidEncoding
         }
-        let document = try LRCParser.parse(contents, trackKey: trackKey)
+        var document = try LRCParser.parse(contents, trackKey: trackKey)
+        document.source = .localImport
         try save(document)
         return document
+    }
+
+    private func decodeText(_ data: Data) -> String? {
+        if data.starts(with: [0xFF, 0xFE]) {
+            return String(data: data, encoding: .utf16LittleEndian)
+        }
+        if data.starts(with: [0xFE, 0xFF]) {
+            return String(data: data, encoding: .utf16BigEndian)
+        }
+        return String(data: data, encoding: .utf8)
     }
 
     private func exactStoredVersion(_ lhs: LyricsTrackKey, _ rhs: LyricsTrackKey) -> Bool {
@@ -309,11 +547,6 @@ struct LocalLyricsStore {
         return LyricsTrackMatcher.normalized(lhs.title) == LyricsTrackMatcher.normalized(rhs.title)
             && LyricsTrackMatcher.normalized(lhs.artist) == LyricsTrackMatcher.normalized(rhs.artist)
             && LyricsTrackMatcher.normalized(lhs.album) == LyricsTrackMatcher.normalized(rhs.album)
-            && validDuration(lhs.durationSeconds) == validDuration(rhs.durationSeconds)
-    }
-
-    private func validDuration(_ value: Double?) -> Double? {
-        guard let value, value.isFinite, value > 0 else { return nil }
-        return value
+            && LyricsTrackMatcher.validDuration(lhs.durationSeconds) == LyricsTrackMatcher.validDuration(rhs.durationSeconds)
     }
 }

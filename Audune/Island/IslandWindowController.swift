@@ -578,7 +578,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 model.lyricsState = .local(document)
             case .ambiguous(let documents):
                 model.lyricsState = .ambiguous(documents)
-            case .onlineUnavailable:
+            case .noLocalMatch:
                 model.lyricsState = .onlineUnavailable
             }
         } catch {

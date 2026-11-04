@@ -39,10 +39,11 @@ nonisolated struct LyricsPlaybackClock {
     }
 
     static func activeLineIndex(in lines: [LyricsLine], at position: TimeInterval) -> Int? {
-        guard position.isFinite, let index = lines.lastIndex(where: { $0.startSeconds <= position }) else {
-            return nil
+        guard position.isFinite else { return nil }
+        return lines.lastIndex { line in
+            guard let start = line.startSeconds, start.isFinite else { return false }
+            return start <= position
         }
-        return index
     }
 
     static func wordProgress(for word: LyricsWord, at position: TimeInterval) -> Double {
@@ -81,11 +82,38 @@ nonisolated struct LyricsWord: Codable, Equatable, Identifiable, Sendable {
 
 nonisolated struct LyricsLine: Codable, Equatable, Identifiable, Sendable {
     var id: Int
-    var startSeconds: Double
+    /// `nil` for a plain, unsynchronized lyric line. Never invent a timestamp for it.
+    var startSeconds: Double?
     var endSeconds: Double?
     var text: String
     var translation: String?
     var words: [LyricsWord]?
+}
+
+/// How precisely a document can follow playback. Derived from the data, never guessed.
+nonisolated enum LyricsSynchronization: String, Codable, Equatable, Sendable {
+    case unsynced
+    case lineSynced
+    case wordSynced
+}
+
+nonisolated struct LyricsSourceInfo: Codable, Equatable, Sendable {
+    nonisolated enum Kind: String, Codable, Equatable, Sendable {
+        case localImport
+        case lrclib
+    }
+
+    var kind: Kind
+    var providerName: String?
+    var providerRecordIdentifier: String?
+    var isPersisted: Bool
+
+    static let localImport = LyricsSourceInfo(
+        kind: .localImport,
+        providerName: nil,
+        providerRecordIdentifier: nil,
+        isPersisted: true
+    )
 }
 
 nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
@@ -93,4 +121,22 @@ nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
     var trackKey: LyricsTrackKey
     var language: String?
     var lines: [LyricsLine]
+    /// Missing in documents saved before source tracking existed; those are local imports.
+    var source: LyricsSourceInfo? = nil
+
+    var synchronization: LyricsSynchronization {
+        guard lines.contains(where: { $0.startSeconds != nil }) else { return .unsynced }
+        let hasWords = lines.contains { line in
+            line.words?.isEmpty == false
+        }
+        return hasWords ? .wordSynced : .lineSynced
+    }
+
+    var isSynchronized: Bool {
+        synchronization != .unsynced
+    }
+
+    var isPersistedLocally: Bool {
+        source?.kind == .localImport || source == nil
+    }
 }
