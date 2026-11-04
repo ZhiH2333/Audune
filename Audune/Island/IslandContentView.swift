@@ -374,7 +374,10 @@ struct IslandContentView: View {
                             chooseCandidate: chooseLyricsCandidate,
                             deleteLyrics: deleteLyrics,
                             retryLyrics: retryLyrics,
-                            seek: seekNowPlaying
+                            seek: seekNowPlaying,
+                            togglePlay: toggleNowPlaying,
+                            previousTrack: previousTrack,
+                            nextTrack: nextTrack
                         )
                         .transition(.opacity.combined(with: .offset(y: 8)))
                     }
@@ -384,16 +387,16 @@ struct IslandContentView: View {
                 .padding(.vertical, 32)
                 .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
 
-                HStack(alignment: .center, spacing: 18) {
-                    if model.fullScreenScene == .visualizer {
+                if model.fullScreenScene == .visualizer {
+                    HStack(alignment: .center, spacing: 18) {
                         fullScreenNowPlayingMetadata
+                        Spacer()
+                        fullScreenPlaybackButton
                     }
-                    Spacer()
-                    fullScreenPlaybackButton
+                    .padding(.horizontal, 36)
+                    .frame(minHeight: 64)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 36)
-                .frame(minHeight: 64)
-                .padding(.bottom, 24)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

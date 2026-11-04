@@ -8,12 +8,15 @@ struct IslandFullscreenLyricsView: View {
     var deleteLyrics: (UUID) -> Void
     var retryLyrics: () -> Void
     var seek: (Double) -> Void
+    var togglePlay: () -> Void
+    var previousTrack: () -> Void
+    var nextTrack: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrubbedFraction: Double?
+    @State private var isHoveringProgress = false
 
     private let contentMaxWidth: CGFloat = 980
-    private let identityMaxWidth: CGFloat = 460
 
     var body: some View {
         GeometryReader { proxy in
@@ -33,11 +36,14 @@ struct IslandFullscreenLyricsView: View {
     // MARK: - Layout
 
     private func regularLayout(size: CGSize) -> some View {
-        let identityWidth = min(max(size.width * 0.29, 300), identityMaxWidth)
+        // The player column is exactly as wide as the artwork so the title, progress bar,
+        // timestamps, and transport controls share the album art's left/right edges.
+        let artworkSide = min(min(max(size.width * 0.30, 300), max(220, size.height * 0.42)), 420)
+        let gutter = min(max(size.width * 0.045, 36), 80)
         return HStack(alignment: .top, spacing: 0) {
-            identityPanel(size: size, artworkSide: min(identityWidth, size.height * 0.36))
-                .frame(width: identityWidth, alignment: .leading)
-                .padding(.trailing, min(max(size.width * 0.035, 32), 64))
+            identityPanel(artworkSide: artworkSide)
+                .frame(width: artworkSide, alignment: .leading)
+                .padding(.trailing, gutter)
 
             Rectangle()
                 .fill(
@@ -51,7 +57,7 @@ struct IslandFullscreenLyricsView: View {
                 .padding(.vertical, 8)
 
             stage(size: size)
-                .padding(.leading, min(max(size.width * 0.035, 32), 64))
+                .padding(.leading, gutter)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -70,92 +76,77 @@ struct IslandFullscreenLyricsView: View {
 
     // MARK: - Song identity
 
-    private func identityPanel(size: CGSize, artworkSide: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            artwork(side: artworkSide, cornerRadius: 24)
+    private func identityPanel(artworkSide: CGFloat) -> some View {
+        let titleSize = min(max(artworkSide * 0.064, 20), 28)
+        return VStack(alignment: .leading, spacing: 0) {
+            artwork(side: artworkSide, cornerRadius: artworkCornerRadius(artworkSide))
 
-            VStack(alignment: .leading, spacing: 7) {
-                if let album = albumName {
-                    Text(album)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .tracking(1.6)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.white.opacity(0.42))
-                        .lineLimit(1)
-                        .padding(.bottom, 2)
-                }
-                Text(displayTitle)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.96))
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.78)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                Text(displayArtist)
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, 28)
-            .id(model.lyricsTrackRevision)
-            .transition(.opacity)
+            songHeader(titleSize: titleSize)
+                .padding(.top, artworkSide * 0.10)
 
-            playbackPanel
-                .padding(.top, 26)
+            progressBlock
+                .padding(.top, artworkSide * 0.075)
 
-            sourcePanel
-                .padding(.top, 20)
+            transportRow(scale: artworkSide)
+                .padding(.top, artworkSide * 0.09)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Button(action: importLyrics) {
-                    Label(String(localized: "Import LRC"), systemImage: "square.and.arrow.down")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                }
-                .buttonStyle(LyricsQuietButtonStyle())
-                .disabled(canImportLyrics == false)
-                .help(String(localized: "Import a local LRC file for this song"))
-                .accessibilityLabel(String(localized: "Import a local LRC lyrics file"))
+            lyricsAccessory()
+                .padding(.top, artworkSide * 0.075)
 
-                if case .local(let document) = model.lyricsState {
-                    Button {
-                        deleteLyrics(document.id)
-                    } label: {
-                        Label(String(localized: "Delete imported lyrics"), systemImage: "trash")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                    }
-                    .buttonStyle(LyricsQuietButtonStyle())
-                    .help(String(localized: "Delete imported lyrics"))
-                }
-            }
-            .padding(.top, 20)
             Spacer(minLength: 0)
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private func songHeader(titleSize: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: max(3, titleSize * 0.14)) {
+            if let album = albumName {
+                Text(album)
+                    .font(.system(size: max(9, titleSize * 0.42), weight: .semibold, design: .rounded))
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(1)
+            }
+            Text(displayTitle)
+                .font(.system(size: titleSize, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.96))
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(displayArtist)
+                .font(.system(size: max(12, titleSize * 0.7), weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.58))
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .id(model.lyricsTrackRevision)
+        .transition(.opacity)
+    }
+
     private func compactIdentity(size: CGSize) -> some View {
-        let side = min(max(size.height * 0.15, 82), 116)
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center, spacing: 18) {
-                artwork(side: side, cornerRadius: 16)
-                VStack(alignment: .leading, spacing: 5) {
+        let side = min(max(size.height * 0.13, 76), 104)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 16) {
+                artwork(side: side, cornerRadius: artworkCornerRadius(side))
+                VStack(alignment: .leading, spacing: 4) {
                     if let album = albumName, size.height > 520 {
                         Text(album)
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
                             .tracking(1.4)
                             .textCase(.uppercase)
                             .foregroundStyle(.white.opacity(0.4))
                             .lineLimit(1)
                     }
                     Text(displayTitle)
-                        .font(.system(size: 23, weight: .semibold, design: .rounded))
+                        .font(.system(size: 21, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.96))
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                     Text(displayArtist)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.58))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 12)
@@ -164,8 +155,15 @@ struct IslandFullscreenLyricsView: View {
                         .fixedSize()
                 }
             }
-            playbackPanel
+            progressBlock
+            transportRow(scale: side * 1.9)
+                .frame(maxWidth: 420)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+    }
+
+    private func artworkCornerRadius(_ side: CGFloat) -> CGFloat {
+        min(max(side * 0.022, 8), 14)
     }
 
     private func artwork(side: CGFloat, cornerRadius: CGFloat) -> some View {
@@ -202,27 +200,21 @@ struct IslandFullscreenLyricsView: View {
 
     // MARK: - Playback
 
-    private var playbackPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    /// Progress bar with elapsed/remaining timestamps underneath, matching the reference layout.
+    private var progressBlock: some View {
+        VStack(alignment: .leading, spacing: 7) {
             progressBar
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text(timeLabel(displayedPosition))
-                    .foregroundStyle(.white.opacity(0.82))
-                Text("/")
-                    .foregroundStyle(.white.opacity(0.3))
-                Text(durationLabel)
-                    .foregroundStyle(.white.opacity(0.46))
-                Spacer(minLength: 0)
-                if model.nowPlaying.isPlaying == false, model.nowPlaying.hasTrack {
-                    Text(String(localized: "Paused"))
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .tracking(0.8)
-                        .foregroundStyle(.white.opacity(0.36))
-                }
+                    .foregroundStyle(.white.opacity(0.55))
+                Spacer(minLength: 8)
+                Text(remainingLabel)
+                    .foregroundStyle(.white.opacity(0.4))
             }
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .font(.system(size: 11, weight: .medium, design: .rounded).monospacedDigit())
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(localized: "Playback position"))
+            .accessibilityValue(playbackAccessibilityValue)
         }
     }
 
@@ -235,24 +227,27 @@ struct IslandFullscreenLyricsView: View {
             ) ?? 0
             let fraction = min(max(scrubbedFraction ?? actual, 0), 1)
             let canSeek = model.nowPlaying.seekSupported && validDuration
+            // The knob stays hidden until the pointer is over the bar, like the reference player.
+            let showsKnob = canSeek && (isHoveringProgress || scrubbedFraction != nil)
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.14))
+                    .fill(Color.white.opacity(0.18))
                     .frame(height: 4)
                 Capsule()
-                    .fill(Color.white.opacity(canSeek ? 0.9 : 0.72))
+                    .fill(Color.white.opacity(canSeek ? 0.92 : 0.7))
                     .frame(width: max(0, width * fraction), height: 4)
-                if canSeek {
+                if showsKnob {
                     Circle()
                         .fill(Color.white)
-                        .frame(width: scrubbedFraction == nil ? 9 : 13, height: scrubbedFraction == nil ? 9 : 13)
-                        .offset(x: min(max(width * fraction - 6.5, 0), width - 13))
+                        .frame(width: scrubbedFraction == nil ? 9 : 12, height: scrubbedFraction == nil ? 9 : 12)
+                        .offset(x: min(max(width * fraction - 6, 0), max(width - 12, 0)))
                         .shadow(color: .black.opacity(0.4), radius: 4)
                 }
             }
             .frame(height: 18)
             .contentShape(Rectangle())
+            .onHover { isHoveringProgress = $0 }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -280,6 +275,71 @@ struct IslandFullscreenLyricsView: View {
         .frame(height: 18)
     }
 
+    /// Five equal slots keep previous / play-pause / next on the reference player's centers.
+    private func transportRow(scale: CGFloat) -> some View {
+        let glyph = min(max(scale * 0.052, 14), 21)
+        let primary = min(max(scale * 0.075, 19), 30)
+        return HStack(spacing: 0) {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 1)
+            transportButton(
+                symbol: "backward.fill",
+                label: String(localized: "Previous Track"),
+                size: glyph,
+                action: previousTrack
+            )
+            .frame(maxWidth: .infinity)
+            playPauseButton(size: primary)
+                .frame(maxWidth: .infinity)
+            transportButton(
+                symbol: "forward.fill",
+                label: String(localized: "Next Track"),
+                size: glyph,
+                action: nextTrack
+            )
+            .frame(maxWidth: .infinity)
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func playPauseButton(size: CGFloat) -> some View {
+        let label = model.nowPlaying.isPlaying ? String(localized: "Pause") : String(localized: "Play")
+        return Button(action: togglePlay) {
+            Image(systemName: model.nowPlaying.isPlaying ? "pause.fill" : "play.fill")
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(.white.opacity(canControlPlayback ? 0.95 : 0.26))
+                .frame(width: size * 2, height: size * 2)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(canControlPlayback == false)
+        .help(label)
+        .accessibilityLabel(label)
+    }
+
+    private func transportButton(
+        symbol: String,
+        label: String,
+        size: CGFloat,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(.white.opacity(canControlPlayback ? 0.9 : 0.26))
+                .frame(width: size * 2.2, height: size * 2.2)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(canControlPlayback == false)
+        .help(label)
+        .accessibilityLabel(label)
+    }
+
     private var playbackAccessibilityValue: String {
         guard validDuration else { return timeLabel(displayedPosition) }
         return "\(timeLabel(displayedPosition)) / \(timeLabel(model.nowPlaying.durationSeconds))"
@@ -287,18 +347,44 @@ struct IslandFullscreenLyricsView: View {
 
     // MARK: - Source
 
-    private var sourcePanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func lyricsAccessory() -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                if let document = model.lyricsState.document {
+                    sourceBadge(document: document)
+                } else {
+                    Text(String(localized: "No lyrics loaded yet"))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .tracking(0.7)
+                        .foregroundStyle(.white.opacity(0.32))
+                }
+                Spacer(minLength: 8)
+                Button(action: importLyrics) {
+                    Label(String(localized: "Import LRC"), systemImage: "square.and.arrow.down")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                }
+                .buttonStyle(LyricsQuietButtonStyle())
+                .disabled(canImportLyrics == false)
+                .help(String(localized: "Import a local LRC file for this song"))
+                .accessibilityLabel(String(localized: "Import a local LRC lyrics file"))
+
+                if case .local(let document) = model.lyricsState {
+                    Button {
+                        deleteLyrics(document.id)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(LyricsQuietButtonStyle())
+                    .help(String(localized: "Delete imported lyrics"))
+                    .accessibilityLabel(String(localized: "Delete imported lyrics"))
+                }
+            }
             if let document = model.lyricsState.document {
-                sourceBadge(document: document)
                 Text(syncDescription(for: document))
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.34))
+                    .font(.system(size: 10.5, weight: .regular, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.3))
                     .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text(String(localized: "No lyrics loaded yet"))
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.32))
             }
         }
     }
@@ -841,9 +927,15 @@ struct IslandFullscreenLyricsView: View {
         return model.lyricsPositionSeconds
     }
 
-    private var durationLabel: String {
+    /// Remaining time with the leading minus sign, like the reference player's right label.
+    private var remainingLabel: String {
         guard validDuration else { return "--:--" }
-        return timeLabel(model.nowPlaying.durationSeconds)
+        let remaining = max(model.nowPlaying.durationSeconds - displayedPosition, 0)
+        return "-\(timeLabel(remaining))"
+    }
+
+    private var canControlPlayback: Bool {
+        model.nowPlaying.hasTrack && model.nowPlaying.availability == .listening
     }
 
     private var validDuration: Bool {
