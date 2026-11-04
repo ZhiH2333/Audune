@@ -36,6 +36,7 @@
 - [ ] `PASS` — Menu-bar visual responds to real audio and settles during silence. Idle and silence are one baseline. The two-tone showed 16 bars, tall on the left and one shorter bar to the right. Stop while audio continued returned the baseline and it stayed there on a second capture. `Not listening` before Start; `No audio` while running and silent; `Listening` while audio played. `Starting` and `Capture failed` were not seen.
 - [ ] `PASS` — Icon remains legible in the current menu-bar appearance. Dark appearance: light baseline and light bars on the dark menu bar. System appearance was then set to light: the popover used dark text on a light panel, and the menu bar item stayed light on the dark menu-bar material, still readable. Appearance was restored to Dark.
 - [ ] `PASS` — Clicking the icon opens the control popover. The panel showed `Not listening`, an enabled Start, a dimmed Stop, `Open Debug Window`, and `Quit Audune`.
+- [ ] `NOT TESTED` — Clicking a blank area outside the control popover closes it; clicking elsewhere does not stop capture unexpectedly.
 - [ ] `NOT TESTED` — Mode switching does not interrupt capture.
 - [ ] `NOT TESTED` — Studio, Settings, retry, and Quit actions work.
 - [ ] `NOT TESTED` — On macOS versions with a system menu-bar visibility control, Audune remains visible when permitted by system settings.

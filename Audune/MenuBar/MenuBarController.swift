@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSPopoverDelegate {
     private let spike: ProcessTapSpike
     private let openDebug: (() -> Void)?
     private let toggleStudio: () -> Void
@@ -16,6 +16,7 @@ final class MenuBarController: NSObject {
     private let spectrumImage = MenuBarSpectrumImage()
     private let statusItem = NSStatusBar.system.statusItem(withLength: MenuBarSpectrumImage.pointSize.width)
     private let popover = NSPopover()
+    private var outsideClickMonitor: Any?
     private var timer: Timer?
     private var renderedState: MenuBarVisualState?
     private var renderedSequence: UInt64?
@@ -53,6 +54,7 @@ final class MenuBarController: NSObject {
             quit: { NSApp.terminate(nil) }
         )
         popover.behavior = .transient
+        popover.delegate = self
         popover.contentViewController = NSHostingController(rootView: root)
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
@@ -80,6 +82,7 @@ final class MenuBarController: NSObject {
         timer?.invalidate()
         timer = nil
         popover.performClose(nil)
+        removeOutsideClickMonitor()
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
@@ -133,10 +136,33 @@ final class MenuBarController: NSObject {
         }
         publish()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        monitorOutsideClicks()
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        removeOutsideClickMonitor()
     }
 
     @objc private func handleTerminate() {
         shutdown()
+    }
+
+    private func monitorOutsideClicks() {
+        guard outsideClickMonitor == nil else { return }
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.popover.isShown else { return }
+                self.popover.performClose(nil)
+            }
+        }
+    }
+
+    private func removeOutsideClickMonitor() {
+        guard let outsideClickMonitor else { return }
+        NSEvent.removeMonitor(outsideClickMonitor)
+        self.outsideClickMonitor = nil
     }
 
     private func tickFromTimer() {
