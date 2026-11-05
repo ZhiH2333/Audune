@@ -27,6 +27,7 @@ struct IslandFullscreenLyricsView: View {
             HStack(alignment: .top, spacing: metrics.columnGap) {
                 playerColumn(metrics: metrics)
                     .frame(width: metrics.artworkSide, alignment: .topLeading)
+                    .padding(.top, max(16, metrics.stageHeight * 0.048))
 
                 stage(metrics: metrics)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -51,12 +52,12 @@ struct IslandFullscreenLyricsView: View {
             progressBlock
                 .padding(.top, max(15, metrics.artworkSide * 0.060))
 
-            transportRow(scale: metrics.artworkSide)
-                .padding(.top, max(18, metrics.artworkSide * 0.075))
+            Spacer(minLength: 22)
 
-            Spacer(minLength: 16)
+            transportRow(scale: metrics.artworkSide)
 
             sourceFooter
+                .padding(.top, max(14, metrics.artworkSide * 0.045))
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
@@ -880,6 +881,7 @@ private struct LyricsDepthStage: View {
             }
         }()
         let blurRadius: CGFloat = reduceMotion ? 0 : min(CGFloat(visualDistance) * 2.8, 11)
+        let rowFontSize = metrics.activeFontSize * (isFocus ? 1 : max(0.80, 1 - CGFloat(visualDistance) * 0.06))
         let scale = isFocus
             ? 0.974 + 0.026 * entrance
             : max(0.86, 1 - CGFloat(visualDistance) * 0.038)
@@ -887,17 +889,29 @@ private struct LyricsDepthStage: View {
         let lineGap = max(5, metrics.activeFontSize * 0.14)
 
         return VStack(alignment: .leading, spacing: lineGap) {
-            Text(line.text)
-                .font(.system(size: metrics.activeFontSize, weight: .semibold))
-                .foregroundStyle(.white.opacity(opacity))
-                .lineSpacing(max(1, metrics.activeFontSize * 0.03))
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let words = line.words, words.count >= 2 {
+                LyricsTimedWordLine(
+                    words: words,
+                    position: position,
+                    fontSize: rowFontSize,
+                    weight: .semibold,
+                    opacity: opacity,
+                    followsPlayback: isFocus,
+                    accessibilityLabel: accessibilityLabel(for: line)
+                )
+            } else {
+                Text(line.text)
+                    .font(.system(size: rowFontSize, weight: .semibold))
+                    .foregroundStyle(.white.opacity(opacity))
+                    .lineSpacing(max(1, rowFontSize * 0.03))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
-                    .font(.system(size: metrics.translationFontSize, weight: .regular))
+                    .font(.system(size: metrics.translationFontSize * (isFocus ? 1 : 0.88), weight: .regular))
                     .foregroundStyle(.white.opacity((isFocus ? 0.60 : 0.36) * (0.62 + 0.38 * opacity) * translationReveal))
                     .lineSpacing(max(2, metrics.translationFontSize * 0.12))
                     .multilineTextAlignment(.leading)
@@ -1026,8 +1040,159 @@ private struct LyricsMoreButton: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(String(localized: "Lyrics"))
-        .accessibilityLabel(String(localized: "Lyrics"))
+        .help(String(localized: "More"))
+        .accessibilityLabel(String(localized: "More"))
     }
 }
+
+// MARK: - Word fill
+
+/// A word-timed lyric row. Every token occupies the same fixed slot whether or not it
+/// has been sung, so the text never reflows as playback advances. Only the mask grows.
+private struct LyricsTimedWordLine: View {
+    var words: [LyricsWord]
+    var position: TimeInterval
+    var fontSize: CGFloat
+    var weight: Font.Weight
+    var opacity: Double
+    var followsPlayback: Bool
+    var accessibilityLabel: String
+
+    var body: some View {
+        LyricsTokenFlowLayout(lineSpacing: max(4, fontSize * 0.14)) {
+            ForEach(Array(words.enumerated()), id: \.element.id) { index, word in
+                LyricsWordFill(
+                    text: displayText(for: word, at: index),
+                    progress: progress(for: word),
+                    font: .system(size: fontSize, weight: weight),
+                    opacity: opacity
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func progress(for word: LyricsWord) -> Double {
+        guard followsPlayback else { return 1 }
+        return LyricsPlaybackClock.wordProgress(for: word, at: position)
+    }
+
+    private func displayText(for word: LyricsWord, at index: Int) -> String {
+        guard index + 1 < words.count else { return word.text }
+        let next = words[index + 1].text
+        return word.text + (needsSeparator(after: word.text, before: next) ? " " : "")
+    }
+
+    private func needsSeparator(after current: String, before next: String) -> Bool {
+        guard let left = current.last, let right = next.first else { return false }
+        if isCJK(left) || isCJK(right) { return false }
+        if right.isPunctuation || right.isSymbol { return false }
+        if left.isPunctuation || left.isSymbol {
+            return left == "," || left == "." || left == "!" || left == "?"
+        }
+        return left.isLetter || left.isNumber
+    }
+
+    private func isCJK(_ character: Character) -> Bool {
+        guard let scalar = character.unicodeScalars.first else { return false }
+        return (0x3040...0x30FF).contains(scalar.value)
+            || (0x3400...0x4DBF).contains(scalar.value)
+            || (0x4E00...0x9FFF).contains(scalar.value)
+            || (0xF900...0xFAFF).contains(scalar.value)
+            || (0xFF00...0xFFEF).contains(scalar.value)
+    }
+}
+
+/// Two identical text layers keep the token's measured width stable: the lower layer is
+/// the unsung state, while the upper layer is revealed left-to-right by a time mask.
+private struct LyricsWordFill: View {
+    var text: String
+    var progress: Double
+    var font: Font
+    var opacity: Double
+
+    var body: some View {
+        Text(text)
+            .font(font)
+            .foregroundStyle(.white.opacity(opacity * 0.34))
+            .fixedSize()
+            .overlay(alignment: .leading) {
+                Text(text)
+                    .font(font)
+                    .foregroundStyle(.white.opacity(opacity))
+                    .fixedSize()
+                    .mask(alignment: .leading) {
+                        GeometryReader { geometry in
+                            Rectangle()
+                                .frame(width: geometry.size.width * min(max(progress, 0), 1))
+                        }
+                    }
+            }
+    }
+}
+
+/// Wraps word tokens from a stable left edge. The default `Text` wrapping cannot expose
+/// per-word frames, and measuring each token once keeps every playback update layout-free.
+private struct LyricsTokenFlowLayout: Layout {
+    var lineSpacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let availableWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var widestRow: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > availableWidth {
+                widestRow = max(widestRow, x)
+                y += rowHeight + lineSpacing
+                x = 0
+                rowHeight = 0
+            }
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
+        widestRow = max(widestRow, x)
+        return CGSize(width: proposal.width ?? widestRow, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var rows: [[(subview: LayoutSubview, size: CGSize)]] = []
+        var currentRow: [(subview: LayoutSubview, size: CGSize)] = []
+        var currentWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentWidth > 0, currentWidth + size.width > bounds.width {
+                rows.append(currentRow)
+                currentRow = []
+                currentWidth = 0
+            }
+            currentRow.append((subview, size))
+            currentWidth += size.width
+        }
+        if currentRow.isEmpty == false {
+            rows.append(currentRow)
+        }
+
+        var y = bounds.minY
+        for row in rows {
+            let rowHeight = row.reduce(CGFloat.zero) { max($0, $1.size.height) }
+            var x = bounds.minX
+            for item in row {
+                item.subview.place(
+                    at: CGPoint(x: x, y: y + (rowHeight - item.size.height) / 2),
+                    proposal: ProposedViewSize(width: item.size.width, height: item.size.height)
+                )
+                x += item.size.width
+            }
+            y += rowHeight + lineSpacing
+        }
+    }
+}
+
 #endif

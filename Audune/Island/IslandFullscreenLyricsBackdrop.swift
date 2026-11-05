@@ -85,7 +85,11 @@ struct LyricsArtworkBackdrop: View {
     }
 
     private var loadID: String {
-        let artID = artwork.map { String(ObjectIdentifier($0).hashValue) } ?? "none"
+        // Do not key on `ObjectIdentifier`: MediaRemote can hand back a fresh NSImage
+        // object for the same track on every metadata event, which would re-run the
+        // Gaussian blur while the song is paused or seeks. Track identity plus artwork
+        // availability is stable for the lifetime of a track.
+        let artID = artwork == nil ? "none" : "art"
         let size = artwork.map { "\(Int($0.size.width))x\(Int($0.size.height))" } ?? "0x0"
         return "\(trackIdentity)|\(artID)|\(size)"
     }
