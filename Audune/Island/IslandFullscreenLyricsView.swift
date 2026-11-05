@@ -27,7 +27,7 @@ struct IslandFullscreenLyricsView: View {
             HStack(alignment: .top, spacing: metrics.columnGap) {
                 playerColumn(metrics: metrics)
                     .frame(width: metrics.artworkSide, alignment: .topLeading)
-                    .padding(.top, max(16, metrics.stageHeight * 0.048))
+                    .padding(.top, max(16, metrics.stageHeight * 0.066))
 
                 stage(metrics: metrics)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -47,17 +47,17 @@ struct IslandFullscreenLyricsView: View {
             artwork(side: metrics.artworkSide)
 
             songHeader(titleSize: titleSize)
-                .padding(.top, max(18, metrics.artworkSide * 0.085))
+                .padding(.top, max(16, metrics.artworkSide * 0.060))
 
             progressBlock
-                .padding(.top, max(15, metrics.artworkSide * 0.060))
-
-            Spacer(minLength: 22)
+                .padding(.top, max(18, metrics.artworkSide * 0.086))
 
             transportRow(scale: metrics.artworkSide)
+                .padding(.top, max(18, metrics.artworkSide * 0.075))
+
+            Spacer(minLength: 16)
 
             sourceFooter
-                .padding(.top, max(14, metrics.artworkSide * 0.045))
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
@@ -493,6 +493,12 @@ struct IslandFullscreenLyricsView: View {
     private func unsyncedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: max(16, metrics.activeFontSize * 0.66)) {
+                Text(String(localized: "Plain lyrics without timing"))
+                    .font(.system(size: 11, weight: .medium))
+                    .tracking(0.6)
+                    .foregroundStyle(.white.opacity(0.40))
+                    .padding(.bottom, max(6, metrics.activeFontSize * 0.20))
+
                 ForEach(document.lines) { line in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(line.text)
@@ -512,10 +518,22 @@ struct IslandFullscreenLyricsView: View {
                 }
             }
             .frame(maxWidth: 760, alignment: .leading)
-            .padding(.top, max(28, metrics.stageHeight * 0.14))
+            .padding(.top, max(24, metrics.stageHeight * 0.12))
             .padding(.bottom, 48)
         }
         .scrollIndicators(.hidden)
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .white, location: 0.06),
+                    .init(color: .white, location: 0.92),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -627,9 +645,9 @@ struct IslandFullscreenLyricsView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 9)
 
-            if showsRetry || canImportLyrics {
+            if (showsRetry && canSearchLyrics) || canImportLyrics {
                 HStack(spacing: 12) {
-                    if showsRetry {
+                    if showsRetry && canSearchLyrics {
                         Button(action: retryLyrics) {
                             Text(String(localized: "Try Again"))
                                 .font(.system(size: 12, weight: .semibold))
@@ -703,7 +721,9 @@ struct IslandFullscreenLyricsView: View {
     /// automatic online lyrics switched off. Expose that honestly instead of leaving a
     /// menu item that appears actionable but does nothing.
     private var canSearchLyrics: Bool {
-        canImportLyrics && model.lyricsState != .onlineDisabled
+        canImportLyrics
+            && model.prefs.automaticOnlineLyricsEnabled
+            && model.lyricsState != .onlineDisabled
     }
 
     private var localDocumentID: UUID? {
@@ -849,7 +869,10 @@ private struct LyricsDepthStage: View {
         }
         .onAppear { restartFocusMotion() }
         .onChange(of: focusIndex) { _, _ in restartFocusMotion() }
-        .onChange(of: document.id) { _, _ in restartFocusMotion() }
+        .onChange(of: document.id) {
+            rowHeights = [:]
+            restartFocusMotion()
+        }
     }
 
     private func prefixHeight(first: Int, focus: Int) -> (height: CGFloat, ready: Bool) {
@@ -876,7 +899,9 @@ private struct LyricsDepthStage: View {
     ) -> some View {
         let distance = abs(index - focus)
         let isFocus = distance == 0 && hasActiveLine
-        let visualDistance = hasActiveLine ? distance : 1
+        // Before the first timed line starts, keep the upcoming line sharp-ish and fade
+        // the rest by distance instead of flattening every row to the same blur.
+        let visualDistance = hasActiveLine ? distance : min(4, abs(index - focus))
         let opacity: Double = {
             if isFocus { return 1 }
             switch visualDistance {
@@ -1098,10 +1123,8 @@ private struct LyricsTimedWordLine: View {
         guard let left = current.last, let right = next.first else { return false }
         if isCJK(left) || isCJK(right) { return false }
         if right.isPunctuation || right.isSymbol { return false }
-        if left.isPunctuation || left.isSymbol {
-            return left == "," || left == "." || left == "!" || left == "?"
-        }
-        return left.isLetter || left.isNumber
+        if "([{“‘'’-‐".contains(left) { return false }
+        return true
     }
 
     private func isCJK(_ character: Character) -> Bool {
@@ -1123,22 +1146,34 @@ private struct LyricsWordFill: View {
     var opacity: Double
 
     var body: some View {
+        if progress >= 1 {
+            sungText
+        } else if progress <= 0 {
+            unsungText
+        } else {
+            unsungText.overlay(alignment: .leading) {
+                sungText.mask(alignment: .leading) {
+                    GeometryReader { geometry in
+                        Rectangle()
+                            .frame(width: geometry.size.width * progress)
+                    }
+                }
+            }
+        }
+    }
+
+    private var sungText: some View {
+        Text(text)
+            .font(font)
+            .foregroundStyle(.white.opacity(opacity))
+            .fixedSize()
+    }
+
+    private var unsungText: some View {
         Text(text)
             .font(font)
             .foregroundStyle(.white.opacity(opacity * 0.34))
             .fixedSize()
-            .overlay(alignment: .leading) {
-                Text(text)
-                    .font(font)
-                    .foregroundStyle(.white.opacity(opacity))
-                    .fixedSize()
-                    .mask(alignment: .leading) {
-                        GeometryReader { geometry in
-                            Rectangle()
-                                .frame(width: geometry.size.width * min(max(progress, 0), 1))
-                        }
-                    }
-            }
     }
 }
 

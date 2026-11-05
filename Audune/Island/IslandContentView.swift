@@ -414,7 +414,7 @@ struct IslandContentView: View {
                 Capsule(style: .continuous)
                     .fill(Color.white.opacity(0.16))
                     .frame(width: 42, height: 5)
-                    .padding(.top, 8)
+                    .padding(.top, 26)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
