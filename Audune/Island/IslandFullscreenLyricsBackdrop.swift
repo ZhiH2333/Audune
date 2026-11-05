@@ -14,55 +14,59 @@ struct LyricsArtworkBackdrop: View {
     @State private var previous: BackdropLayer?
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.105, green: 0.092, blue: 0.085),
-                    Color(red: 0.052, green: 0.047, blue: 0.044),
-                    Color(red: 0.025, green: 0.024, blue: 0.023)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        GeometryReader { proxy in
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.105, green: 0.092, blue: 0.085),
+                        Color(red: 0.052, green: 0.047, blue: 0.044),
+                        Color(red: 0.025, green: 0.024, blue: 0.023)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
 
-            if let previous, previous.id != current?.id {
-                layer(previous)
+                if let previous, previous.id != current?.id {
+                    layer(previous)
+                }
+
+                if let current {
+                    layer(current)
+                        .id(current.id)
+                        .transition(.opacity)
+                }
+
+                Color.black.opacity(0.24)
+
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0.34), location: 0),
+                        .init(color: .black.opacity(0.06), location: 0.48),
+                        .init(color: .black.opacity(0.18), location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black.opacity(0.12), location: 0.55),
+                        .init(color: .black.opacity(0.46), location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                RadialGradient(
+                    colors: [.clear, .black.opacity(0.42)],
+                    center: .center,
+                    startRadius: 180,
+                    endRadius: 980
+                )
             }
-
-            if let current {
-                layer(current)
-                    .id(current.id)
-                    .transition(.opacity)
-            }
-
-            Color.black.opacity(0.24)
-
-            LinearGradient(
-                stops: [
-                    .init(color: .black.opacity(0.34), location: 0),
-                    .init(color: .black.opacity(0.06), location: 0.48),
-                    .init(color: .black.opacity(0.18), location: 1)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .black.opacity(0.12), location: 0.55),
-                    .init(color: .black.opacity(0.46), location: 1)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            RadialGradient(
-                colors: [.clear, .black.opacity(0.42)],
-                center: .center,
-                startRadius: 180,
-                endRadius: 980
-            )
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -121,6 +125,7 @@ struct LyricsArtworkBackdrop: View {
             .scaledToFill()
             .saturation(0.92)
             .contrast(1.02)
+            .clipped()
     }
 }
 

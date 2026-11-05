@@ -478,59 +478,14 @@ struct IslandFullscreenLyricsView: View {
     }
 
     private func synchronizedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
-        let focusIndex = min(max(model.activeLyricsLineIndex ?? 0, 0), max(document.lines.count - 1, 0))
-        let lowerBound = max(0, focusIndex - 2)
-        let upperBound = min(max(document.lines.count - 1, 0), focusIndex + 3)
-
-        return VStack(alignment: .leading, spacing: metrics.rowGap) {
-            ForEach(Array(lowerBound...upperBound), id: \.self) { index in
-                lyricRow(
-                    line: document.lines[index],
-                    index: index,
-                    focusIndex: focusIndex,
-                    metrics: metrics
-                )
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.top, max(24, metrics.stageHeight * 0.16))
-        .clipped()
-    }
-
-    private func lyricRow(
-        line: LyricsLine,
-        index: Int,
-        focusIndex: Int,
-        metrics: LyricsSceneMetrics
-    ) -> some View {
-        let distance = abs(index - focusIndex)
-        let isActive = distance == 0
-        let opacity = lyricOpacity(distance: distance)
-        let translationReveal = contextTranslationOpacity(isActive: isActive, line: line)
-
-        return VStack(alignment: .leading, spacing: max(5, metrics.activeFontSize * 0.16)) {
-            Text(line.text)
-                .font(.system(size: metrics.activeFontSize, weight: .bold))
-                .foregroundStyle(.white.opacity(opacity))
-                .lineSpacing(max(2, metrics.activeFontSize * 0.06))
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let translation = line.translation, translation.isEmpty == false {
-                Text(translation)
-                    .font(.system(size: metrics.translationFontSize, weight: .regular))
-                    .foregroundStyle(.white.opacity((isActive ? 0.56 : 0.32) * translationReveal * opacity))
-                    .lineSpacing(max(2, metrics.translationFontSize * 0.14))
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(translationReveal)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel(for: line))
-        .accessibilityAddTraits(isActive ? .isSelected : [])
+        LyricsDepthStage(
+            document: document,
+            activeIndex: model.activeLyricsLineIndex,
+            position: model.lyricsPositionSeconds,
+            isPlaying: model.nowPlaying.isPlaying,
+            metrics: metrics,
+            reduceMotion: shouldReduceMotion
+        )
     }
 
     private func unsyncedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
@@ -756,23 +711,6 @@ struct IslandFullscreenLyricsView: View {
         reduceMotion && model.prefs.followsReduceMotion
     }
 
-    private func contextTranslationOpacity(isActive: Bool, line: LyricsLine) -> Double {
-        guard isActive, shouldReduceMotion == false else { return 1 }
-        return LyricsPresentationTiming.translationOpacity(
-            lineStartSeconds: line.startSeconds,
-            positionSeconds: model.lyricsPositionSeconds
-        )
-    }
-
-    private func lyricOpacity(distance: Int) -> Double {
-        switch distance {
-        case 0: return 0.98
-        case 1: return 0.52
-        case 2: return 0.30
-        default: return 0.15
-        }
-    }
-
     private func accessibilityLabel(for line: LyricsLine) -> String {
         if let translation = line.translation, translation.isEmpty == false {
             return "\(line.text), \(translation)"
@@ -819,6 +757,184 @@ struct IslandFullscreenLyricsView: View {
         guard time.isFinite, time >= 0 else { return "0:00" }
         let seconds = Int(time)
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+// MARK: - Depth stage
+
+/// A single lyric stage shared by every row. Rows are absolute-positioned around a
+/// stable focal line, so changing lines moves the stack as one composition instead of
+/// rebuilding a scrolling list. Distance controls blur, opacity, and scale continuously.
+private struct LyricsDepthStage: View {
+    var document: LyricsDocument
+    var activeIndex: Int?
+    var position: TimeInterval
+    var isPlaying: Bool
+    var metrics: LyricsSceneMetrics
+    var reduceMotion: Bool
+
+    @State private var entrance: CGFloat = 1
+    @State private var rowHeights: [Int: CGFloat] = [:]
+
+    private var focusIndex: Int {
+        min(max(activeIndex ?? 0, 0), max(document.lines.count - 1, 0))
+    }
+
+    private var hasActiveLine: Bool {
+        activeIndex != nil
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let count = document.lines.count
+            let focus = focusIndex
+            let first = max(0, focus - 4)
+            let last = min(count - 1, focus + 4)
+            let focusTop = proxy.size.height * 0.205
+            let currentEntrance = Double(entrance)
+            let prefix = prefixHeight(first: first, focus: focus)
+            let isReady = rowHeights[focus] != nil && prefix.ready
+
+            VStack(alignment: .leading, spacing: metrics.rowGap) {
+                if count > 0 {
+                    ForEach(first...last, id: \.self) { index in
+                        lyricRow(
+                            line: document.lines[index],
+                            index: index,
+                            focus: focus,
+                            entrance: currentEntrance
+                        )
+                        .frame(width: proxy.size.width, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.size.height
+                        } action: { height in
+                            guard height > 0, rowHeights[index] != height else { return }
+                            rowHeights[index] = height
+                        }
+                        .zIndex(index == focus ? 1 : 0)
+                    }
+                }
+            }
+            .frame(width: proxy.size.width, alignment: .leading)
+            .offset(y: focusTop - prefix.height)
+            .opacity(isReady ? 1 : 0)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+            .clipped()
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .white, location: 0.10),
+                        .init(color: .white, location: 0.88),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsLineSeconds),
+                value: focusTop - prefix.height
+            )
+            .animation(.easeOut(duration: 0.12), value: isReady)
+        }
+        .onAppear { restartFocusMotion() }
+        .onChange(of: focusIndex) { _, _ in restartFocusMotion() }
+        .onChange(of: document.id) { _, _ in restartFocusMotion() }
+    }
+
+    private func prefixHeight(first: Int, focus: Int) -> (height: CGFloat, ready: Bool) {
+        guard focus > first else { return (0, true) }
+        var height: CGFloat = 0
+        var ready = true
+        for index in first..<focus {
+            if let rowHeight = rowHeights[index] {
+                height += rowHeight
+            } else {
+                height += metrics.activeFontSize * 1.4
+                ready = false
+            }
+            height += metrics.rowGap
+        }
+        return (height, ready)
+    }
+
+    private func lyricRow(
+        line: LyricsLine,
+        index: Int,
+        focus: Int,
+        entrance: Double
+    ) -> some View {
+        let distance = abs(index - focus)
+        let isFocus = distance == 0 && hasActiveLine
+        let visualDistance = hasActiveLine ? distance : 1
+        let opacity: Double = {
+            if isFocus { return 1 }
+            switch visualDistance {
+            case 0: return 0.58
+            case 1: return 0.58
+            case 2: return 0.31
+            case 3: return 0.16
+            case 4: return 0.07
+            default: return 0
+            }
+        }()
+        let blurRadius: CGFloat = reduceMotion ? 0 : min(CGFloat(visualDistance) * 2.8, 11)
+        let scale = isFocus
+            ? 0.974 + 0.026 * entrance
+            : max(0.86, 1 - CGFloat(visualDistance) * 0.038)
+        let translationReveal = translationReveal(for: line, isFocus: isFocus)
+        let lineGap = max(5, metrics.activeFontSize * 0.14)
+
+        return VStack(alignment: .leading, spacing: lineGap) {
+            Text(line.text)
+                .font(.system(size: metrics.activeFontSize, weight: .semibold))
+                .foregroundStyle(.white.opacity(opacity))
+                .lineSpacing(max(1, metrics.activeFontSize * 0.03))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let translation = line.translation, translation.isEmpty == false {
+                Text(translation)
+                    .font(.system(size: metrics.translationFontSize, weight: .regular))
+                    .foregroundStyle(.white.opacity((isFocus ? 0.60 : 0.36) * (0.62 + 0.38 * opacity) * translationReveal))
+                    .lineSpacing(max(2, metrics.translationFontSize * 0.12))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .opacity(translationReveal)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .blur(radius: blurRadius)
+        .scaleEffect(scale, anchor: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel(for: line))
+        .accessibilityAddTraits(isFocus ? .isSelected : [])
+    }
+
+    private func translationReveal(for line: LyricsLine, isFocus: Bool) -> Double {
+        guard isFocus, reduceMotion == false, let start = line.startSeconds else { return 1 }
+        return min(max((position - start) / 0.14, 0), 1)
+    }
+
+    private func accessibilityLabel(for line: LyricsLine) -> String {
+        if let translation = line.translation, translation.isEmpty == false {
+            return "\(line.text), \(translation)"
+        }
+        return line.text
+    }
+
+    private func restartFocusMotion() {
+        guard reduceMotion == false, isPlaying else {
+            entrance = 1
+            return
+        }
+        entrance = 0
+        withAnimation(.easeOut(duration: IslandMotion.lyricsLineSeconds)) {
+            entrance = 1
+        }
     }
 }
 

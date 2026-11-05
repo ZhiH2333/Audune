@@ -791,6 +791,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             }
         )
         let host = IslandHostingView(rootView: root)
+        // The panel frame is owned by IslandWindowController. Prevent AppKit's hosting
+        // view from resizing the borderless panel when a scene reports a larger ideal size.
+        host.sizingOptions = []
         host.onPointerEntered = { [weak self] in
             self?.handleLivePointerEntered()
         }
