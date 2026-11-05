@@ -844,6 +844,9 @@ private struct LyricsDepthStage: View, Equatable {
             let currentEntrance = Double(entrance)
             let prefix = prefixHeight(first: first, focus: focus)
             let isReady = rowHeights[focus] != nil && prefix.ready
+            // Apple Music keeps the lyric measure comfortably narrower than the whole
+            // right column, so long lines never turn into full-window banners.
+            let contentWidth = min(proxy.size.width, 820)
 
             VStack(alignment: .leading, spacing: metrics.rowGap) {
                 if count > 0 {
@@ -854,7 +857,7 @@ private struct LyricsDepthStage: View, Equatable {
                             focus: focus,
                             entrance: currentEntrance
                         )
-                        .frame(width: proxy.size.width, alignment: .leading)
+                        .frame(width: contentWidth, alignment: .leading)
                         .onGeometryChange(for: CGFloat.self) { geometry in
                             geometry.size.height
                         } action: { height in
@@ -865,7 +868,7 @@ private struct LyricsDepthStage: View, Equatable {
                     }
                 }
             }
-            .frame(width: proxy.size.width, alignment: .leading)
+            .frame(width: contentWidth, alignment: .leading)
             .offset(y: focusTop - prefix.height)
             .opacity(isReady ? 1 : 0)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
@@ -883,7 +886,7 @@ private struct LyricsDepthStage: View, Equatable {
                 )
             )
             .animation(
-                reduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsLineSeconds),
+                reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.88),
                 value: focusTop - prefix.height
             )
             .animation(.easeOut(duration: 0.12), value: isReady)
@@ -940,24 +943,30 @@ private struct LyricsDepthStage: View, Equatable {
         // Before the first timed line starts, keep the upcoming line sharp-ish and fade
         // the rest by distance instead of flattening every row to the same blur.
         let visualDistance = hasActiveLine ? distance : min(4, abs(index - focus))
+        // AMLL's active line is fully bright while its neighbours sit at 0.2. Audune's
+        // backdrop can be brighter than AMLL's, so we keep a little more context: the
+        // next line stays readable, then falls away quickly.
         let opacity: Double = {
             if isFocus { return 1 }
             switch visualDistance {
-            case 0: return 0.58
-            case 1: return 0.58
-            case 2: return 0.31
-            case 3: return 0.16
-            case 4: return 0.07
+            case 0: return 0.48
+            case 1: return 0.32
+            case 2: return 0.15
+            case 3: return 0.07
+            case 4: return 0.03
             default: return 0
             }
         }()
-        let blurRadius: CGFloat = reduceMotion ? 0 : min(CGFloat(visualDistance) * 2.8, 11)
-        let rowFontSize = metrics.activeFontSize * (isFocus ? 1 : max(0.80, 1 - CGFloat(visualDistance) * 0.06))
+        let blurRadius: CGFloat = reduceMotion
+            ? 0
+            : min(CGFloat(visualDistance) * 3.4, visualDistance == 0 ? 0 : 8)
+        let rowFontSize = metrics.activeFontSize * (isFocus ? 1 : max(0.88, 1 - CGFloat(visualDistance) * 0.026))
         let scale = isFocus
-            ? 0.974 + 0.026 * entrance
-            : max(0.86, 1 - CGFloat(visualDistance) * 0.038)
+            ? 0.988 + 0.012 * entrance
+            : max(0.96, 1 - CGFloat(visualDistance) * 0.012)
         let translationReveal = isFocus ? focusTranslationReveal : 1
-        let lineGap = max(5, metrics.activeFontSize * 0.14)
+        let lineGap = max(5, metrics.activeFontSize * 0.15)
+        let activeGlow = isFocus ? 0.18 : 0.0
 
         return VStack(alignment: .leading, spacing: lineGap) {
             if let words = line.words, words.count >= 2 {
@@ -982,9 +991,9 @@ private struct LyricsDepthStage: View, Equatable {
 
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
-                    .font(.system(size: metrics.translationFontSize * (isFocus ? 1 : 0.88), weight: .regular))
-                    .foregroundStyle(.white.opacity((isFocus ? 0.60 : 0.36) * (0.62 + 0.38 * opacity) * translationReveal))
-                    .lineSpacing(max(2, metrics.translationFontSize * 0.12))
+                    .font(.system(size: metrics.translationFontSize * (isFocus ? 1 : 0.86), weight: .regular))
+                    .foregroundStyle(.white.opacity((isFocus ? 0.62 : 0.26) * (0.70 + 0.30 * opacity) * translationReveal))
+                    .lineSpacing(max(2, metrics.translationFontSize * 0.16))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -992,6 +1001,7 @@ private struct LyricsDepthStage: View, Equatable {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
         .scaleEffect(scale, anchor: .leading)
         .accessibilityElement(children: .ignore)
