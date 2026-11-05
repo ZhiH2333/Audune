@@ -1,0 +1,86 @@
+# ---------------------------------------------------------------------------
+# Audune — repository ignore rules
+#
+# Only build outputs, user-specific IDE/Xcode state, and local secrets belong
+# here. Everything needed to build from a clean checkout must stay tracked:
+#   - Audune.xcodeproj/project.pbxproj
+#   - Audune.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+#   - Audune.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+#   - Audune.xcodeproj/xcshareddata/xcschemes/*.xcscheme   (shared schemes)
+# ---------------------------------------------------------------------------
+
+# macOS Finder and system metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+Icon?
+Network Trash Folder
+Temporary Items
+
+# Xcode — per-user state (scheme management, breakpoints, window frames)
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode — build products and generated artifacts
+build/
+DerivedData/
+DerivedData-*/
+*.hmap
+*.o
+*.d
+*.dia
+*.dSYM
+*.dSYM.zip
+*.ipa
+*.app
+*.xcarchive
+*.xcresult
+*.moved-aside
+*.xcdatamodeld/*.xcdatamodel/contents.bak
+
+# Swift Package Manager / Xcode dependency caches
+.build/
+.swiftpm/
+SourcePackages/
+checkouts/
+
+# Test and coverage output
+*.xctestrun
+*.xccovreport
+*.xccovarchive
+coverage/
+*.profdata
+*.gcda
+*.gcno
+*.profraw
+
+# Logs and crash reports
+*.log
+*.crash
+crashlogs/
+DiagnosticReports/
+*.ips
+
+# Local environment / secrets / signing material
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.entitlements.local
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
