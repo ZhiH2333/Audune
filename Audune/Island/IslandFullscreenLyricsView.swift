@@ -24,18 +24,123 @@ struct IslandFullscreenLyricsView: View {
     var body: some View {
         GeometryReader { proxy in
             let metrics = LyricsSceneMetrics(size: proxy.size)
-            HStack(alignment: .top, spacing: metrics.columnGap) {
-                playerColumn(metrics: metrics)
-                    .frame(width: metrics.artworkSide, alignment: .topLeading)
-                    .padding(.top, max(16, metrics.stageHeight * 0.066))
-
-                stage(metrics: metrics)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Group {
+                if metrics.isCompact {
+                    compactBody(metrics: metrics)
+                } else {
+                    splitBody(metrics: metrics)
+                }
             }
-            .padding(.horizontal, metrics.horizontalInset)
-            .padding(.top, metrics.topInset)
-            .padding(.bottom, metrics.bottomInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private func splitBody(metrics: LyricsSceneMetrics) -> some View {
+        HStack(alignment: .top, spacing: metrics.columnGap) {
+            playerColumn(metrics: metrics)
+                .frame(width: metrics.artworkSide, alignment: .topLeading)
+                .padding(.top, max(16, metrics.stageHeight * 0.066))
+
+            stage(metrics: metrics)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .padding(.horizontal, metrics.horizontalInset)
+        .padding(.top, metrics.topInset)
+        .padding(.bottom, metrics.bottomInset)
+    }
+
+    /// Short or narrow windows use a stacked player header: the Apple Music composition
+    /// no longer has enough vertical room for a full cover column, so the cover shrinks
+    /// to a compact tile and the lyric stage takes the space underneath.
+    private func compactBody(metrics: LyricsSceneMetrics) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            compactHeader(metrics: metrics)
+
+            HStack(alignment: .center, spacing: max(14, metrics.horizontalInset * 0.5)) {
+                progressBlock
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                compactTransport(metrics: metrics)
+                    .fixedSize()
+            }
+            .padding(.top, 12)
+
+            stage(metrics: metrics)
+                .padding(.top, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .padding(.horizontal, metrics.horizontalInset)
+        .padding(.top, metrics.topInset)
+        .padding(.bottom, metrics.bottomInset)
+    }
+
+    private func compactHeader(metrics: LyricsSceneMetrics) -> some View {
+        let titleSize = min(max(metrics.artworkSide * 0.27, 18), 24)
+        return HStack(alignment: .top, spacing: 14) {
+            artwork(side: metrics.artworkSide)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(displayTitle)
+                    .font(.system(size: titleSize, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.97))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .accessibilityAddTraits(.isHeader)
+
+                Text(displayArtist)
+                    .font(.system(size: max(12, titleSize * 0.62), weight: .regular))
+                    .foregroundStyle(.white.opacity(0.58))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                if let album = displayAlbum {
+                    Text(album)
+                        .font(.system(size: max(10, titleSize * 0.48), weight: .regular))
+                        .foregroundStyle(.white.opacity(0.34))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                Spacer(minLength: 2)
+
+                sourceFooter
+            }
+            .frame(height: metrics.artworkSide, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            LyricsMoreButton(
+                canImport: canImportLyrics,
+                canSearch: canSearchLyrics,
+                localDocumentID: localDocumentID,
+                importLyrics: importLyrics,
+                retryLyrics: retryLyrics,
+                deleteLyrics: deleteLyrics
+            )
+            .fixedSize()
+        }
+        .id(model.lyricsTrackRevision)
+        .transition(.opacity)
+    }
+
+    private func compactTransport(metrics: LyricsSceneMetrics) -> some View {
+        let secondary = min(max(metrics.artworkSide * 0.19, 14), 17)
+        let primary = min(max(metrics.artworkSide * 0.27, 20), 25)
+        return HStack(spacing: 4) {
+            transportButton(
+                symbol: "backward.fill",
+                label: String(localized: "Previous Track"),
+                size: secondary,
+                action: previousTrack
+            )
+
+            playPauseButton(size: primary)
+
+            transportButton(
+                symbol: "forward.fill",
+                label: String(localized: "Next Track"),
+                size: secondary,
+                action: nextTrack
+            )
         }
     }
 
@@ -838,15 +943,15 @@ private struct LyricsDepthStage: View, Equatable {
         GeometryReader { proxy in
             let count = document.lines.count
             let focus = focusIndex
-            let first = max(0, focus - 4)
-            let last = min(count - 1, focus + 4)
-            let focusTop = proxy.size.height * 0.205
+            let first = max(0, focus - metrics.visibleRadius)
+            let last = min(count - 1, focus + metrics.visibleRadius)
+            let focusTop = proxy.size.height * metrics.focusFraction
             let currentEntrance = Double(entrance)
             let prefix = prefixHeight(first: first, focus: focus)
             let isReady = rowHeights[focus] != nil && prefix.ready
             // Apple Music keeps the lyric measure comfortably narrower than the whole
             // right column, so long lines never turn into full-window banners.
-            let contentWidth = min(proxy.size.width, 820)
+            let contentWidth = min(proxy.size.width, metrics.isCompact ? 760 : 820)
 
             VStack(alignment: .leading, spacing: metrics.rowGap) {
                 if count > 0 {
@@ -1043,6 +1148,7 @@ private struct LyricsDepthStage: View, Equatable {
 // MARK: - Metrics
 
 private struct LyricsSceneMetrics: Equatable {
+    var isCompact: Bool
     var horizontalInset: CGFloat
     var topInset: CGFloat
     var bottomInset: CGFloat
@@ -1054,27 +1160,50 @@ private struct LyricsSceneMetrics: Equatable {
     var unsyncedFontSize: CGFloat
     var statusTitleSize: CGFloat
     var rowGap: CGFloat
+    var focusFraction: CGFloat
+    var visibleRadius: Int
 
     init(size: CGSize) {
-        horizontalInset = min(max(size.width * 0.06, 26), 104)
-        topInset = min(max(size.height * 0.018, 8), 22)
-        bottomInset = min(max(size.height * 0.022, 10), 24)
-        stageHeight = max(120, size.height - topInset - bottomInset)
+        let compact = size.width < 780 || size.height < 580
+        isCompact = compact
 
-        let availableWidth = max(320, size.width - horizontalInset * 2)
-        let gap = min(max(size.width * 0.095, 46), 190)
-        let widthDriven = availableWidth * 0.375
-        let heightDriven = stageHeight * 0.58
-        let maximumStageShare = max(250, availableWidth - gap - 300)
-        artworkSide = max(96, min(widthDriven, heightDriven, 620, maximumStageShare))
-        columnGap = gap
+        if compact {
+            horizontalInset = min(max(size.width * 0.05, 18), 40)
+            topInset = 12
+            bottomInset = 12
+            stageHeight = max(120, size.height - topInset - bottomInset)
+            artworkSide = min(max(size.height * 0.16, 64), 96)
+            columnGap = 0
+            activeFontSize = min(max(size.width * 0.062, 24), 40)
+            translationFontSize = min(max(activeFontSize * 0.46, 14), 22)
+            unsyncedFontSize = min(max(activeFontSize * 0.70, 18), 30)
+            statusTitleSize = 22
+            rowGap = max(12, activeFontSize * 0.40)
+            focusFraction = 0.34
+            visibleRadius = size.height >= 720 ? 3 : 2
+        } else {
+            horizontalInset = min(max(size.width * 0.06, 26), 104)
+            topInset = min(max(size.height * 0.018, 8), 22)
+            bottomInset = min(max(size.height * 0.022, 10), 24)
+            stageHeight = max(120, size.height - topInset - bottomInset)
 
-        let stageWidth = max(220, availableWidth - artworkSide - gap)
-        activeFontSize = min(max(stageWidth * 0.085, 28), 70)
-        translationFontSize = min(max(activeFontSize * 0.42, 14), 30)
-        unsyncedFontSize = min(max(activeFontSize * 0.62, 18), 38)
-        statusTitleSize = min(max(stageWidth * 0.050, 22), 32)
-        rowGap = max(14, activeFontSize * 0.50)
+            let availableWidth = max(320, size.width - horizontalInset * 2)
+            let gap = min(max(size.width * 0.095, 46), 190)
+            let widthDriven = availableWidth * 0.375
+            let heightDriven = stageHeight * 0.52
+            let maximumStageShare = max(250, availableWidth - gap - 300)
+            artworkSide = max(96, min(widthDriven, heightDriven, 620, maximumStageShare))
+            columnGap = gap
+
+            let stageWidth = max(220, availableWidth - artworkSide - gap)
+            activeFontSize = min(max(stageWidth * 0.085, 28), 70)
+            translationFontSize = min(max(activeFontSize * 0.42, 14), 30)
+            unsyncedFontSize = min(max(activeFontSize * 0.62, 18), 38)
+            statusTitleSize = min(max(stageWidth * 0.050, 22), 32)
+            rowGap = max(14, activeFontSize * 0.50)
+            focusFraction = 0.205
+            visibleRadius = 4
+        }
     }
 }
 
