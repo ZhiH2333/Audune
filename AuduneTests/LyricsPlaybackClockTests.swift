@@ -165,4 +165,32 @@ final class LyricsPlaybackClockTests: XCTestCase {
 
         XCTAssertEqual(appleMusic, spotify)
     }
+
+    func testPresentationOffsetShiftsLyricsWithoutMovingPlaybackClock() {
+        XCTAssertEqual(
+            LyricsPlaybackClock.presentationPosition(30, offsetSeconds: 0.5),
+            29.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.presentationPosition(30, offsetSeconds: -0.5),
+            30.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.presentationPosition(0.2, offsetSeconds: 2),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.presentationPosition(12, offsetSeconds: .nan),
+            12,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.presentationPosition(.nan, offsetSeconds: 1),
+            0,
+            accuracy: 0.001
+        )
+    }
 }

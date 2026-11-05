@@ -80,7 +80,11 @@ final class IslandModel {
     /// Experimental Now Playing snapshot mirrored from `NowPlayingService` for Expanded UI.
     var nowPlaying = NowPlayingSnapshot.idle
     var lyricsState: LyricsPresentationState = .noTrack
+    /// Raw playback position. Drives the progress time labels.
     var lyricsPositionSeconds: TimeInterval = 0
+    /// Playback position with the user's lyric offset applied. Drives line focus,
+    /// word karaoke, and interlude dots without moving the progress clock.
+    var lyricsDisplayPositionSeconds: TimeInterval = 0
     var activeLyricsLineIndex: Int?
     var lyricsTrackRevision: UInt64 = 0
 
@@ -218,6 +222,7 @@ struct IslandContentView: View {
     var toggleNowPlaying: () -> Void = {}
     var previousTrack: () -> Void = {}
     var nextTrack: () -> Void = {}
+    var setLyricsOffset: (Double) -> Void = { _ in }
     var seekNowPlaying: (Double) -> Void = { _ in }
     var selectFullScreenScene: (IslandFullScreenScene) -> Void = { _ in }
     var importLyrics: () -> Void = {}
@@ -391,7 +396,8 @@ struct IslandContentView: View {
                                 seek: seekNowPlaying,
                                 togglePlay: toggleNowPlaying,
                                 previousTrack: previousTrack,
-                                nextTrack: nextTrack
+                                nextTrack: nextTrack,
+                                setLyricsOffset: setLyricsOffset
                             )
                             .transition(.opacity)
                         }

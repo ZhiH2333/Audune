@@ -14,6 +14,8 @@ nonisolated enum IslandPreferenceKey {
     static let followsReduceMotion = "island.followsReduceMotion"
     static let nowPlayingEnabled = "island.nowPlayingEnabled"
     static let automaticOnlineLyrics = "island.automaticOnlineLyrics"
+    static let lyricsBlurEnabled = "island.lyricsBlurEnabled"
+    static let lyricsOffsetSeconds = "island.lyricsOffsetSeconds"
     static let showArtwork = "island.nowPlayingLayout.showArtwork"
     static let showTitleArtist = "island.nowPlayingLayout.showTitleArtist"
     static let showProgress = "island.nowPlayingLayout.showProgress"
@@ -63,12 +65,17 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var nowPlayingEnabled: Bool
     /// Lyrics Scene may query the reviewed online provider automatically for the current song.
     var automaticOnlineLyricsEnabled: Bool
+    /// Blur non-focus lyric lines. The active line stays sharp when this is off.
+    var lyricsBlurEnabled: Bool
+    /// Shifts the lyric timeline relative to playback. Positive values show lyrics later.
+    var lyricsOffsetSeconds: Double
     /// Which Expanded Now Playing chrome pieces are shown when listening.
     var nowPlayingLayout: IslandNowPlayingLayout
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
     static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
     static let animationSpeedRange: ClosedRange<Double> = 0.5...2.0
+    static let lyricsOffsetRange: ClosedRange<Double> = -5.0...5.0
     static let compactBarCounts = IslandGeometry.compactBarCounts
 
     static let standard = IslandPreferences(
@@ -85,6 +92,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         followsReduceMotion: true,
         nowPlayingEnabled: false,
         automaticOnlineLyricsEnabled: true,
+        lyricsBlurEnabled: true,
+        lyricsOffsetSeconds: 0,
         nowPlayingLayout: .standard
     )
 
@@ -155,6 +164,19 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         let automaticOnlineLyricsEnabled = defaults.object(forKey: IslandPreferenceKey.automaticOnlineLyrics) == nil
             ? standard.automaticOnlineLyricsEnabled
             : defaults.bool(forKey: IslandPreferenceKey.automaticOnlineLyrics)
+        let lyricsBlurEnabled = defaults.object(forKey: IslandPreferenceKey.lyricsBlurEnabled) == nil
+            ? standard.lyricsBlurEnabled
+            : defaults.bool(forKey: IslandPreferenceKey.lyricsBlurEnabled)
+        let lyricsOffsetSeconds: Double
+        if defaults.object(forKey: IslandPreferenceKey.lyricsOffsetSeconds) != nil {
+            lyricsOffsetSeconds = StudioPreferences.clamped(
+                defaults.double(forKey: IslandPreferenceKey.lyricsOffsetSeconds),
+                to: lyricsOffsetRange,
+                fallback: standard.lyricsOffsetSeconds
+            )
+        } else {
+            lyricsOffsetSeconds = standard.lyricsOffsetSeconds
+        }
         let nowPlayingLayout = IslandNowPlayingLayout(
             showArtwork: defaults.object(forKey: IslandPreferenceKey.showArtwork) == nil
                 ? standard.nowPlayingLayout.showArtwork
@@ -187,6 +209,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             followsReduceMotion: followsReduceMotion,
             nowPlayingEnabled: nowPlayingEnabled,
             automaticOnlineLyricsEnabled: automaticOnlineLyricsEnabled,
+            lyricsBlurEnabled: lyricsBlurEnabled,
+            lyricsOffsetSeconds: lyricsOffsetSeconds,
             nowPlayingLayout: nowPlayingLayout
         ).normalized()
     }
@@ -213,6 +237,11 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         result.compactBarCountPerSide = Self.compactBarCounts.contains(compactBarCountPerSide)
             ? compactBarCountPerSide
             : standard.compactBarCountPerSide
+        result.lyricsOffsetSeconds = StudioPreferences.clamped(
+            lyricsOffsetSeconds,
+            to: Self.lyricsOffsetRange,
+            fallback: standard.lyricsOffsetSeconds
+        )
         return result
     }
 
@@ -235,6 +264,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
         defaults.set(normalized.nowPlayingEnabled, forKey: IslandPreferenceKey.nowPlayingEnabled)
         defaults.set(normalized.automaticOnlineLyricsEnabled, forKey: IslandPreferenceKey.automaticOnlineLyrics)
+        defaults.set(normalized.lyricsBlurEnabled, forKey: IslandPreferenceKey.lyricsBlurEnabled)
+        defaults.set(normalized.lyricsOffsetSeconds, forKey: IslandPreferenceKey.lyricsOffsetSeconds)
         defaults.set(normalized.nowPlayingLayout.showArtwork, forKey: IslandPreferenceKey.showArtwork)
         defaults.set(normalized.nowPlayingLayout.showTitleArtist, forKey: IslandPreferenceKey.showTitleArtist)
         defaults.set(normalized.nowPlayingLayout.showProgress, forKey: IslandPreferenceKey.showProgress)

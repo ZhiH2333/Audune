@@ -16,6 +16,7 @@ struct IslandFullscreenLyricsView: View {
     var togglePlay: () -> Void
     var previousTrack: () -> Void
     var nextTrack: () -> Void
+    var setLyricsOffset: (Double) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrubbedFraction: Double?
@@ -115,6 +116,14 @@ struct IslandFullscreenLyricsView: View {
             }
             .frame(height: metrics.artworkSide, alignment: .top)
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if model.nowPlaying.hasTrack {
+                LyricsOffsetButton(
+                    offset: model.prefs.lyricsOffsetSeconds,
+                    onChange: setLyricsOffset
+                )
+                .fixedSize()
+            }
 
             LyricsMoreButton(
                 canImport: canImportLyrics,
@@ -233,6 +242,14 @@ struct IslandFullscreenLyricsView: View {
             }
 
             Spacer(minLength: 4)
+
+            if model.nowPlaying.hasTrack {
+                LyricsOffsetButton(
+                    offset: model.prefs.lyricsOffsetSeconds,
+                    onChange: setLyricsOffset
+                )
+                .fixedSize()
+            }
 
             LyricsMoreButton(
                 canImport: canImportLyrics,
@@ -610,15 +627,16 @@ struct IslandFullscreenLyricsView: View {
             // Word timing is the only thing that needs a per-frame position. Line-synced
             // documents stay visually stable between line changes, which also keeps the
             // blurred stage off the 30 Hz redraw path.
-            position: document.synchronization == .wordSynced ? model.lyricsPositionSeconds : 0,
+            position: document.synchronization == .wordSynced ? model.lyricsDisplayPositionSeconds : 0,
             isPlaying: model.nowPlaying.isPlaying,
             interlude: LyricsPlaybackClock.isInterlude(
                 in: document.lines,
                 activeIndex: model.activeLyricsLineIndex,
-                at: model.lyricsPositionSeconds
+                at: model.lyricsDisplayPositionSeconds
             ),
             metrics: metrics,
-            reduceMotion: shouldReduceMotion
+            reduceMotion: shouldReduceMotion,
+            blurLyrics: model.prefs.lyricsBlurEnabled
         )
         .equatable()
     }
@@ -940,8 +958,8 @@ private struct LyricsDepthStage: View, Equatable {
     var interlude: Bool
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
+    var blurLyrics: Bool
 
-    @State private var entrance: CGFloat = 1
     @State private var rowHeights: [Int: CGFloat] = [:]
     @State private var focusTranslationReveal: Double = 1
 
@@ -960,21 +978,18 @@ private struct LyricsDepthStage: View, Equatable {
             let first = max(0, focus - metrics.visibleRadius)
             let last = min(count - 1, focus + metrics.visibleRadius)
             let focusTop = proxy.size.height * metrics.focusFraction
-            let currentEntrance = Double(entrance)
-            let prefix = prefixHeight(first: first, focus: focus)
-            let isReady = rowHeights[focus] != nil && prefix.ready
+            let isReady = rowHeights[focus] != nil
             // Apple Music keeps the lyric measure comfortably narrower than the whole
             // right column, so long lines never turn into full-window banners.
             let contentWidth = min(proxy.size.width, metrics.isCompact ? 760 : 820)
 
-            VStack(alignment: .leading, spacing: metrics.rowGap) {
+            ZStack(alignment: .topLeading) {
                 if count > 0 {
                     ForEach(first...last, id: \.self) { index in
                         lyricRow(
                             line: document.lines[index],
                             index: index,
                             focus: focus,
-                            entrance: currentEntrance,
                             isInterlude: interlude && index == focus
                         )
                         .frame(width: contentWidth, alignment: .leading)
@@ -984,12 +999,15 @@ private struct LyricsDepthStage: View, Equatable {
                             guard height > 0, rowHeights[index] != height else { return }
                             rowHeights[index] = height
                         }
+                        // Position every row from the focus line instead of moving one
+                        // VStack. Keeping rows absolute means a focused line never
+                        // pushes or reflows its neighbours, and the offset spring only
+                        // has to move each row by one line height.
+                        .offset(y: focusTop + relativeOffset(for: index, focus: focus))
                         .zIndex(index == focus ? 1 : 0)
                     }
                 }
             }
-            .frame(width: contentWidth, alignment: .leading)
-            .offset(y: focusTop - prefix.height)
             .opacity(isReady ? 1 : 0)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .clipped()
@@ -1006,22 +1024,19 @@ private struct LyricsDepthStage: View, Equatable {
                 )
             )
             .animation(
-                reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.88),
-                value: focusTop - prefix.height
+                reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.94),
+                value: focus
             )
             .animation(.easeOut(duration: 0.12), value: isReady)
         }
         .onAppear {
-            restartFocusMotion()
             revealFocusTranslation()
         }
         .onChange(of: focusIndex) { _, _ in
-            restartFocusMotion()
             revealFocusTranslation()
         }
         .onChange(of: document.id) {
             rowHeights = [:]
-            restartFocusMotion()
             revealFocusTranslation()
         }
     }
@@ -1032,32 +1047,35 @@ private struct LyricsDepthStage: View, Equatable {
               lhs.isPlaying == rhs.isPlaying,
               lhs.interlude == rhs.interlude,
               lhs.metrics == rhs.metrics,
-              lhs.reduceMotion == rhs.reduceMotion
+              lhs.reduceMotion == rhs.reduceMotion,
+              lhs.blurLyrics == rhs.blurLyrics
         else { return false }
         return lhs.document.synchronization != .wordSynced || lhs.position == rhs.position
     }
 
-    private func prefixHeight(first: Int, focus: Int) -> (height: CGFloat, ready: Bool) {
-        guard focus > first else { return (0, true) }
-        var height: CGFloat = 0
-        var ready = true
-        for index in first..<focus {
-            if let rowHeight = rowHeights[index] {
-                height += rowHeight
-            } else {
-                height += metrics.activeFontSize * 1.4
-                ready = false
+    /// Vertical distance from the focus line. Row heights are measured once and stay
+    /// stable because focus never changes typography.
+    private func relativeOffset(for index: Int, focus: Int) -> CGFloat {
+        guard index != focus else { return 0 }
+        let step = metrics.activeFontSize * 1.4 + metrics.rowGap
+        if index > focus {
+            var offset: CGFloat = 0
+            for row in focus..<index {
+                offset += (rowHeights[row] ?? step) + metrics.rowGap
             }
-            height += metrics.rowGap
+            return offset
         }
-        return (height, ready)
+        var offset: CGFloat = 0
+        for row in index..<focus {
+            offset -= (rowHeights[row] ?? step) + metrics.rowGap
+        }
+        return offset
     }
 
     private func lyricRow(
         line: LyricsLine,
         index: Int,
         focus: Int,
-        entrance: Double,
         isInterlude: Bool
     ) -> some View {
         let distance = abs(index - focus)
@@ -1080,13 +1098,13 @@ private struct LyricsDepthStage: View, Equatable {
             default: return 0
             }
         }()
-        let blurRadius: CGFloat = reduceMotion
+        let blurRadius: CGFloat = (reduceMotion || blurLyrics == false)
             ? 0
-            : min(CGFloat(visualDistance) * 3.4, visualDistance == 0 ? 0 : 8)
-        let rowFontSize = metrics.activeFontSize * (isFocus ? 1 : max(0.88, 1 - CGFloat(visualDistance) * 0.026))
-        let scale = isFocus
-            ? 0.988 + 0.012 * entrance
-            : max(0.96, 1 - CGFloat(visualDistance) * 0.012)
+            : min(CGFloat(visualDistance) * 4.2, visualDistance == 0 ? 0 : 10)
+        // Every row uses the same metrics. Focus changes brightness and blur only;
+        // it must never change the font size, scale, or measure, otherwise a line
+        // re-wraps exactly when it becomes active and the scroll looks jumpy.
+        let rowFontSize = metrics.activeFontSize
         let translationReveal = isFocus ? focusTranslationReveal : 1
         let lineGap = max(5, metrics.activeFontSize * 0.15)
         let activeGlow = isFocus && isWaiting == false ? 0.18 : 0.0
@@ -1115,7 +1133,7 @@ private struct LyricsDepthStage: View, Equatable {
 
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
-                    .font(.system(size: metrics.translationFontSize * (isFocus ? 1 : 0.86), weight: .regular))
+                    .font(.system(size: metrics.translationFontSize, weight: .regular))
                     .foregroundStyle(.white.opacity((isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal))
                     .lineSpacing(max(2, metrics.translationFontSize * 0.16))
                     .multilineTextAlignment(.leading)
@@ -1135,7 +1153,6 @@ private struct LyricsDepthStage: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .leading)
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
-        .scaleEffect(scale, anchor: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
@@ -1159,16 +1176,6 @@ private struct LyricsDepthStage: View, Equatable {
         return line.text
     }
 
-    private func restartFocusMotion() {
-        guard reduceMotion == false, isPlaying else {
-            entrance = 1
-            return
-        }
-        entrance = 0
-        withAnimation(.easeOut(duration: IslandMotion.lyricsLineSeconds)) {
-            entrance = 1
-        }
-    }
 }
 
 // MARK: - Interlude
@@ -1266,7 +1273,7 @@ private struct LyricsSceneMetrics: Equatable {
             statusTitleSize = min(max(stageWidth * 0.050, 22), 32)
             rowGap = max(14, activeFontSize * 0.50)
             focusFraction = 0.205
-            visibleRadius = 4
+            visibleRadius = 3
         }
     }
 }
@@ -1324,6 +1331,117 @@ private struct LyricsMoreButton: View {
         .onHover { hovering = $0 }
         .help(String(localized: "Controls"))
         .accessibilityLabel(String(localized: "Controls"))
+    }
+}
+
+// MARK: - Lyric offset
+
+/// Small, glanceable timing trim for the lyric stage. The same value is editable in
+/// Settings; keeping it beside the source menu makes it reachable during playback.
+private struct LyricsOffsetButton: View {
+    var offset: Double
+    var onChange: (Double) -> Void
+
+    @State private var isPresented = false
+
+    private var offsetText: String {
+        String(format: "%+.1f s", offset)
+    }
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "timer")
+                if abs(offset) >= 0.05 {
+                    Text(offsetText)
+                        .monospacedDigit()
+                }
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(abs(offset) >= 0.05 ? 0.86 : 0.52))
+            .padding(.horizontal, 9)
+            .frame(height: 26)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(abs(offset) >= 0.05 ? 0.13 : 0.065))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(String(localized: "Adjust lyrics timing"))
+        .accessibilityLabel(String(localized: "Lyrics offset"))
+        .accessibilityValue(offsetText)
+        .popover(isPresented: $isPresented) {
+            VStack(alignment: .leading, spacing: 13) {
+                Text(String(localized: "Lyrics Offset"))
+                    .font(.system(size: 13, weight: .semibold))
+
+                Text(String(localized: "Shift every lyric line relative to playback."))
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 10) {
+                    offsetStepButton(symbol: "minus") { adjust(by: -0.1) }
+                    Text(offsetText)
+                        .font(.system(size: 13, weight: .medium).monospacedDigit())
+                        .frame(maxWidth: .infinity)
+                    offsetStepButton(symbol: "plus") { adjust(by: 0.1) }
+                }
+
+                Slider(
+                    value: Binding(
+                        get: { offset },
+                        set: { onChange(clamped($0)) }
+                    ),
+                    in: IslandPreferences.lyricsOffsetRange,
+                    step: 0.1
+                )
+                .tint(.primary)
+
+                HStack(alignment: .firstTextBaseline) {
+                    Text(String(localized: "Positive values show lyrics later."))
+                        .font(.system(size: 10.5, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 10)
+                    Button(String(localized: "Reset")) {
+                        onChange(0)
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .disabled(abs(offset) < 0.05)
+                }
+            }
+            .padding(16)
+            .frame(width: 290)
+            .preferredColorScheme(.dark)
+        }
+    }
+
+    private func offsetStepButton(symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.primary)
+                .frame(width: 26, height: 24)
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(symbol == "plus" ? String(localized: "Show lyrics later") : String(localized: "Show lyrics earlier"))
+    }
+
+    private func adjust(by delta: Double) {
+        onChange(clamped(offset + delta))
+    }
+
+    private func clamped(_ value: Double) -> Double {
+        min(max(value, IslandPreferences.lyricsOffsetRange.lowerBound), IslandPreferences.lyricsOffsetRange.upperBound)
     }
 }
 

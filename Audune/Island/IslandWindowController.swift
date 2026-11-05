@@ -418,6 +418,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    func setLyricsOffset(_ seconds: Double) {
+        model.prefs.lyricsOffsetSeconds = seconds
+        preferencesDidChange()
+    }
+
     func setAutomaticOnlineLyricsEnabled(_ enabled: Bool) {
         model.prefs.automaticOnlineLyricsEnabled = enabled
         savePreferences()
@@ -442,6 +447,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         evaluateScreensAndApply(animated: false)
         refreshVisuals()
         syncNowPlayingListening()
+        updateLyricsLinePosition()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
@@ -592,6 +598,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.lyricsState = .nowPlayingUnavailable
             setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
+            model.lyricsDisplayPositionSeconds = 0
             return
         }
         guard let trackKey = lyricsTrackKey(from: snapshot) else {
@@ -600,6 +607,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.lyricsState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
             setActiveLyricsLineIndex(nil)
             model.lyricsPositionSeconds = 0
+            model.lyricsDisplayPositionSeconds = 0
             return
         }
 
@@ -647,14 +655,19 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             durationSeconds: snapshot.durationSeconds,
             nowUptime: ProcessInfo.processInfo.systemUptime
         )
+        let displayPosition = LyricsPlaybackClock.presentationPosition(
+            position,
+            offsetSeconds: model.prefs.lyricsOffsetSeconds
+        )
         model.lyricsPositionSeconds = position
+        model.lyricsDisplayPositionSeconds = displayPosition
         guard let document = model.lyricsState.document else {
             setActiveLyricsLineIndex(nil)
             return
         }
         setActiveLyricsLineIndex(LyricsPlaybackClock.activeLineIndex(
             in: document.lines,
-            at: position
+            at: displayPosition
         ))
     }
 
@@ -770,6 +783,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             nextTrack: { [weak self] in
                 self?.nowPlaying.nextTrack()
+            },
+            setLyricsOffset: { [weak self] seconds in
+                self?.setLyricsOffset(seconds)
             },
             seekNowPlaying: { [weak self] seconds in
                 self?.nowPlaying.seek(to: seconds)

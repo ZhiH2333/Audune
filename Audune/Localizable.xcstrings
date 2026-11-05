@@ -4584,6 +4584,116 @@
           }
         }
       }
+    },
+    "Adjust lyrics timing": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调整歌词时间"
+          }
+        }
+      }
+    },
+    "Blur inactive lyrics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模糊非当前歌词"
+          }
+        }
+      }
+    },
+    "Lyrics Offset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词偏移"
+          }
+        }
+      }
+    },
+    "Lyrics offset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词偏移"
+          }
+        }
+      }
+    },
+    "Lyrics offset (s)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词偏移（秒）"
+          }
+        }
+      }
+    },
+    "Positive values show lyrics later.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正值会让歌词显示得更晚。"
+          }
+        }
+      }
+    },
+    "Positive values show lyrics later. This can also be adjusted from the lyrics view.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正值会让歌词显示得更晚，也可以在歌词界面中调整。"
+          }
+        }
+      }
+    },
+    "Reset": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置"
+          }
+        }
+      }
+    },
+    "Shift every lyric line relative to playback.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相对播放位置平移每一行歌词。"
+          }
+        }
+      }
+    },
+    "Show lyrics earlier": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让歌词显示得更早"
+          }
+        }
+      }
+    },
+    "Show lyrics later": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让歌词显示得更晚"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

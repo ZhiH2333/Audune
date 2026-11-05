@@ -38,6 +38,17 @@ nonisolated struct LyricsPlaybackClock {
         return min(max(position / duration, 0), 1)
     }
 
+    /// Converts playback time into lyric presentation time. A positive offset keeps
+    /// every timestamp on screen longer, so the lyric appears later.
+    static func presentationPosition(
+        _ position: TimeInterval,
+        offsetSeconds: TimeInterval
+    ) -> TimeInterval {
+        guard position.isFinite else { return 0 }
+        let offset = offsetSeconds.isFinite ? offsetSeconds : 0
+        return max(0, position - offset)
+    }
+
     static func activeLineIndex(in lines: [LyricsLine], at position: TimeInterval) -> Int? {
         guard position.isFinite else { return nil }
         return lines.lastIndex { line in

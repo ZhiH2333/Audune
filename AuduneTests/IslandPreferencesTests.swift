@@ -30,6 +30,8 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertTrue(loaded.followsReduceMotion)
         XCTAssertFalse(loaded.nowPlayingEnabled)
         XCTAssertTrue(loaded.automaticOnlineLyricsEnabled)
+        XCTAssertTrue(loaded.lyricsBlurEnabled)
+        XCTAssertEqual(loaded.lyricsOffsetSeconds, 0, accuracy: 0.000_1)
         XCTAssertEqual(loaded.nowPlayingLayout, .standard)
     }
 
@@ -70,6 +72,8 @@ final class IslandPreferencesTests: XCTestCase {
             followsReduceMotion: false,
             nowPlayingEnabled: true,
             automaticOnlineLyricsEnabled: false,
+            lyricsBlurEnabled: false,
+            lyricsOffsetSeconds: 1.5,
             nowPlayingLayout: IslandNowPlayingLayout(
                 showArtwork: false,
                 showTitleArtist: true,
@@ -87,6 +91,8 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.nowPlayingLayout.showProgress)
         XCTAssertFalse(loaded.nowPlayingLayout.showVisualization)
         XCTAssertFalse(loaded.automaticOnlineLyricsEnabled)
+        XCTAssertFalse(loaded.lyricsBlurEnabled)
+        XCTAssertEqual(loaded.lyricsOffsetSeconds, 1.5, accuracy: 0.000_1)
     }
 
     func testInvalidValuesClampAndNormalize() {
@@ -145,6 +151,25 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertEqual(IslandPreferences.load(from: defaults).animationSpeed, IslandPreferences.animationSpeedRange.lowerBound, accuracy: 0.000_1)
         defaults.set(Double.nan, forKey: IslandPreferenceKey.animationSpeed)
         XCTAssertEqual(IslandPreferences.load(from: defaults).animationSpeed, IslandPreferences.standard.animationSpeed, accuracy: 0.000_1)
+
+        defaults.set(99.0, forKey: IslandPreferenceKey.lyricsOffsetSeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).lyricsOffsetSeconds,
+            IslandPreferences.lyricsOffsetRange.upperBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(-99.0, forKey: IslandPreferenceKey.lyricsOffsetSeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).lyricsOffsetSeconds,
+            IslandPreferences.lyricsOffsetRange.lowerBound,
+            accuracy: 0.000_1
+        )
+        defaults.set(Double.nan, forKey: IslandPreferenceKey.lyricsOffsetSeconds)
+        XCTAssertEqual(
+            IslandPreferences.load(from: defaults).lyricsOffsetSeconds,
+            IslandPreferences.standard.lyricsOffsetSeconds,
+            accuracy: 0.000_1
+        )
     }
 
     func testResetRestoresDefaultsWithoutTouchingStudioPreferences() {

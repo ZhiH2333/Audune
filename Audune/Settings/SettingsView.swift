@@ -623,6 +623,29 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Toggle("Blur inactive lyrics", isOn: $islandModel.prefs.lyricsBlurEnabled)
+            SettingsSlider(
+                title: "Lyrics offset (s)",
+                value: Binding(
+                    get: { islandModel.prefs.lyricsOffsetSeconds },
+                    set: { island.setLyricsOffset($0) }
+                ),
+                range: IslandPreferences.lyricsOffsetRange,
+                step: 0.1,
+                fractionDigits: 1
+            )
+            HStack(alignment: .firstTextBaseline) {
+                Text("Positive values show lyrics later. This can also be adjusted from the lyrics view.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 12)
+                if abs(islandModel.prefs.lyricsOffsetSeconds) >= 0.05 {
+                    Button("Reset") {
+                        island.setLyricsOffset(0)
+                    }
+                }
+            }
         }
         Section("Now Playing layout") {
             Toggle("Artwork", isOn: $islandModel.prefs.nowPlayingLayout.showArtwork)
