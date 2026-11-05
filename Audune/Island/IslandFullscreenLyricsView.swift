@@ -112,6 +112,7 @@ struct IslandFullscreenLyricsView: View {
 
             LyricsMoreButton(
                 canImport: canImportLyrics,
+                canSearch: canSearchLyrics,
                 localDocumentID: localDocumentID,
                 importLyrics: importLyrics,
                 retryLyrics: retryLyrics,
@@ -698,6 +699,13 @@ struct IslandFullscreenLyricsView: View {
         model.nowPlaying.title.isEmpty == false && model.nowPlaying.artist.isEmpty == false
     }
 
+    /// `retry()` deliberately refuses to issue an online request while the user has
+    /// automatic online lyrics switched off. Expose that honestly instead of leaving a
+    /// menu item that appears actionable but does nothing.
+    private var canSearchLyrics: Bool {
+        canImportLyrics && model.lyricsState != .onlineDisabled
+    }
+
     private var localDocumentID: UUID? {
         if case .local(let document) = model.lyricsState {
             return document.id
@@ -994,6 +1002,7 @@ private struct LyricsSceneMetrics {
 
 private struct LyricsMoreButton: View {
     var canImport: Bool
+    var canSearch: Bool
     var localDocumentID: UUID?
     var importLyrics: () -> Void
     var retryLyrics: () -> Void
@@ -1011,7 +1020,7 @@ private struct LyricsMoreButton: View {
             Button(action: retryLyrics) {
                 Label(String(localized: "Search for lyrics again"), systemImage: "arrow.clockwise")
             }
-            .disabled(canImport == false)
+            .disabled(canSearch == false)
 
             if let localDocumentID {
                 Divider()
