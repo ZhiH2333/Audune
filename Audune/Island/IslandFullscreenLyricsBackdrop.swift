@@ -36,6 +36,13 @@ struct LyricsArtworkBackdrop: View {
                         .transition(.opacity)
                 }
 
+                RadialGradient(
+                    colors: [.white.opacity(0.07), .clear],
+                    center: UnitPoint(x: 0.72, y: 0.16),
+                    startRadius: 20,
+                    endRadius: 760
+                )
+
                 Color.black.opacity(0.24)
 
                 LinearGradient(
@@ -125,12 +132,28 @@ struct LyricsArtworkBackdrop: View {
     }
 
     private func layer(_ layer: BackdropLayer) -> some View {
-        Image(nsImage: layer.image)
-            .resizable()
-            .scaledToFill()
-            .saturation(0.92)
-            .contrast(1.02)
-            .clipped()
+        ZStack {
+            Image(nsImage: layer.image)
+                .resizable()
+                .scaledToFill()
+                .saturation(1.04)
+                .contrast(1.02)
+                .clipped()
+
+            // A larger, slightly rotated copy doubles the blurred colour field into
+            // the soft two-tone bloom Apple Music uses, without inventing a palette or
+            // recolouring the controls.
+            Image(nsImage: layer.image)
+                .resizable()
+                .scaledToFill()
+                .scaleEffect(1.35)
+                .rotationEffect(.degrees(2))
+                .saturation(1.10)
+                .opacity(0.30)
+                .blendMode(.screen)
+                .clipped()
+        }
+        .clipped()
     }
 }
 
