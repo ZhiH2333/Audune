@@ -1112,7 +1112,7 @@ private struct LyricsDepthStage: View, Equatable {
         // Scale is a render transform, not layout. Every row keeps the same font
         // and measure, so focus never re-wraps; it only grows slightly from the
         // leading edge, exactly like the reference's transform-origin: left center.
-        let rowScale: CGFloat = isFocus ? 1.06 : 0.96
+        let rowScale: CGFloat = reduceMotion ? 1 : (isFocus ? 1.06 : 0.96)
         let rowFontSize = metrics.activeFontSize
         let translationReveal = isFocus ? focusTranslationReveal : 1
         let lineGap = max(5, metrics.activeFontSize * 0.15)
