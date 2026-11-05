@@ -1,6 +1,26 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Return to the currently playing line": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回到正在播放的那一行"
+          }
+        }
+      }
+    },
+    "Back to current lyric": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回到当前歌词"
+          }
+        }
+      }
+    },
     " A custom color on this mode is replaced when the preset is applied.": {
       "extractionState": "stale",
       "localizations": {
