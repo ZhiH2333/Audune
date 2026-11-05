@@ -2,6 +2,17 @@ import XCTest
 @testable import Audune
 
 final class LyricsPresentationTimingTests: XCTestCase {
+    func testManualBrowsingOpacityKeepsFocusBrightAndDimsOtherLines() {
+        XCTAssertEqual(
+            LyricsPresentationTiming.manualBrowsingOpacity(isFocused: true),
+            1
+        )
+        XCTAssertEqual(
+            LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false),
+            0.30
+        )
+    }
+
     func testTranslationRevealFollowsPlaybackPosition() {
         XCTAssertEqual(
             LyricsPresentationTiming.translationOpacity(lineStartSeconds: 10, positionSeconds: 9.9),

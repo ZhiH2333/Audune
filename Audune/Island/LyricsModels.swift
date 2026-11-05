@@ -49,6 +49,23 @@ nonisolated struct LyricsPlaybackClock {
         return max(0, position - offset)
     }
 
+    /// Converts a lyric timestamp back into a playback target. Used when the listener
+    /// clicks a line while browsing: seeking to `start + offset` makes that line appear
+    /// at `start` after the presentation offset is applied again.
+    static func playbackPosition(
+        forPresentationTime presentationPosition: TimeInterval,
+        offsetSeconds: TimeInterval
+    ) -> TimeInterval {
+        guard presentationPosition.isFinite else { return 0 }
+        let offset = offsetSeconds.isFinite ? offsetSeconds : 0
+        return max(0, presentationPosition + offset)
+    }
+
+    static func canSeek(to line: LyricsLine, isSeekSupported: Bool) -> Bool {
+        guard isSeekSupported, let start = line.startSeconds else { return false }
+        return start.isFinite && start >= 0
+    }
+
     static func activeLineIndex(in lines: [LyricsLine], at position: TimeInterval) -> Int? {
         guard position.isFinite else { return nil }
         return lines.lastIndex { line in
@@ -92,6 +109,10 @@ nonisolated struct LyricsPlaybackClock {
 }
 
 nonisolated enum LyricsPresentationTiming {
+    static func manualBrowsingOpacity(isFocused: Bool) -> Double {
+        isFocused ? 1 : 0.30
+    }
+
     static func translationOpacity(sinceLineFocus: TimeInterval) -> Double {
         guard sinceLineFocus.isFinite else { return 0 }
         let progress = (sinceLineFocus - IslandMotion.lyricsTranslationDelaySeconds)

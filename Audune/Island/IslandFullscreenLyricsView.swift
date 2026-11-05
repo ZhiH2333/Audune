@@ -623,7 +623,9 @@ struct IslandFullscreenLyricsView: View {
     }
 
     private func synchronizedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
-        LyricsDepthStage(
+        let lyricsOffsetSeconds = model.prefs.lyricsOffsetSeconds
+        let seekSupported = model.nowPlaying.seekSupported
+        return LyricsDepthStage(
             document: document,
             activeIndex: model.activeLyricsLineIndex,
             // Word timing is the only thing that needs a per-frame position. Line-synced
@@ -641,7 +643,24 @@ struct IslandFullscreenLyricsView: View {
             metrics: metrics,
             reduceMotion: shouldReduceMotion,
             blurLyrics: model.prefs.lyricsBlurEnabled,
-            onManualModeChange: { isManualBrowsing = $0 }
+            isSeekSupported: seekSupported,
+            lyricsOffsetSeconds: lyricsOffsetSeconds,
+            onManualModeChange: { isManualBrowsing = $0 },
+            onSeekLine: { line in
+                guard LyricsPlaybackClock.canSeek(
+                    to: line,
+                    isSeekSupported: seekSupported
+                ),
+                let start = line.startSeconds
+                else { return false }
+                seek(
+                    LyricsPlaybackClock.playbackPosition(
+                        forPresentationTime: start,
+                        offsetSeconds: lyricsOffsetSeconds
+                    )
+                )
+                return true
+            }
         )
         .equatable()
     }
@@ -964,17 +983,18 @@ private struct LyricsDepthStage: View, Equatable {
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
     var blurLyrics: Bool
+    var isSeekSupported: Bool = false
+    var lyricsOffsetSeconds: Double = 0
     var onManualModeChange: (Bool) -> Void = { _ in }
+    var onSeekLine: ((LyricsLine) -> Bool)? = nil
 
     @State private var rowHeights: [Int: CGFloat] = [:]
     @State private var focusTranslationReveal: Double = 1
     @State private var isManualScrolling = false
-    @State private var isReturningToFocus = false
-    @State private var manualOffset: CGFloat = 0
     @State private var manualAnchorFocus = 0
-    @State private var stageSize: CGSize = .zero
+    @State private var manualEntryDelta: CGFloat = 0
+    @State private var hasUserScrolled = false
     @State private var autoResumeTask: Task<Void, Never>?
-    @State private var returnToFocusTask: Task<Void, Never>?
 
     private var focusIndex: Int {
         min(max(activeIndex ?? 0, 0), max(document.lines.count - 1, 0))
@@ -988,12 +1008,12 @@ private struct LyricsDepthStage: View, Equatable {
         GeometryReader { proxy in
             let count = document.lines.count
             let focus = focusIndex
-            // While the user browses, freeze the layout anchor. Playback can advance
-            // without moving the content under the pointer; only the highlight moves.
+            // In auto-follow the rows are positioned around the playing line. In
+            // manual browsing the native scroll view owns the offset, so the anchor is
+            // frozen and only the highlight follows playback.
             let layoutFocus = isManualScrolling ? manualAnchorFocus : focus
             let first = max(0, focus - metrics.visibleRadius)
             let last = min(count - 1, focus + metrics.visibleRadius)
-            let rowRange: Range<Int> = isManualScrolling ? 0..<count : first..<(last + 1)
             let focusTop = proxy.size.height * metrics.focusFraction
             let isReady = rowHeights[focus] != nil
             // Apple Music keeps the lyric measure comfortably narrower than the whole
@@ -1005,31 +1025,37 @@ private struct LyricsDepthStage: View, Equatable {
             ZStack(alignment: .bottomTrailing) {
                 ZStack(alignment: .topLeading) {
                     if count > 0 {
-                        ForEach(rowRange, id: \.self) { index in
-                            lyricRow(
-                                line: document.lines[index],
-                                index: index,
-                                focus: focus,
-                                isInterlude: interlude && index == focus,
-                                manualMode: isManualScrolling
+                        if isManualScrolling {
+                            manualLyrics(
+                                proxy: proxy,
+                                contentWidth: contentWidth,
+                                focusTop: focusTop
                             )
-                            .frame(width: contentWidth, alignment: .leading)
-                            .onGeometryChange(for: CGFloat.self) { geometry in
-                                geometry.size.height
-                            } action: { height in
-                                guard height > 0, rowHeights[index] != height else { return }
-                                rowHeights[index] = height
+                            .transition(.opacity)
+                        } else {
+                            ForEach(first..<(last + 1), id: \.self) { index in
+                                lyricRow(
+                                    line: document.lines[index],
+                                    index: index,
+                                    focus: focus,
+                                    isInterlude: interlude && index == focus,
+                                    manualMode: false
+                                )
+                                .frame(width: contentWidth, alignment: .leading)
+                                .onGeometryChange(for: CGFloat.self) { geometry in
+                                    geometry.size.height
+                                } action: { height in
+                                    guard height > 0, rowHeights[index] != height else { return }
+                                    rowHeights[index] = height
+                                }
+                                // Position every row from the focus line instead of moving one
+                                // VStack. Keeping rows absolute means a focused line never
+                                // pushes or reflows its neighbours.
+                                .offset(
+                                    y: focusTop + relativeOffset(for: index, focus: layoutFocus)
+                                )
+                                .zIndex(index == focus ? 1 : 0)
                             }
-                            // Position every row from the focus line instead of moving one
-                            // VStack. Keeping rows absolute means a focused line never
-                            // pushes or reflows its neighbours; manual wheel movement only
-                            // adds a uniform offset to every row.
-                            .offset(
-                                y: focusTop
-                                    + relativeOffset(for: index, focus: layoutFocus)
-                                    + (isManualScrolling ? manualOffset : 0)
-                            )
-                            .zIndex(index == focus ? 1 : 0)
                         }
                     }
                 }
@@ -1049,7 +1075,9 @@ private struct LyricsDepthStage: View, Equatable {
                     )
                 )
                 .animation(
-                    reduceMotion ? nil : .spring(response: 0.62, dampingFraction: 0.78),
+                    isManualScrolling
+                        ? nil
+                        : (reduceMotion ? nil : .spring(response: 0.62, dampingFraction: 0.78)),
                     value: focus
                 )
                 .animation(.easeOut(duration: 0.12), value: isReady)
@@ -1061,49 +1089,44 @@ private struct LyricsDepthStage: View, Equatable {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomTrailing)
-            .onGeometryChange(for: CGSize.self) { geometry in
-                geometry.size
-            } action: { size in
-                stageSize = size
-                guard isManualScrolling, size.height > 0 else { return }
-                manualOffset = clampedManualOffset(
-                    manualOffset,
-                    focus: manualAnchorFocus,
-                    height: size.height
-                )
-            }
             .overlay {
-                LyricsScrollMonitor { delta in
-                    handleScroll(delta: delta)
+                if isManualScrolling == false {
+                    LyricsScrollMonitor { delta in
+                        beginManualBrowsing(delta: delta)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .allowsHitTesting(false)
             }
         }
         .onAppear {
             revealFocusTranslation()
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["AUDUNE_LYRICS_MANUAL_PREVIEW"] == "1",
+               isManualScrolling == false {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    beginManualBrowsing(delta: 0)
+                }
+            }
+            #endif
         }
         .onChange(of: focusIndex) { _, _ in
             revealFocusTranslation()
         }
         .onChange(of: document.id) {
             autoResumeTask?.cancel()
-            returnToFocusTask?.cancel()
             autoResumeTask = nil
-            returnToFocusTask = nil
             rowHeights = [:]
             isManualScrolling = false
-            isReturningToFocus = false
-            manualOffset = 0
+            hasUserScrolled = false
             manualAnchorFocus = 0
+            manualEntryDelta = 0
             revealFocusTranslation()
             onManualModeChange(false)
         }
         .onDisappear {
             autoResumeTask?.cancel()
-            returnToFocusTask?.cancel()
             autoResumeTask = nil
-            returnToFocusTask = nil
             if isManualScrolling {
                 isManualScrolling = false
                 onManualModeChange(false)
@@ -1118,7 +1141,9 @@ private struct LyricsDepthStage: View, Equatable {
               lhs.interlude == rhs.interlude,
               lhs.metrics == rhs.metrics,
               lhs.reduceMotion == rhs.reduceMotion,
-              lhs.blurLyrics == rhs.blurLyrics
+              lhs.blurLyrics == rhs.blurLyrics,
+              lhs.isSeekSupported == rhs.isSeekSupported,
+              lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
         else { return false }
         return lhs.document.synchronization != .wordSynced || lhs.position == rhs.position
     }
@@ -1142,93 +1167,155 @@ private struct LyricsDepthStage: View, Equatable {
         return offset
     }
 
-    /// Start or extend a manual browse. The first wheel tick freezes the current
-    /// layout anchor, then only the highlight follows playback until the user returns.
-    private func handleScroll(delta: CGFloat) {
-        guard document.lines.count > 1, delta.isFinite, delta != 0 else { return }
-
-        if isManualScrolling == false {
-            returnToFocusTask?.cancel()
-            isReturningToFocus = false
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
-                manualAnchorFocus = focusIndex
-                manualOffset = 0
-                isManualScrolling = true
-            }
-            onManualModeChange(true)
-        } else if isReturningToFocus {
-            returnToFocusTask?.cancel()
-            isReturningToFocus = false
+    /// Enter manual browsing. The first wheel event only switches the stage into the
+    /// native scroll view; the next event is handled by AppKit with its normal
+    /// momentum, rubber-banding and scroll physics.
+    private func beginManualBrowsing(delta: CGFloat) {
+        guard document.lines.count > 1, isManualScrolling == false else { return }
+        autoResumeTask?.cancel()
+        autoResumeTask = nil
+        hasUserScrolled = false
+        manualAnchorFocus = focusIndex
+        // Carry the first wheel tick into the scroll view's initial offset; otherwise
+        // the event that opens manual mode would be swallowed and nothing would move.
+        manualEntryDelta = max(-120, min(120, delta.isFinite ? delta : 0))
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+            isManualScrolling = true
         }
-
-        manualOffset = clampedManualOffset(
-            manualOffset + delta,
-            focus: manualAnchorFocus,
-            height: stageSize.height
-        )
-        scheduleAutoResume()
+        onManualModeChange(true)
     }
 
-    private func clampedManualOffset(_ proposed: CGFloat, focus: Int, height: CGFloat) -> CGFloat {
+    /// A real scroll view for manual browsing. The focus line is placed at the same
+    /// vertical position as the auto-follow stage by scrolling a marker that sits
+    /// exactly one focus-top above the first rendered row.
+    private func manualLyrics(
+        proxy: GeometryProxy,
+        contentWidth: CGFloat,
+        focusTop: CGFloat
+    ) -> some View {
         let count = document.lines.count
-        guard count > 1, height > 0, proposed.isFinite else { return 0 }
+        let lastHeight = rowHeights[count - 1] ?? metrics.activeFontSize * 1.4
+        // Let the last row rest at the same focal height when the user reaches the end.
+        let bottomSpacer = max(0, proxy.size.height - focusTop - lastHeight)
+        // `scrollTo` aligns a unit point inside the target row with the same unit
+        // point in the viewport. Solving for the focus row's top at `focusTop` gives
+        // this anchor; it works for one-line and multi-line rows without a transform
+        // that the scroll view would fold into its content offset.
+        let focusHeight = rowHeights[manualAnchorFocus] ?? metrics.activeFontSize * 1.4
+        let targetTop = max(0, focusTop - manualEntryDelta)
+        let anchorY = targetTop / max(1, proxy.size.height - focusHeight)
+        let focusAnchor = UnitPoint(x: 0, y: min(max(anchorY, 0), 1))
 
-        let step = metrics.activeFontSize * 1.4 + metrics.rowGap
-        let focusTop = height * metrics.focusFraction
-        let firstTop = focusTop + relativeOffset(for: 0, focus: focus)
-        let lastTop = focusTop + relativeOffset(for: count - 1, focus: focus)
-        let lastHeight = rowHeights[count - 1] ?? step
-        let topMargin = height * 0.10
-        let bottomMargin = height * 0.14
-        let maximum = max(0, topMargin - firstTop)
-        let minimum = min(0, (height - bottomMargin) - (lastTop + lastHeight))
-        guard minimum <= maximum else { return 0 }
-        return min(maximum, max(minimum, proposed))
+        return ScrollViewReader { reader in
+            ScrollView(.vertical) {
+                VStack(spacing: metrics.rowGap) {
+                    ForEach(0..<count, id: \.self) { index in
+                        let line = document.lines[index]
+                        Button {
+                            seekToLine(index: index)
+                        } label: {
+                            lyricRow(
+                                line: line,
+                                index: index,
+                                focus: focusIndex,
+                                isInterlude: interlude && index == focusIndex,
+                                manualMode: true
+                            )
+                            .frame(width: contentWidth, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .id(index)
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(
+                            LyricsPlaybackClock.canSeek(
+                                to: line,
+                                isSeekSupported: isSeekSupported
+                            ) == false || onSeekLine == nil
+                        )
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.size.height
+                        } action: { height in
+                            guard height > 0, rowHeights[index] != height else { return }
+                            rowHeights[index] = height
+                        }
+                        .accessibilityLabel(accessibilityLabel(for: line))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.bottom, bottomSpacer)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .onAppear {
+                // Wait one run loop so rows participate in layout before the first
+                // programmatic scroll.
+                DispatchQueue.main.async {
+                    reader.scrollTo(manualAnchorFocus, anchor: focusAnchor)
+                }
+            }
+            .onChange(of: rowHeights) { _, _ in
+                guard hasUserScrolled == false, isManualScrolling else { return }
+                reader.scrollTo(manualAnchorFocus, anchor: focusAnchor)
+            }
+            .onScrollPhaseChange { _, phase in
+                guard phase == .tracking || phase == .interacting || phase == .decelerating else {
+                    return
+                }
+                hasUserScrolled = true
+                scheduleAutoResume()
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y
+            } action: { _, _ in
+                guard hasUserScrolled, isManualScrolling else { return }
+                scheduleAutoResume()
+            }
+        }
+        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
     }
 
-    /// Apple Music resumes auto-follow after a short idle period. Reset the timer on
-    /// every wheel tick (including momentum) so the stage never snaps back mid-gesture.
+    private func seekToLine(index: Int) {
+        guard index >= 0, index < document.lines.count else { return }
+        let line = document.lines[index]
+        guard onSeekLine?(line) == true else { return }
+        // Let the playback model publish the new line before the stage leaves manual
+        // mode; otherwise it would briefly re-centre the old line.
+        autoResumeTask?.cancel()
+        autoResumeTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(220))
+            guard !Task.isCancelled else { return }
+            finishManualBrowsing()
+        }
+    }
+
     private func scheduleAutoResume() {
         autoResumeTask?.cancel()
         autoResumeTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(3500))
             guard !Task.isCancelled else { return }
-            resumeAutoFollow()
+            finishManualBrowsing()
         }
     }
 
-    /// Move the browsed track back to the currently playing line, then restore the
-    /// focus hierarchy. The layout anchor is kept until the spring settles so the
-    /// switch back to the focus window cannot flash an empty stage.
-    private func resumeAutoFollow() {
-        guard isManualScrolling, isReturningToFocus == false else { return }
+    /// Put the stage back into auto-follow. The native scroll view disappears and the
+    /// absolute row layout fades in around the currently playing line.
+    private func finishManualBrowsing() {
+        guard isManualScrolling else { return }
         autoResumeTask?.cancel()
         autoResumeTask = nil
-        isReturningToFocus = true
-
-        let target = -relativeOffset(for: focusIndex, focus: manualAnchorFocus)
-        withAnimation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.90)) {
-            manualOffset = target
+        hasUserScrolled = false
+        manualAnchorFocus = focusIndex
+        manualEntryDelta = 0
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+            isManualScrolling = false
         }
-
-        returnToFocusTask?.cancel()
-        let settleMilliseconds = reduceMotion ? 50 : 580
-        returnToFocusTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(settleMilliseconds))
-            guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
-                isManualScrolling = false
-                isReturningToFocus = false
-                manualOffset = 0
-            }
-            manualAnchorFocus = focusIndex
-            onManualModeChange(false)
-        }
+        onManualModeChange(false)
     }
 
     private func resumeButton(metrics: LyricsSceneMetrics) -> some View {
         Button {
-            resumeAutoFollow()
+            finishManualBrowsing()
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.down.to.line")
@@ -1286,7 +1373,7 @@ private struct LyricsDepthStage: View, Equatable {
         // currently playing. This mirrors Apple Music, where the viewport becomes a
         // readable index of the song while the user is scrolling.
         let opacity = manualMode
-            ? (isFocus ? 1.0 : 0.60)
+            ? LyricsPresentationTiming.manualBrowsingOpacity(isFocused: isFocus)
             : (isPast ? baseOpacity * 0.72 : baseOpacity)
         // The reference animation uses a light 1.5–2 pt blur rather than a heavy
         // frosted layer, so the next lines stay readable but recede.
@@ -1302,7 +1389,7 @@ private struct LyricsDepthStage: View, Equatable {
         let lineGap = max(5, metrics.activeFontSize * 0.15)
         let activeGlow = (manualMode == false && isFocus && isWaiting == false) ? 0.18 : 0.0
         let translationOpacity: Double = manualMode
-            ? (isFocus ? 0.82 : 0.52)
+            ? (isFocus ? 0.82 : LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false))
             : (isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal
 
         return VStack(alignment: .leading, spacing: lineGap) {
@@ -1493,7 +1580,10 @@ private struct LyricsScrollMonitor: NSViewRepresentable {
 
                 // Trackpads report point deltas; a classic wheel reports line deltas.
                 let factor: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 16
-                self.onScroll?(deltaY * factor)
+                // NSScrollView moves its clip-view origin by `-deltaY`; the manual
+                // stage uses the same convention so the first wheel tick continues in
+                // the gesture's direction under native scrolling.
+                self.onScroll?(-deltaY * factor)
                 return nil
             }
         }

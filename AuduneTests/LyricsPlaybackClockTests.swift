@@ -193,4 +193,73 @@ final class LyricsPlaybackClockTests: XCTestCase {
             accuracy: 0.001
         )
     }
+
+    func testPlaybackPositionIsTheInverseOfPresentationOffset() {
+        XCTAssertEqual(
+            LyricsPlaybackClock.playbackPosition(forPresentationTime: 29.5, offsetSeconds: 0.5),
+            30,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.playbackPosition(forPresentationTime: 30.5, offsetSeconds: -0.5),
+            30,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.playbackPosition(forPresentationTime: 5, offsetSeconds: -2),
+            3,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.playbackPosition(forPresentationTime: 12, offsetSeconds: .nan),
+            12,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            LyricsPlaybackClock.playbackPosition(forPresentationTime: .nan, offsetSeconds: 1),
+            0,
+            accuracy: 0.001
+        )
+    }
+
+    func testCanSeekRequiresPlayerSupportAndFiniteLineTimestamp() {
+        let timedLine = LyricsLine(
+            id: 0,
+            startSeconds: 12,
+            endSeconds: 15,
+            text: "Timed",
+            translation: nil,
+            words: nil
+        )
+        let untimedLine = LyricsLine(
+            id: 1,
+            startSeconds: nil,
+            endSeconds: nil,
+            text: "Untimed",
+            translation: nil,
+            words: nil
+        )
+        let invalidLine = LyricsLine(
+            id: 2,
+            startSeconds: .infinity,
+            endSeconds: nil,
+            text: "Invalid",
+            translation: nil,
+            words: nil
+        )
+        let negativeLine = LyricsLine(
+            id: 3,
+            startSeconds: -1,
+            endSeconds: nil,
+            text: "Invalid",
+            translation: nil,
+            words: nil
+        )
+
+        XCTAssertTrue(LyricsPlaybackClock.canSeek(to: timedLine, isSeekSupported: true))
+        XCTAssertFalse(LyricsPlaybackClock.canSeek(to: timedLine, isSeekSupported: false))
+        XCTAssertFalse(LyricsPlaybackClock.canSeek(to: untimedLine, isSeekSupported: true))
+        XCTAssertFalse(LyricsPlaybackClock.canSeek(to: invalidLine, isSeekSupported: true))
+        XCTAssertFalse(LyricsPlaybackClock.canSeek(to: negativeLine, isSeekSupported: true))
+    }
 }
