@@ -1214,9 +1214,9 @@ private struct LyricInterludeDots: View {
                     ForEach(0..<3, id: \.self) { index in
                         let phase = Self.phase(elapsed: elapsed, index: index)
                         Circle()
-                            .fill(Color.white.opacity(0.30 + 0.60 * phase))
+                            .fill(Color.white.opacity(0.30 + 0.70 * phase))
                             .frame(width: dotSize, height: dotSize)
-                            .offset(y: -dotSize * 0.85 * phase)
+                            .offset(y: -dotSize * phase)
                     }
                 }
             }
@@ -1236,13 +1236,13 @@ private struct LyricInterludeDots: View {
         }
     }
 
-    /// A raised-cosine hop in the first 40% of each 1.2 s cycle, then rest. The
-    /// three dots are offset in phase so they read as a wave, not a blinking ellipsis.
+    /// A smooth hop across the first 80% of each 1.2 s cycle, then a short rest.
+    /// The three dots are offset in phase so they read as a wave, not a blinking ellipsis.
     private static func phase(elapsed: TimeInterval, index: Int) -> Double {
         let cycle = (elapsed / 1.2 - Double(index) * 0.16).truncatingRemainder(dividingBy: 1)
         let normalized = cycle < 0 ? cycle + 1 : cycle
-        guard normalized < 0.4 else { return 0 }
-        return sin(normalized / 0.4 * .pi)
+        guard normalized < 0.8 else { return 0 }
+        return sin(normalized / 0.8 * .pi)
     }
 }
 
