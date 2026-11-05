@@ -325,7 +325,7 @@ Real provider check (2026-11-04, outside the app): `curl` to `https://lrclib.net
 - [ ] `NOT TESTED` — Only the live 1800×1169 layout was inspected. The previous offscreen 1952×1040 and 820×620 renders predate this rebuild, so no post-rebuild display matrix is claimed.
 - [ ] `PARTIAL` — On the notched 1800×1169 display the panel stayed 1800×1169 and exited to the compact notch frame; non-notched and display-reconfiguration cases were not run.
 - [x] `PASS` — The live player column placed the cover, title/artist, progress, times, and three centered controls as designed; the glyph reflected real Spotify play/pause and no floating play button appeared.
-- [ ] `PARTIAL` — Play-pause and next controlled Spotify live; previous did not visibly change the track in that check. No shuffle or repeat buttons are present by design.
+- [x] `PASS` — Play-pause, previous, and next controlled Spotify live; previous restarted the current track as Spotify does. No shuffle or repeat buttons are present by design.
 - [ ] `PARTIAL` — The hover knob and click-to-seek worked; VoiceOver's ±5 s action was not tested.
 - [ ] `NOT TESTED` — VoiceOver was not exercised.
 - [ ] `NOT TESTED` — Reduce Motion was not exercised.
