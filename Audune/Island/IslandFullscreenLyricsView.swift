@@ -1239,8 +1239,9 @@ private struct LyricInterludeDots: View {
     /// A smooth hop across the first 80% of each 1.2 s cycle, then a short rest.
     /// The three dots are offset in phase so they read as a wave, not a blinking ellipsis.
     private static func phase(elapsed: TimeInterval, index: Int) -> Double {
-        let cycle = (elapsed / 1.2 - Double(index) * 0.16).truncatingRemainder(dividingBy: 1)
-        let normalized = cycle < 0 ? cycle + 1 : cycle
+        let cycle = elapsed / 1.2 - Double(index) * 0.16
+        guard cycle >= 0 else { return 0 }
+        let normalized = cycle.truncatingRemainder(dividingBy: 1)
         guard normalized < 0.8 else { return 0 }
         return sin(normalized / 0.8 * .pi)
     }
