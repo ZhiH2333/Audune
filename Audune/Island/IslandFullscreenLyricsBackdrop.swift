@@ -40,9 +40,10 @@ struct LyricsArtworkBackdrop: View {
 
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.34), location: 0),
-                        .init(color: .black.opacity(0.06), location: 0.48),
-                        .init(color: .black.opacity(0.18), location: 1)
+                        .init(color: .black.opacity(0.68), location: 0),
+                        .init(color: .black.opacity(0.30), location: 0.10),
+                        .init(color: .black.opacity(0.06), location: 0.46),
+                        .init(color: .black.opacity(0.20), location: 1)
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
