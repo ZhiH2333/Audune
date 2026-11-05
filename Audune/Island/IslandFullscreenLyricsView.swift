@@ -483,11 +483,15 @@ struct IslandFullscreenLyricsView: View {
         LyricsDepthStage(
             document: document,
             activeIndex: model.activeLyricsLineIndex,
-            position: model.lyricsPositionSeconds,
+            // Word timing is the only thing that needs a per-frame position. Line-synced
+            // documents stay visually stable between line changes, which also keeps the
+            // blurred stage off the 30 Hz redraw path.
+            position: document.synchronization == .wordSynced ? model.lyricsPositionSeconds : 0,
             isPlaying: model.nowPlaying.isPlaying,
             metrics: metrics,
             reduceMotion: shouldReduceMotion
         )
+        .equatable()
     }
 
     private func unsyncedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
@@ -794,7 +798,7 @@ struct IslandFullscreenLyricsView: View {
 /// A single lyric stage shared by every row. Rows are absolute-positioned around a
 /// stable focal line, so changing lines moves the stack as one composition instead of
 /// rebuilding a scrolling list. Distance controls blur, opacity, and scale continuously.
-private struct LyricsDepthStage: View {
+private struct LyricsDepthStage: View, Equatable {
     var document: LyricsDocument
     var activeIndex: Int?
     var position: TimeInterval
@@ -804,6 +808,7 @@ private struct LyricsDepthStage: View {
 
     @State private var entrance: CGFloat = 1
     @State private var rowHeights: [Int: CGFloat] = [:]
+    @State private var focusTranslationReveal: Double = 1
 
     private var focusIndex: Int {
         min(max(activeIndex ?? 0, 0), max(document.lines.count - 1, 0))
@@ -867,12 +872,29 @@ private struct LyricsDepthStage: View {
             )
             .animation(.easeOut(duration: 0.12), value: isReady)
         }
-        .onAppear { restartFocusMotion() }
-        .onChange(of: focusIndex) { _, _ in restartFocusMotion() }
+        .onAppear {
+            restartFocusMotion()
+            revealFocusTranslation()
+        }
+        .onChange(of: focusIndex) { _, _ in
+            restartFocusMotion()
+            revealFocusTranslation()
+        }
         .onChange(of: document.id) {
             rowHeights = [:]
             restartFocusMotion()
+            revealFocusTranslation()
         }
+    }
+
+    static func == (lhs: LyricsDepthStage, rhs: LyricsDepthStage) -> Bool {
+        guard lhs.document == rhs.document,
+              lhs.activeIndex == rhs.activeIndex,
+              lhs.isPlaying == rhs.isPlaying,
+              lhs.metrics == rhs.metrics,
+              lhs.reduceMotion == rhs.reduceMotion
+        else { return false }
+        return lhs.document.synchronization != .wordSynced || lhs.position == rhs.position
     }
 
     private func prefixHeight(first: Int, focus: Int) -> (height: CGFloat, ready: Bool) {
@@ -918,7 +940,7 @@ private struct LyricsDepthStage: View {
         let scale = isFocus
             ? 0.974 + 0.026 * entrance
             : max(0.86, 1 - CGFloat(visualDistance) * 0.038)
-        let translationReveal = translationReveal(for: line, isFocus: isFocus)
+        let translationReveal = isFocus ? focusTranslationReveal : 1
         let lineGap = max(5, metrics.activeFontSize * 0.14)
 
         return VStack(alignment: .leading, spacing: lineGap) {
@@ -961,9 +983,15 @@ private struct LyricsDepthStage: View {
         .accessibilityAddTraits(isFocus ? .isSelected : [])
     }
 
-    private func translationReveal(for line: LyricsLine, isFocus: Bool) -> Double {
-        guard isFocus, reduceMotion == false, let start = line.startSeconds else { return 1 }
-        return min(max((position - start) / 0.14, 0), 1)
+    private func revealFocusTranslation() {
+        guard reduceMotion == false, isPlaying else {
+            focusTranslationReveal = 1
+            return
+        }
+        focusTranslationReveal = 0
+        withAnimation(.easeOut(duration: 0.14)) {
+            focusTranslationReveal = 1
+        }
     }
 
     private func accessibilityLabel(for line: LyricsLine) -> String {
@@ -987,7 +1015,7 @@ private struct LyricsDepthStage: View {
 
 // MARK: - Metrics
 
-private struct LyricsSceneMetrics {
+private struct LyricsSceneMetrics: Equatable {
     var horizontalInset: CGFloat
     var topInset: CGFloat
     var bottomInset: CGFloat
