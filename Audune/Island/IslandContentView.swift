@@ -340,17 +340,27 @@ struct IslandContentView: View {
 
     private var fullScreenBody: some View {
         ZStack {
-            Color.black
-            RadialGradient(
-                colors: [Color.white.opacity(0.08), Color.black],
-                center: .center,
-                startRadius: 0,
-                endRadius: 720
-            )
+            if model.fullScreenScene == .lyrics {
+                LyricsArtworkBackdrop(
+                    artwork: model.nowPlaying.artwork,
+                    trackIdentity: model.nowPlaying.trackIdentity,
+                    reduceMotion: reduceMotion
+                )
+            } else {
+                Color.black
+                RadialGradient(
+                    colors: [Color.white.opacity(0.08), Color.black],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 720
+                )
+            }
             VStack(spacing: 0) {
                 HStack {
                     fullScreenScenePicker
-                    modeIconRow
+                    if model.fullScreenScene == .visualizer {
+                        modeIconRow
+                    }
                     Spacer()
                     IslandIconButton(
                         symbol: "arrow.down.right.and.arrow.up.left",
@@ -383,8 +393,8 @@ struct IslandContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, model.fullScreenScene == .visualizer ? 72 : 48)
-                .padding(.vertical, 32)
+                .padding(.horizontal, model.fullScreenScene == .visualizer ? 72 : 0)
+                .padding(.vertical, model.fullScreenScene == .visualizer ? 32 : 0)
                 .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
 
                 if model.fullScreenScene == .visualizer {
@@ -397,6 +407,16 @@ struct IslandContentView: View {
                     .frame(minHeight: 64)
                     .padding(.bottom, 24)
                 }
+            }
+        }
+        .overlay(alignment: .top) {
+            if model.fullScreenScene == .lyrics {
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.16))
+                    .frame(width: 42, height: 5)
+                    .padding(.top, 8)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
