@@ -42,7 +42,9 @@ struct IslandFullscreenLyricsView: View {
     // MARK: - Player column
 
     private func playerColumn(metrics: LyricsSceneMetrics) -> some View {
-        let titleSize = min(max(metrics.artworkSide * 0.050, 17), 26)
+        // Apple Music keeps the song title optically large even with a big cover: the
+        // title block reads as one unit with the artwork instead of a caption under it.
+        let titleSize = min(max(metrics.artworkSide * 0.072, 20), 33)
         return VStack(alignment: .leading, spacing: 0) {
             artwork(side: metrics.artworkSide)
 
@@ -84,7 +86,7 @@ struct IslandFullscreenLyricsView: View {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.38), radius: max(18, side * 0.06), y: max(10, side * 0.035))
+        .shadow(color: .black.opacity(0.46), radius: max(22, side * 0.075), y: max(12, side * 0.045))
         .accessibilityLabel(String(localized: "Album artwork"))
         .id(model.lyricsTrackRevision)
         .transition(.opacity)
@@ -92,7 +94,7 @@ struct IslandFullscreenLyricsView: View {
 
     private func songHeader(titleSize: CGFloat) -> some View {
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: max(3, titleSize * 0.14)) {
+            VStack(alignment: .leading, spacing: max(3, titleSize * 0.12)) {
                 Text(displayTitle)
                     .font(.system(size: titleSize, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.97))
@@ -102,10 +104,19 @@ struct IslandFullscreenLyricsView: View {
                     .accessibilityAddTraits(.isHeader)
 
                 Text(displayArtist)
-                    .font(.system(size: max(13, titleSize * 0.72), weight: .regular))
-                    .foregroundStyle(.white.opacity(0.56))
+                    .font(.system(size: max(13, titleSize * 0.62), weight: .regular))
+                    .foregroundStyle(.white.opacity(0.58))
                     .lineLimit(1)
                     .truncationMode(.tail)
+
+                if let album = displayAlbum {
+                    Text(album)
+                        .font(.system(size: max(11, titleSize * 0.46), weight: .regular))
+                        .foregroundStyle(.white.opacity(0.34))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .padding(.top, max(1, titleSize * 0.04))
+                }
             }
 
             Spacer(minLength: 4)
@@ -133,12 +144,12 @@ struct IslandFullscreenLyricsView: View {
                     progressBar
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(timeLabel(displayedPosition))
-                            .foregroundStyle(.white.opacity(0.56))
+                            .foregroundStyle(.white.opacity(0.58))
                         Spacer(minLength: 8)
                         Text(remainingLabel)
-                            .foregroundStyle(.white.opacity(0.40))
+                            .foregroundStyle(.white.opacity(0.38))
                     }
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .font(.system(size: 11.5, weight: .medium).monospacedDigit())
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(String(localized: "Playback position"))
                     .accessibilityValue(playbackAccessibilityValue())
@@ -694,6 +705,11 @@ struct IslandFullscreenLyricsView: View {
 
     private var displayArtist: String {
         model.nowPlaying.artist.isEmpty ? String(localized: "Unknown Artist") : model.nowPlaying.artist
+    }
+
+    private var displayAlbum: String? {
+        let album = model.nowPlaying.album.trimmingCharacters(in: .whitespacesAndNewlines)
+        return album.isEmpty ? nil : album
     }
 
     private var displayedPosition: TimeInterval {
