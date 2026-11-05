@@ -1043,9 +1043,9 @@ private struct LyricsSceneMetrics: Equatable {
         columnGap = gap
 
         let stageWidth = max(220, availableWidth - artworkSide - gap)
-        activeFontSize = min(max(stageWidth * 0.082, 26), 56)
-        translationFontSize = max(12, activeFontSize * 0.50)
-        unsyncedFontSize = max(18, activeFontSize * 0.62)
+        activeFontSize = min(max(stageWidth * 0.085, 28), 70)
+        translationFontSize = min(max(activeFontSize * 0.42, 14), 30)
+        unsyncedFontSize = min(max(activeFontSize * 0.62, 18), 38)
         statusTitleSize = min(max(stageWidth * 0.050, 22), 32)
         rowGap = max(14, activeFontSize * 0.50)
     }
