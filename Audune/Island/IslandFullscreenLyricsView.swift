@@ -1102,8 +1102,8 @@ private struct LyricsMoreButton: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(String(localized: "More"))
-        .accessibilityLabel(String(localized: "More"))
+        .help(String(localized: "Controls"))
+        .accessibilityLabel(String(localized: "Controls"))
     }
 }
 

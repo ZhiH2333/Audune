@@ -372,41 +372,45 @@ struct IslandContentView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 24)
 
-                Group {
+                ZStack(alignment: .bottom) {
+                    Group {
+                        if model.fullScreenScene == .visualizer {
+                            expandedVisualization(opacityOverride: nil, orbitBoost: false)
+                                .padding(.horizontal, 72)
+                                .padding(.vertical, 32)
+                                .padding(.bottom, 88)
+                                .allowsHitTesting(false)
+                                .transition(.opacity.combined(with: .offset(y: -8)))
+                        } else {
+                            IslandFullscreenLyricsView(
+                                model: model,
+                                importLyrics: importLyrics,
+                                chooseCandidate: chooseLyricsCandidate,
+                                deleteLyrics: deleteLyrics,
+                                retryLyrics: retryLyrics,
+                                seek: seekNowPlaying,
+                                togglePlay: toggleNowPlaying,
+                                previousTrack: previousTrack,
+                                nextTrack: nextTrack
+                            )
+                            .transition(.opacity)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
+
                     if model.fullScreenScene == .visualizer {
-                        expandedVisualization(opacityOverride: nil, orbitBoost: false)
-                            .allowsHitTesting(false)
-                            .transition(.opacity.combined(with: .offset(y: -8)))
-                    } else {
-                        IslandFullscreenLyricsView(
-                            model: model,
-                            importLyrics: importLyrics,
-                            chooseCandidate: chooseLyricsCandidate,
-                            deleteLyrics: deleteLyrics,
-                            retryLyrics: retryLyrics,
-                            seek: seekNowPlaying,
-                            togglePlay: toggleNowPlaying,
-                            previousTrack: previousTrack,
-                            nextTrack: nextTrack
-                        )
-                        .transition(.opacity.combined(with: .offset(y: 8)))
+                        HStack(alignment: .center, spacing: 18) {
+                            fullScreenNowPlayingMetadata
+                            Spacer()
+                            fullScreenPlaybackButton
+                        }
+                        .padding(.horizontal, 36)
+                        .frame(minHeight: 64)
+                        .padding(.bottom, 24)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, model.fullScreenScene == .visualizer ? 72 : 0)
-                .padding(.vertical, model.fullScreenScene == .visualizer ? 32 : 0)
-                .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
-
-                if model.fullScreenScene == .visualizer {
-                    HStack(alignment: .center, spacing: 18) {
-                        fullScreenNowPlayingMetadata
-                        Spacer()
-                        fullScreenPlaybackButton
-                    }
-                    .padding(.horizontal, 36)
-                    .frame(minHeight: 64)
-                    .padding(.bottom, 24)
-                }
             }
         }
         .overlay(alignment: .top) {
