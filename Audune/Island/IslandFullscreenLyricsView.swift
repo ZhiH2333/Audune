@@ -981,7 +981,9 @@ private struct LyricsDepthStage: View, Equatable {
             let isReady = rowHeights[focus] != nil
             // Apple Music keeps the lyric measure comfortably narrower than the whole
             // right column, so long lines never turn into full-window banners.
-            let contentWidth = min(proxy.size.width, metrics.isCompact ? 760 : 820)
+            // Leave 7% of the column as breathing room for the active line's
+            // 1.06 visual scale; scaling never changes layout, so it must not clip.
+            let contentWidth = min(proxy.size.width * 0.93, metrics.isCompact ? 760 : 820)
 
             ZStack(alignment: .topLeading) {
                 if count > 0 {
@@ -1024,7 +1026,7 @@ private struct LyricsDepthStage: View, Equatable {
                 )
             )
             .animation(
-                reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.94),
+                reduceMotion ? nil : .spring(response: 0.62, dampingFraction: 0.78),
                 value: focus
             )
             .animation(.easeOut(duration: 0.12), value: isReady)
@@ -1087,7 +1089,10 @@ private struct LyricsDepthStage: View, Equatable {
         // AMLL's active line is fully bright while its neighbours sit at 0.2. Audune's
         // backdrop can be brighter than AMLL's, so we keep a little more context: the
         // next line stays readable, then falls away quickly.
-        let opacity: Double = {
+        // Past lines fall away faster than upcoming lines, like Apple Music: the
+        // singer has moved on, so context only needs to hint at what was just sung.
+        let isPast = hasActiveLine && index < focus
+        let baseOpacity: Double = {
             if isFocus { return isWaiting ? 0.56 : 1 }
             switch visualDistance {
             case 0: return 0.48
@@ -1098,12 +1103,16 @@ private struct LyricsDepthStage: View, Equatable {
             default: return 0
             }
         }()
-        let blurRadius: CGFloat = (reduceMotion || blurLyrics == false)
+        let opacity = isPast ? baseOpacity * 0.72 : baseOpacity
+        // The reference animation uses a light 1.5–2 pt blur rather than a heavy
+        // frosted layer, so the next lines stay readable but recede.
+        let blurRadius: CGFloat = (reduceMotion || blurLyrics == false || isFocus)
             ? 0
-            : min(CGFloat(visualDistance) * 4.2, visualDistance == 0 ? 0 : 10)
-        // Every row uses the same metrics. Focus changes brightness and blur only;
-        // it must never change the font size, scale, or measure, otherwise a line
-        // re-wraps exactly when it becomes active and the scroll looks jumpy.
+            : min(1.5 + CGFloat(visualDistance) * 0.45 + (isPast ? 0.3 : 0), 3.2)
+        // Scale is a render transform, not layout. Every row keeps the same font
+        // and measure, so focus never re-wraps; it only grows slightly from the
+        // leading edge, exactly like the reference's transform-origin: left center.
+        let rowScale: CGFloat = isFocus ? 1.06 : 0.96
         let rowFontSize = metrics.activeFontSize
         let translationReveal = isFocus ? focusTranslationReveal : 1
         let lineGap = max(5, metrics.activeFontSize * 0.15)
@@ -1153,6 +1162,9 @@ private struct LyricsDepthStage: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .leading)
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.38), value: focus)
+        .scaleEffect(rowScale, anchor: .leading)
+        .animation(reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.72), value: focus)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
@@ -1186,33 +1198,51 @@ private struct LyricInterludeDots: View {
     var fontSize: CGFloat
     var animated: Bool
 
-    @State private var pulse = false
-
     private var dotSize: CGFloat {
-        min(max(fontSize * 0.16, 5), 11)
+        min(max(fontSize * 0.20, 6), 12)
     }
 
+    private var spacing: CGFloat { dotSize * 1.30 }
+
+    @State private var start = Date()
+
     var body: some View {
-        HStack(spacing: dotSize * 1.30) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(Color.white.opacity(animated ? (pulse ? 0.90 : 0.26) : 0.50))
-                    .frame(width: dotSize, height: dotSize)
-                    .scaleEffect(animated && pulse ? 1.16 : 1)
-                    .animation(
-                        animated
-                            ? .easeInOut(duration: 1.1)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.16)
-                            : nil,
-                        value: pulse
-                    )
+        if animated {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                let elapsed = timeline.date.timeIntervalSince(start)
+                HStack(spacing: spacing) {
+                    ForEach(0..<3, id: \.self) { index in
+                        let phase = Self.phase(elapsed: elapsed, index: index)
+                        Circle()
+                            .fill(Color.white.opacity(0.30 + 0.60 * phase))
+                            .frame(width: dotSize, height: dotSize)
+                            .offset(y: -dotSize * 0.85 * phase)
+                    }
+                }
             }
+            .frame(height: dotSize * 1.8)
+            .accessibilityHidden(true)
+            .onAppear { start = Date() }
+        } else {
+            HStack(spacing: spacing) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle()
+                        .fill(Color.white.opacity(0.50))
+                        .frame(width: dotSize, height: dotSize)
+                }
+            }
+            .frame(height: dotSize * 1.8)
+            .accessibilityHidden(true)
         }
-        .frame(height: dotSize * 1.8)
-        .accessibilityHidden(true)
-        .id(animated)
-        .onAppear { pulse = animated }
+    }
+
+    /// A raised-cosine hop in the first 40% of each 1.2 s cycle, then rest. The
+    /// three dots are offset in phase so they read as a wave, not a blinking ellipsis.
+    private static func phase(elapsed: TimeInterval, index: Int) -> Double {
+        let cycle = (elapsed / 1.2 - Double(index) * 0.16).truncatingRemainder(dividingBy: 1)
+        let normalized = cycle < 0 ? cycle + 1 : cycle
+        guard normalized < 0.4 else { return 0 }
+        return sin(normalized / 0.4 * .pi)
     }
 }
 
