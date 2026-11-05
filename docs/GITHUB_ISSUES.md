@@ -661,8 +661,11 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Enter
 - [x] Add a focused action to delete the current track's imported lyrics.
 - [x] Acquire/release a temporary Now Playing runtime demand without changing or locking `Show Now Playing when expanded`; release it on scene exit, fullscreen exit, Island collapse/disable, and shutdown.
 - [x] Add a dedicated lyrics layout with current/previous/next hierarchy, translation, continuous progress, source badge, scene switching, track transitions, pause freeze, Reduce Motion, accessibility labels, localization, and designed loading/empty/error states.
-- [x] Refine the scene against the AMLL / refined-now-playing-netease visual references: Apple Music-style player column with album tier, active line in the upper third, distance-based opacity/blur/size hierarchy, true word karaoke fill with feathered mask and word lift, interlude dots, and a bloomed album-art backdrop.
+- [x] Refine the scene against the AMLL / refined-now-playing-netease visual references: Apple Music-style player column with album tier, active line in the upper third, uniform lyric typography with distance-based opacity/blur hierarchy, true word karaoke fill with feathered mask and word lift, interlude dots, and a bloomed album-art backdrop.
 - [x] Add a compact stacked layout for widths under 780 pt or heights under 580 pt, with the transport row sharing the progress row and the lyric stage below; keep split and compact driven by the same playback/lyrics state.
+- [x] Keep lyric rows absolutely positioned with one stable font size and measure, so focus changes brightness/blur/glow only, never wrapping or row height; animate the row stack with a near-critical spring to avoid focus jumps.
+- [x] Add a `Blur inactive lyrics` setting (default on) that disables distance blur while preserving opacity and Reduce Motion behavior.
+- [x] Add a persisted manual lyrics offset (−5…+5 s, 0.1 s step; positive shows lyrics later), editable from a timer popover in the lyrics scene and from Settings → Lyrics; apply it to the lyric display clock, word fill, and interlude dots without moving progress or time labels.
 - [x] Integrate LRCLIB's documented public API as the online provider (`/api/get`, 404 `/api/search`), with real request/response parsing, title/artist/album/duration matching, word-sync `lyricsfile` parsing with LRC fallback, cancellation, stale-response rejection, timeout, 429/`Retry-After`, bounded 503 retry, and truthful error mapping.
 - [x] Add `LyricsManager` for automatic local-first lookup, session-only online cache, per-track deduplication, generation checks, retry, and cancellation; expose an "Automatic Online Lyrics" setting (default on) with a privacy caption listing the fields sent.
 - [x] Document LRCLIB, its API source, query fields, licensing uncertainty, no persistence/upload policy, and residual risk in `docs/THIRD_PARTY_NOTICES.md`.
@@ -674,6 +677,7 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Enter
 - [x] Ambiguous local versions are never silently selected; normalization and duration tolerance are covered by tests.
 - [x] Online requests send only title/artist/album/duration; results are displayed transiently and are never persisted, bundled, uploaded, or shared.
 - [x] Lyrics-focused automated tests pass (clock, parser, provider, manager, controller, localization, presentation timing).
+- [x] Stable typography, blur preference, and offset clamping/NaN handling have automated coverage; offscreen renders confirm identical focus/unfocused wrapping, the offset pill, and the blur-off state.
 - [x] Post-redesign offscreen renders (real view, no live Now Playing) fit at 1296×841 and 900×600 split and 900×520, 700×520, 600×900 compact; the active line, translation, interlude dots, and player column are not clipped.
 - [ ] Real Now Playing clients, VoiceOver, Reduce Motion, multi-display layout, live word fill/interlude motion, and the final 1:1 visual pass are recorded honestly in `docs/MANUAL_TESTS.md`; only the live LRCLIB HTTP check has been performed outside the app.
 
