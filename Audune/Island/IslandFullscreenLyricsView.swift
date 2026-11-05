@@ -677,7 +677,7 @@ struct IslandFullscreenLyricsView: View {
                 ForEach(document.lines) { line in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(line.text)
-                            .font(.system(size: metrics.unsyncedFontSize, weight: .semibold))
+                            .font(.system(size: metrics.unsyncedFontSize, weight: .bold))
                             .foregroundStyle(.white.opacity(0.86))
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1399,14 +1399,14 @@ private struct LyricsDepthStage: View, Equatable {
                     lineText: line.text,
                     position: position,
                     fontSize: rowFontSize,
-                    weight: .semibold,
+                    weight: .bold,
                     opacity: opacity,
                     followsPlayback: isFocus,
                     accessibilityLabel: accessibilityLabel(for: line)
                 )
             } else {
                 Text(line.text)
-                    .font(.system(size: rowFontSize, weight: .semibold))
+                    .font(.system(size: rowFontSize, weight: .bold))
                     .foregroundStyle(.white.opacity(opacity))
                     .lineSpacing(max(1, rowFontSize * 0.03))
                     .multilineTextAlignment(.leading)
