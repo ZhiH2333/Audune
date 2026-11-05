@@ -972,6 +972,7 @@ private struct LyricsDepthStage: View, Equatable {
             if let words = line.words, words.count >= 2 {
                 LyricsTimedWordLine(
                     words: words,
+                    lineText: line.text,
                     position: position,
                     fontSize: rowFontSize,
                     weight: .semibold,
@@ -1139,6 +1140,7 @@ private struct LyricsMoreButton: View {
 /// has been sung, so the text never reflows as playback advances. Only the mask grows.
 private struct LyricsTimedWordLine: View {
     var words: [LyricsWord]
+    var lineText: String
     var position: TimeInterval
     var fontSize: CGFloat
     var weight: Font.Weight
@@ -1146,15 +1148,46 @@ private struct LyricsTimedWordLine: View {
     var followsPlayback: Bool
     var accessibilityLabel: String
 
+    /// Word timings trim whitespace, so the display strings have to be rebuilt from the
+    /// original line. Without this an English word split by the timing source (e.g.
+    /// "aval" + "anche") would render as two words and could wrap mid-word.
+    private var tokens: [String] {
+        rebuiltTokens() ?? fallbackTokens()
+    }
+
+    /// Tokens that must stay on one line together. Latin word fragments separated by a
+    /// timing boundary share a run; CJK characters and whitespace remain break points.
+    private var runs: [[Int]] {
+        guard words.isEmpty == false else { return [] }
+        var result: [[Int]] = []
+        var current: [Int] = [0]
+        for index in 1..<words.count {
+            if canBreak(after: tokens[index - 1], before: tokens[index]) {
+                result.append(current)
+                current = [index]
+            } else {
+                current.append(index)
+            }
+        }
+        result.append(current)
+        return result
+    }
+
     var body: some View {
         LyricsTokenFlowLayout(lineSpacing: max(4, fontSize * 0.14)) {
-            ForEach(Array(words.enumerated()), id: \.element.id) { index, word in
-                LyricsWordFill(
-                    text: displayText(for: word, at: index),
-                    progress: progress(for: word),
-                    font: .system(size: fontSize, weight: weight),
-                    opacity: opacity
-                )
+            ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    ForEach(run, id: \.self) { index in
+                        LyricsWordFill(
+                            text: tokens[index],
+                            progress: progress(for: words[index]),
+                            font: .system(size: fontSize, weight: weight),
+                            opacity: opacity,
+                            glow: followsPlayback
+                        )
+                    }
+                }
+                .fixedSize()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1167,10 +1200,40 @@ private struct LyricsTimedWordLine: View {
         return LyricsPlaybackClock.wordProgress(for: word, at: position)
     }
 
-    private func displayText(for word: LyricsWord, at index: Int) -> String {
-        guard index + 1 < words.count else { return word.text }
-        let next = words[index + 1].text
-        return word.text + (needsSeparator(after: word.text, before: next) ? " " : "")
+    /// Greedily aligns each timed token with the original line so the gaps between them
+    /// (spaces, commas, hyphens) are preserved exactly.
+    private func rebuiltTokens() -> [String]? {
+        let text = lineText
+        guard text.isEmpty == false, words.isEmpty == false else { return nil }
+        var result = words.map(\.text)
+        var cursor = text.startIndex
+        for index in words.indices {
+            let token = words[index].text
+            guard token.isEmpty == false,
+                  let range = text.range(of: token, range: cursor..<text.endIndex)
+            else { return nil }
+            if range.lowerBound > cursor {
+                let gap = String(text[cursor..<range.lowerBound])
+                if index == 0 {
+                    result[0] = gap + result[0]
+                } else {
+                    result[index - 1] += gap
+                }
+            }
+            cursor = range.upperBound
+        }
+        if cursor < text.endIndex {
+            result[result.count - 1] += String(text[cursor...])
+        }
+        return result
+    }
+
+    private func fallbackTokens() -> [String] {
+        words.enumerated().map { index, word in
+            guard index + 1 < words.count else { return word.text }
+            let next = words[index + 1].text
+            return word.text + (needsSeparator(after: word.text, before: next) ? " " : "")
+        }
     }
 
     private func needsSeparator(after current: String, before next: String) -> Bool {
@@ -1179,6 +1242,14 @@ private struct LyricsTimedWordLine: View {
         if right.isPunctuation || right.isSymbol { return false }
         if "([{“‘'’-‐".contains(left) { return false }
         return true
+    }
+
+    private func canBreak(after current: String, before next: String) -> Bool {
+        guard let left = current.last, let right = next.first else { return true }
+        if left.isWhitespace { return true }
+        if isCJK(left) || isCJK(right) { return true }
+        if left.isPunctuation || left.isSymbol { return true }
+        return false
     }
 
     private func isCJK(_ character: Character) -> Bool {
@@ -1193,27 +1264,40 @@ private struct LyricsTimedWordLine: View {
 
 /// Two identical text layers keep the token's measured width stable: the lower layer is
 /// the unsung state, while the upper layer is revealed left-to-right by a time mask.
+/// The mask has a feathered leading edge and a soft glow, matching the Apple Music /
+/// AMLL karaoke sweep instead of a hard typewriter cut.
 private struct LyricsWordFill: View {
     var text: String
     var progress: Double
     var font: Font
     var opacity: Double
+    var glow: Bool
+
+    private var isCurrentWord: Bool {
+        glow && progress > 0 && progress < 1
+    }
 
     var body: some View {
-        if progress >= 1 {
-            sungText
-        } else if progress <= 0 {
-            unsungText
-        } else {
-            unsungText.overlay(alignment: .leading) {
-                sungText.mask(alignment: .leading) {
-                    GeometryReader { geometry in
-                        Rectangle()
-                            .frame(width: geometry.size.width * progress)
-                    }
+        Group {
+            if progress >= 1 {
+                sungText
+            } else if progress <= 0 {
+                unsungText
+            } else {
+                unsungText.overlay(alignment: .leading) {
+                    sungText
+                        .mask(alignment: .leading) {
+                            LyricsWordFillMask(progress: progress)
+                        }
+                        .shadow(
+                            color: .white.opacity(glow ? 0.38 : 0),
+                            radius: glow ? 9 : 0
+                        )
                 }
             }
         }
+        .offset(y: isCurrentWord ? -1.5 : 0)
+        .animation(.easeOut(duration: 0.14), value: isCurrentWord)
     }
 
     private var sungText: some View {
@@ -1226,8 +1310,33 @@ private struct LyricsWordFill: View {
     private var unsungText: some View {
         Text(text)
             .font(font)
-            .foregroundStyle(.white.opacity(opacity * 0.34))
+            .foregroundStyle(.white.opacity(opacity * 0.36))
             .fixedSize()
+    }
+}
+
+/// A left-to-right reveal mask whose last few points fade out. The feather keeps the
+/// karaoke edge luminous on thin Latin strokes and avoids a visible stair-step on CJK.
+private struct LyricsWordFillMask: View {
+    var progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = max(geometry.size.width, 1)
+            let filled = width * min(max(progress, 0), 1)
+            let feather = max(4, min(14, width * 0.22))
+
+            LinearGradient(
+                stops: [
+                    .init(color: .white, location: 0),
+                    .init(color: .white, location: max(0, (filled - feather) / width)),
+                    .init(color: .white.opacity(0.55), location: min(1, filled / width)),
+                    .init(color: .clear, location: min(1, (filled + feather) / width))
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
     }
 }
 
