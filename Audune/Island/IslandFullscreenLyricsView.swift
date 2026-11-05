@@ -57,12 +57,20 @@ struct IslandFullscreenLyricsView: View {
             compactHeader(metrics: metrics)
 
             HStack(alignment: .center, spacing: max(14, metrics.horizontalInset * 0.5)) {
-                progressBlock
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if validDuration {
+                    progressBlock
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    // No duration means no progress bar. Keep the transport anchored to
+                    // the trailing edge instead of collapsing it under the artwork.
+                    progressBlock
+                    Spacer(minLength: 12)
+                }
 
                 compactTransport(metrics: metrics)
                     .fixedSize()
             }
+            .frame(maxWidth: .infinity)
             .padding(.top, 12)
 
             stage(metrics: metrics)
