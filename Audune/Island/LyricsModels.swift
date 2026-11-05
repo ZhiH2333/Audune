@@ -46,6 +46,30 @@ nonisolated struct LyricsPlaybackClock {
         }
     }
 
+    /// A long instrumental break between two timed lines. The previous line stays on
+    /// screen, but the stage marks the wait with breathing dots instead of pretending
+    /// the ended line is still being sung.
+    static func isInterlude(
+        in lines: [LyricsLine],
+        activeIndex: Int?,
+        at position: TimeInterval,
+        minimumGap: TimeInterval = 3.0
+    ) -> Bool {
+        guard let activeIndex,
+              lines.indices.contains(activeIndex),
+              position.isFinite
+        else { return false }
+        let line = lines[activeIndex]
+        guard let end = line.endSeconds, end.isFinite,
+              lines.indices.contains(activeIndex + 1),
+              let nextStart = lines[activeIndex + 1].startSeconds,
+              nextStart.isFinite
+        else { return false }
+        let gap = nextStart - end
+        guard gap >= minimumGap else { return false }
+        return position >= end + 0.8 && position <= nextStart - 0.35
+    }
+
     static func wordProgress(for word: LyricsWord, at position: TimeInterval) -> Double {
         guard position.isFinite, word.startSeconds.isFinite, word.durationSeconds.isFinite,
               word.durationSeconds > 0

@@ -103,6 +103,26 @@ final class LyricsPlaybackClockTests: XCTestCase {
         XCTAssertNil(LyricsPlaybackClock.activeLineIndex(in: lines, at: .nan))
     }
 
+    func testInterludeRequiresLongGapAndStaysInsideIt() {
+        let lines = [
+            LyricsLine(id: 0, startSeconds: 2, endSeconds: 5, text: "First", translation: nil, words: nil),
+            LyricsLine(id: 1, startSeconds: 9, endSeconds: 12, text: "Second", translation: nil, words: nil)
+        ]
+
+        XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: nil, at: 7))
+        XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: 0, at: 5.5))
+        XCTAssertTrue(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: 0, at: 7))
+        XCTAssertTrue(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: 0, at: 8.5))
+        XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: 0, at: 8.9))
+        XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: lines, activeIndex: 0, at: .nan))
+
+        let shortGap = [
+            LyricsLine(id: 0, startSeconds: 2, endSeconds: 5, text: "First", translation: nil, words: nil),
+            LyricsLine(id: 1, startSeconds: 7, endSeconds: 9, text: "Second", translation: nil, words: nil)
+        ]
+        XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: shortGap, activeIndex: 0, at: 6))
+    }
+
     func testWordProgressDoesNotInventTiming() {
         let zeroDuration = LyricsWord(id: 0, text: "word", startSeconds: 4, durationSeconds: 0)
         let invalidStart = LyricsWord(id: 1, text: "word", startSeconds: .nan, durationSeconds: 2)

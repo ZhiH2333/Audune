@@ -604,6 +604,11 @@ struct IslandFullscreenLyricsView: View {
             // blurred stage off the 30 Hz redraw path.
             position: document.synchronization == .wordSynced ? model.lyricsPositionSeconds : 0,
             isPlaying: model.nowPlaying.isPlaying,
+            interlude: LyricsPlaybackClock.isInterlude(
+                in: document.lines,
+                activeIndex: model.activeLyricsLineIndex,
+                at: model.lyricsPositionSeconds
+            ),
             metrics: metrics,
             reduceMotion: shouldReduceMotion
         )
@@ -924,6 +929,7 @@ private struct LyricsDepthStage: View, Equatable {
     var activeIndex: Int?
     var position: TimeInterval
     var isPlaying: Bool
+    var interlude: Bool
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
 
@@ -960,7 +966,8 @@ private struct LyricsDepthStage: View, Equatable {
                             line: document.lines[index],
                             index: index,
                             focus: focus,
-                            entrance: currentEntrance
+                            entrance: currentEntrance,
+                            isInterlude: interlude && index == focus
                         )
                         .frame(width: contentWidth, alignment: .leading)
                         .onGeometryChange(for: CGFloat.self) { geometry in
@@ -1015,6 +1022,7 @@ private struct LyricsDepthStage: View, Equatable {
         guard lhs.document == rhs.document,
               lhs.activeIndex == rhs.activeIndex,
               lhs.isPlaying == rhs.isPlaying,
+              lhs.interlude == rhs.interlude,
               lhs.metrics == rhs.metrics,
               lhs.reduceMotion == rhs.reduceMotion
         else { return false }
@@ -1041,10 +1049,12 @@ private struct LyricsDepthStage: View, Equatable {
         line: LyricsLine,
         index: Int,
         focus: Int,
-        entrance: Double
+        entrance: Double,
+        isInterlude: Bool
     ) -> some View {
         let distance = abs(index - focus)
         let isFocus = distance == 0 && hasActiveLine
+        let isWaiting = isFocus && isInterlude
         // Before the first timed line starts, keep the upcoming line sharp-ish and fade
         // the rest by distance instead of flattening every row to the same blur.
         let visualDistance = hasActiveLine ? distance : min(4, abs(index - focus))
@@ -1052,7 +1062,7 @@ private struct LyricsDepthStage: View, Equatable {
         // backdrop can be brighter than AMLL's, so we keep a little more context: the
         // next line stays readable, then falls away quickly.
         let opacity: Double = {
-            if isFocus { return 1 }
+            if isFocus { return isWaiting ? 0.56 : 1 }
             switch visualDistance {
             case 0: return 0.48
             case 1: return 0.32
@@ -1071,7 +1081,7 @@ private struct LyricsDepthStage: View, Equatable {
             : max(0.96, 1 - CGFloat(visualDistance) * 0.012)
         let translationReveal = isFocus ? focusTranslationReveal : 1
         let lineGap = max(5, metrics.activeFontSize * 0.15)
-        let activeGlow = isFocus ? 0.18 : 0.0
+        let activeGlow = isFocus && isWaiting == false ? 0.18 : 0.0
 
         return VStack(alignment: .leading, spacing: lineGap) {
             if let words = line.words, words.count >= 2 {
@@ -1098,12 +1108,20 @@ private struct LyricsDepthStage: View, Equatable {
             if let translation = line.translation, translation.isEmpty == false {
                 Text(translation)
                     .font(.system(size: metrics.translationFontSize * (isFocus ? 1 : 0.86), weight: .regular))
-                    .foregroundStyle(.white.opacity((isFocus ? 0.62 : 0.26) * (0.70 + 0.30 * opacity) * translationReveal))
+                    .foregroundStyle(.white.opacity((isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal))
                     .lineSpacing(max(2, metrics.translationFontSize * 0.16))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .opacity(translationReveal)
+            }
+
+            if isWaiting {
+                LyricInterludeDots(
+                    fontSize: rowFontSize,
+                    animated: isPlaying && reduceMotion == false
+                )
+                .padding(.top, max(2, lineGap * 0.2))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1142,6 +1160,44 @@ private struct LyricsDepthStage: View, Equatable {
         withAnimation(.easeOut(duration: IslandMotion.lyricsLineSeconds)) {
             entrance = 1
         }
+    }
+}
+
+// MARK: - Interlude
+
+/// Three breathing dots mark an instrumental wait. They are deliberately static when
+/// playback is paused or Reduce Motion is on, so the stage never animates while frozen.
+private struct LyricInterludeDots: View {
+    var fontSize: CGFloat
+    var animated: Bool
+
+    @State private var pulse = false
+
+    private var dotSize: CGFloat {
+        min(max(fontSize * 0.16, 5), 11)
+    }
+
+    var body: some View {
+        HStack(spacing: dotSize * 1.30) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.white.opacity(animated ? (pulse ? 0.90 : 0.26) : 0.50))
+                    .frame(width: dotSize, height: dotSize)
+                    .scaleEffect(animated && pulse ? 1.16 : 1)
+                    .animation(
+                        animated
+                            ? .easeInOut(duration: 1.1)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.16)
+                            : nil,
+                        value: pulse
+                    )
+            }
+        }
+        .frame(height: dotSize * 1.8)
+        .accessibilityHidden(true)
+        .id(animated)
+        .onAppear { pulse = animated }
     }
 }
 
