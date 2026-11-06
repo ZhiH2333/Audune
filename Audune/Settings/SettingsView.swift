@@ -614,45 +614,51 @@ struct SettingsView: View {
                 }
             }
         }
-        Section("Lyrics") {
-            Toggle("Automatic Online Lyrics", isOn: Binding(
-                get: { islandModel.prefs.automaticOnlineLyricsEnabled },
-                set: { island.setAutomaticOnlineLyricsEnabled($0) }
-            ))
-            Text("Audune sends the song title, artist, album, and duration to LRCLIB to find lyrics. Imported lyrics always take priority, and online results are never saved.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Toggle("Blur inactive lyrics", isOn: $islandModel.prefs.lyricsBlurEnabled)
-            SettingsSlider(
-                title: "Lyrics offset (s)",
-                value: Binding(
-                    get: { islandModel.prefs.lyricsOffsetSeconds },
-                    set: { island.setLyricsOffset($0) }
-                ),
-                range: IslandPreferences.lyricsOffsetRange,
-                step: 0.1,
-                fractionDigits: 1
-            )
-            HStack(alignment: .firstTextBaseline) {
-                Text("Positive values show lyrics later. This can also be adjusted from the lyrics view.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 12)
-                if abs(islandModel.prefs.lyricsOffsetSeconds) >= 0.05 {
-                    Button("Reset") {
-                        island.setLyricsOffset(0)
-                    }
-                }
-            }
-        }
         Section("Now Playing layout") {
             Toggle("Artwork", isOn: $islandModel.prefs.nowPlayingLayout.showArtwork)
             Toggle("Title & Artist", isOn: $islandModel.prefs.nowPlayingLayout.showTitleArtist)
             Toggle("Progress", isOn: $islandModel.prefs.nowPlayingLayout.showProgress)
             Toggle("Controls", isOn: $islandModel.prefs.nowPlayingLayout.showTransport)
             Toggle("Visualization", isOn: $islandModel.prefs.nowPlayingLayout.showVisualization)
+        }
+        Section("Lyrics") {
+            Toggle("Enable Lyrics (Experimental)", isOn: Binding(
+                get: { islandModel.prefs.lyricsEnabled },
+                set: { island.setLyricsEnabled($0) }
+            ))
+            if islandModel.prefs.lyricsEnabled {
+                Toggle("Automatic Online Lyrics", isOn: Binding(
+                    get: { islandModel.prefs.automaticOnlineLyricsEnabled },
+                    set: { island.setAutomaticOnlineLyricsEnabled($0) }
+                ))
+                Text("Audune sends the song title, artist, album, and duration to LRCLIB to find lyrics. Imported lyrics always take priority, and online results are never saved.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Blur inactive lyrics", isOn: $islandModel.prefs.lyricsBlurEnabled)
+                SettingsSlider(
+                    title: "Lyrics offset (s)",
+                    value: Binding(
+                        get: { islandModel.prefs.lyricsOffsetSeconds },
+                        set: { island.setLyricsOffset($0) }
+                    ),
+                    range: IslandPreferences.lyricsOffsetRange,
+                    step: 0.1,
+                    fractionDigits: 1
+                )
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Positive values show lyrics later. This can also be adjusted from the lyrics view.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 12)
+                    if abs(islandModel.prefs.lyricsOffsetSeconds) >= 0.05 {
+                        Button("Reset") {
+                            island.setLyricsOffset(0)
+                        }
+                    }
+                }
+            }
         }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)

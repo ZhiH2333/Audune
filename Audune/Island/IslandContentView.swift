@@ -435,7 +435,9 @@ struct IslandContentView: View {
 
     private var fullScreenScenePicker: some View {
         HStack(spacing: 2) {
-            ForEach(IslandFullScreenScene.allCases) { scene in
+            ForEach(IslandFullScreenScene.allCases.filter {
+                $0 != .lyrics || model.prefs.lyricsEnabled
+            }) { scene in
                 IslandIconButton(
                     symbol: scene.symbol,
                     label: scene == .visualizer

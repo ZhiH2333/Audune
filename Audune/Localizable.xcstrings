@@ -1032,6 +1032,16 @@
         }
       }
     },
+    "Enable Lyrics (Experimental)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用歌词（实验性）"
+          }
+        }
+      }
+    },
     "Enable Notch Island": {
       "localizations": {
         "zh-Hans": {

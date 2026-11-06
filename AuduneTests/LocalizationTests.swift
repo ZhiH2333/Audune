@@ -65,6 +65,7 @@ final class LocalizationTests: XCTestCase {
             "Capture failed", "Not listening", "Listening", "No audio",
             "Appearance", "Visualization", "Layout", "Spectrum", "Waveform", "Orbit", "Window", "Startup",
             "Reset Appearance", "Save", "Cancel", "Delete", "Enter full screen", "Exit full screen",
+            "Lyrics", "Enable Lyrics (Experimental)",
         ]
         for key in keys {
             let value = try XCTUnwrap(table[key], "\(key) is missing from zh-Hans")

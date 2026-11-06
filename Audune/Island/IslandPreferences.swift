@@ -13,6 +13,7 @@ nonisolated enum IslandPreferenceKey {
     static let showsInFullScreen = "island.showsInFullScreen"
     static let followsReduceMotion = "island.followsReduceMotion"
     static let nowPlayingEnabled = "island.nowPlayingEnabled"
+    static let lyricsEnabled = "island.lyricsEnabled"
     static let automaticOnlineLyrics = "island.automaticOnlineLyrics"
     static let lyricsBlurEnabled = "island.lyricsBlurEnabled"
     static let lyricsOffsetSeconds = "island.lyricsOffsetSeconds"
@@ -63,6 +64,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var followsReduceMotion: Bool
     /// Experimental system Now Playing in Expanded/Pinned. Default off. Does not change Expanded frame size.
     var nowPlayingEnabled: Bool
+    /// Fullscreen Lyrics scene. Experimental and opt-in.
+    var lyricsEnabled: Bool
     /// Lyrics Scene may query the reviewed online provider automatically for the current song.
     var automaticOnlineLyricsEnabled: Bool
     /// Blur non-focus lyric lines. The active line stays sharp when this is off.
@@ -91,6 +94,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         showsInFullScreen: false,
         followsReduceMotion: true,
         nowPlayingEnabled: false,
+        lyricsEnabled: false,
         automaticOnlineLyricsEnabled: true,
         lyricsBlurEnabled: true,
         lyricsOffsetSeconds: 0,
@@ -161,6 +165,9 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         let nowPlayingEnabled = defaults.object(forKey: IslandPreferenceKey.nowPlayingEnabled) == nil
             ? standard.nowPlayingEnabled
             : defaults.bool(forKey: IslandPreferenceKey.nowPlayingEnabled)
+        let lyricsEnabled = defaults.object(forKey: IslandPreferenceKey.lyricsEnabled) == nil
+            ? standard.lyricsEnabled
+            : defaults.bool(forKey: IslandPreferenceKey.lyricsEnabled)
         let automaticOnlineLyricsEnabled = defaults.object(forKey: IslandPreferenceKey.automaticOnlineLyrics) == nil
             ? standard.automaticOnlineLyricsEnabled
             : defaults.bool(forKey: IslandPreferenceKey.automaticOnlineLyrics)
@@ -208,6 +215,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             showsInFullScreen: showsInFullScreen,
             followsReduceMotion: followsReduceMotion,
             nowPlayingEnabled: nowPlayingEnabled,
+            lyricsEnabled: lyricsEnabled,
             automaticOnlineLyricsEnabled: automaticOnlineLyricsEnabled,
             lyricsBlurEnabled: lyricsBlurEnabled,
             lyricsOffsetSeconds: lyricsOffsetSeconds,
@@ -263,6 +271,7 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.showsInFullScreen, forKey: IslandPreferenceKey.showsInFullScreen)
         defaults.set(normalized.followsReduceMotion, forKey: IslandPreferenceKey.followsReduceMotion)
         defaults.set(normalized.nowPlayingEnabled, forKey: IslandPreferenceKey.nowPlayingEnabled)
+        defaults.set(normalized.lyricsEnabled, forKey: IslandPreferenceKey.lyricsEnabled)
         defaults.set(normalized.automaticOnlineLyricsEnabled, forKey: IslandPreferenceKey.automaticOnlineLyrics)
         defaults.set(normalized.lyricsBlurEnabled, forKey: IslandPreferenceKey.lyricsBlurEnabled)
         defaults.set(normalized.lyricsOffsetSeconds, forKey: IslandPreferenceKey.lyricsOffsetSeconds)

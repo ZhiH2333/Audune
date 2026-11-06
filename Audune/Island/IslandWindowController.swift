@@ -321,6 +321,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     func setFullScreenScene(_ scene: IslandFullScreenScene) {
         guard model.isFullScreen else { return }
+        guard scene != .lyrics || model.prefs.lyricsEnabled else { return }
         model.fullScreenScene = scene
         syncNowPlayingListening()
         if scene == .lyrics {
@@ -429,6 +430,16 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         lyricsManager?.updateAutomaticOnlineEnabled(enabled)
     }
 
+    func setLyricsEnabled(_ enabled: Bool) {
+        model.prefs.lyricsEnabled = enabled
+        if enabled == false, model.fullScreenScene == .lyrics {
+            setFullScreenScene(.visualizer)
+        } else {
+            syncNowPlayingListening()
+        }
+        savePreferences()
+    }
+
     private func escapeExpandedPresentation() {
         if model.isFullScreen {
             toggleFullScreenView()
@@ -443,6 +454,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     func preferencesDidChange() {
         model.prefs = model.prefs.normalized()
+        if model.prefs.lyricsEnabled == false, model.fullScreenScene == .lyrics {
+            model.fullScreenScene = .visualizer
+            lyricsManager?.deactivate()
+            setActiveLyricsLineIndex(nil)
+        }
         applyCollectionBehavior()
         evaluateScreensAndApply(animated: false)
         refreshVisuals()
@@ -536,6 +552,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let shouldListenForLyrics = didShutdown == false
             && model.isFullScreen
             && model.fullScreenScene == .lyrics
+            && model.prefs.lyricsEnabled
             && isEffectivelyEnabled
             && model.isSupported
         if shouldListenForLyrics, lyricsRuntimeDemand == nil {

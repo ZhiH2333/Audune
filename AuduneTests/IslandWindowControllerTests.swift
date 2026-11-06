@@ -84,6 +84,7 @@ final class IslandWindowControllerTests: XCTestCase {
         defaults.removePersistentDomain(forName: suite)
         // Controller tests exercise local resolution without external network access.
         defaults.set(false, forKey: IslandPreferenceKey.automaticOnlineLyrics)
+        defaults.set(true, forKey: IslandPreferenceKey.lyricsEnabled)
     }
 
     override func tearDown() {
@@ -289,6 +290,41 @@ final class IslandWindowControllerTests: XCTestCase {
 
         controller.setFullScreenScene(.lyrics)
         XCTAssertEqual(controller.model.prefs.mode, .orbit)
+    }
+
+    @MainActor
+    func testLyricsMustBeEnabledAndDisablingReleasesRuntimeDemand() {
+        defaults.set(false, forKey: IslandPreferenceKey.lyricsEnabled)
+        let screen = notchedScreen()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertEqual(controller.model.fullScreenScene, .visualizer)
+        XCTAssertFalse(service.isListening)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+
+        controller.setLyricsEnabled(true)
+        controller.setFullScreenScene(.lyrics)
+        XCTAssertEqual(controller.model.fullScreenScene, .lyrics)
+        XCTAssertTrue(service.isListening)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+
+        controller.setLyricsEnabled(false)
+        XCTAssertEqual(controller.model.fullScreenScene, .visualizer)
+        XCTAssertFalse(service.isListening)
+        XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
+        XCTAssertFalse(controller.model.prefs.lyricsEnabled)
     }
 
     @MainActor

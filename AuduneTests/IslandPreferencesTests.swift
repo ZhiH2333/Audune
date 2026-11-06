@@ -29,6 +29,7 @@ final class IslandPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.showsInFullScreen)
         XCTAssertTrue(loaded.followsReduceMotion)
         XCTAssertFalse(loaded.nowPlayingEnabled)
+        XCTAssertFalse(loaded.lyricsEnabled)
         XCTAssertTrue(loaded.automaticOnlineLyricsEnabled)
         XCTAssertTrue(loaded.lyricsBlurEnabled)
         XCTAssertEqual(loaded.lyricsOffsetSeconds, 0, accuracy: 0.000_1)
@@ -71,6 +72,7 @@ final class IslandPreferencesTests: XCTestCase {
             showsInFullScreen: true,
             followsReduceMotion: false,
             nowPlayingEnabled: true,
+            lyricsEnabled: true,
             automaticOnlineLyricsEnabled: false,
             lyricsBlurEnabled: false,
             lyricsOffsetSeconds: 1.5,

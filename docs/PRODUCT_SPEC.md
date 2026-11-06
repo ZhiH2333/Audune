@@ -142,8 +142,9 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 开启/关闭 Now Playing **绝不** start/stop 系统音频 Process Tap；可视化与元数据相互独立。
 - 仍禁止：SkyLight、CGSSpace、WindowServer 注入、无障碍伪装系统 UI、麦克风、遥测、持久化曲目历史或上传封面。
 
-### Available — Island Fullscreen Lyrics（AUD-27）
+### Experimental — Island Fullscreen Lyrics（AUD-27；默认关闭）
 
+- 用户可在 Settings → Notch Island → Lyrics 开启或关闭「Enable Lyrics (Experimental)」。默认关闭；关闭时 Island Fullscreen 不显示 Lyrics Scene，歌词偏好选项隐藏。
 - Lyrics 是现有 Island Fullscreen 的第二个 Scene；保留窗口、背景、封面和 Spectrum / Waveform / Orbit 选择，不创建独立播放器，也不影响 Compact wings。
 - 进入 Lyrics 后自动读取 Now Playing 当前曲目，先查本地导入，再按设置查询在线来源；切歌自动重新查询。用户不需要每次播放都导入 LRC。本地导入仍是离线补充和在线失败时的可靠回退。
 - 全屏布局约 30% / 70%：左侧播放列对齐封面左右边界，自上而下为封面、标题、艺人、专辑、连续进度条与其下方的已播/剩余时间、上一曲 / 播放暂停 / 下一曲，以及来源与导入操作；控件位置参照 Apple Music 的 Now Playing 面板，背景与歌词舞台样式不变。不提供随机 / 循环按钮，因为 `NowPlayingControlling` 不暴露且快照不含这些状态，避免出现无效控件。
