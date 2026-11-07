@@ -44,12 +44,34 @@ struct IslandFullscreenLyricsView: View {
                 .frame(width: metrics.artworkSide, alignment: .topLeading)
                 .padding(.top, max(16, metrics.stageHeight * 0.066))
 
-            stage(metrics: metrics)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(.horizontal, metrics.horizontalInset)
         .padding(.top, metrics.topInset)
         .padding(.bottom, metrics.bottomInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .coordinateSpace(name: "lyricsSplit")
+        .overlayPreferenceValue(LyricsPlayerGeometryPreferenceKey.self) { anchors in
+            GeometryReader { proxy in
+                if let artworkAnchor = anchors.artwork,
+                   let pauseAnchor = anchors.pauseButton {
+                    let artwork = proxy[artworkAnchor]
+                    let pauseButton = proxy[pauseAnchor]
+                    let stageTop = max(0, artwork.minY - 12)
+                    let stageBottom = min(proxy.size.height, pauseButton.maxY + 12)
+                    let stageX = metrics.horizontalInset + metrics.artworkSide + metrics.columnGap
+                    let stageWidth = max(0, proxy.size.width - stageX - metrics.horizontalInset)
+
+                    stage(metrics: metrics)
+                        .frame(width: stageWidth, height: max(0, stageBottom - stageTop))
+                        .position(
+                            x: stageX + stageWidth / 2,
+                            y: stageTop + max(0, stageBottom - stageTop) / 2
+                        )
+                }
+            }
+        }
     }
 
     /// Short or narrow windows use a stacked player header: the Apple Music composition
@@ -211,6 +233,9 @@ struct IslandFullscreenLyricsView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.46), radius: max(22, side * 0.075), y: max(12, side * 0.045))
+        .anchorPreference(key: LyricsPlayerGeometryPreferenceKey.self, value: .bounds) {
+            .init(artwork: $0)
+        }
         .accessibilityLabel(String(localized: "Album artwork"))
         .id(model.lyricsTrackRevision)
         .transition(.opacity)
@@ -400,6 +425,9 @@ struct IslandFullscreenLyricsView: View {
         .disabled(canControlPlayback == false)
         .help(label)
         .accessibilityLabel(label)
+        .anchorPreference(key: LyricsPlayerGeometryPreferenceKey.self, value: .bounds) {
+            .init(pauseButton: $0)
+        }
     }
 
     private func transportButton(
@@ -969,11 +997,25 @@ struct IslandFullscreenLyricsView: View {
     }
 }
 
+private struct LyricsPlayerGeometryPreferenceKey: PreferenceKey {
+    struct Value {
+        var artwork: Anchor<CGRect>?
+        var pauseButton: Anchor<CGRect>?
+    }
+
+    static var defaultValue = Value()
+
+    static func reduce(value: inout Value, nextValue: () -> Value) {
+        let next = nextValue()
+        value.artwork = next.artwork ?? value.artwork
+        value.pauseButton = next.pauseButton ?? value.pauseButton
+    }
+}
+
 // MARK: - Depth stage
 
-/// A single lyric stage shared by every row. Rows are absolute-positioned around a
-/// stable focal line, so changing lines moves the stack as one composition instead of
-/// rebuilding a scrolling list. Distance controls blur, opacity, and scale continuously.
+/// A single native scroll view keeps every lyric row in a stable layout while focus
+/// changes animate the viewport to the active line.
 private struct LyricsDepthStage: View, Equatable {
     var document: LyricsDocument
     var activeIndex: Int?
@@ -1102,9 +1144,15 @@ private struct LyricsDepthStage: View, Equatable {
                         guard isBrowsing == false else { return }
                         scrollToFocus(reader, focus: focusIndex, viewportHeight: proxy.size.height, focusTop: focusTop, animated: true)
                     }
-                    .onChange(of: rowHeights[focus] ?? 0) { _, _ in
+                    .onChange(of: rowHeights[focus] ?? 0) { oldHeight, newHeight in
                         guard isManualScrolling == false else { return }
-                        scrollToFocus(reader, focus: focus, viewportHeight: proxy.size.height, focusTop: focusTop)
+                        scrollToFocus(
+                            reader,
+                            focus: focus,
+                            viewportHeight: proxy.size.height,
+                            focusTop: focusTop,
+                            animated: oldHeight > 0 && newHeight > 0
+                        )
                     }
                     .onScrollPhaseChange { _, phase in
                         guard phase == .tracking || phase == .interacting || phase == .decelerating else {
@@ -1198,7 +1246,10 @@ private struct LyricsDepthStage: View, Equatable {
             reader.scrollTo(focus, anchor: anchor)
         }
         if animated, reduceMotion == false {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.78), scroll)
+            withAnimation(
+                .timingCurve(0.175, 0.885, 0.32, 1.1, duration: 0.6),
+                scroll
+            )
         } else {
             scroll()
         }
