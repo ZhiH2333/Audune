@@ -523,7 +523,7 @@ final class StartupApplicatorTests: XCTestCase {
 
         let applicator = StartupApplicator()
         _ = applicator.applyOnce(
-            preferences: prefs(autoStartCapture: true),
+            preferences: .standard,
             studio: studio,
             island: island,
             settings: settings,
@@ -548,7 +548,7 @@ final class StartupApplicatorTests: XCTestCase {
 
         let applicator = StartupApplicator()
         _ = applicator.applyOnce(
-            preferences: prefs(autoStartCapture: true),
+            preferences: .standard,
             studio: studio,
             island: island,
             settings: settings,

@@ -109,7 +109,7 @@ nonisolated struct StartupPreferences: Equatable, Sendable {
     var visualMode: StartupVisualMode
     /// Stable Visual Preset id (`builtin.*` or custom UUID). Nil means no override.
     var presetID: String?
-    /// Optional; default false. Wired by startup capture TODO; never implies window visibility.
+    /// Starts capture at cold launch when permission is already granted; never implies window visibility.
     var autoStartCapture: Bool
 
     /// Matches pre-checkbox launch: Studio/Settings hidden; Island follows saved enablement.
@@ -119,7 +119,7 @@ nonisolated struct StartupPreferences: Equatable, Sendable {
         openSettingsAtLaunch: false,
         visualMode: .keepCurrent,
         presetID: nil,
-        autoStartCapture: false
+        autoStartCapture: true
     )
 
     static func load(from defaults: UserDefaults = .standard) -> StartupPreferences {

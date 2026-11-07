@@ -374,7 +374,7 @@ Regression evidence from `dev`: full `xcodebuild test -project Audune.xcodeproj 
 
 `StartupPreferencesTests`, `StartupApplicatorTests`, and `LaunchAtLoginServiceTests` cover surface defaults/migration, independent checkbox combinations, Island session gate, mode/preset resolution, missing presets, one-shot apply, Launch at Login status mapping, and auto-capture authorization gating. They do not replace a real cold launch or signed Login Items session. All rows below stay `NOT TESTED` until a real macOS GUI session.
 
-- [ ] `NOT TESTED` — With default Startup settings (missing keys), a Release cold launch matches prior behavior: menu bar present, Studio/Settings hidden, Island only if `island.isEnabled` and the display supports a notch. No Dock icon. Capture stays idle.
+- [ ] `NOT TESTED` — With default Startup settings (missing keys), a Release cold launch shows the menu bar, keeps Studio/Settings hidden, and presents Island only if `island.isEnabled` and the display supports a notch. If capture is already authorized, the shared Process Tap starts automatically; if not, startup does not show a permission prompt. No Dock icon.
 - [ ] `NOT TESTED` — All Show-at-launch checkboxes unchecked: quiet menu-bar-only launch; Island stays hidden for the session without permanently clearing `island.isEnabled`; menu bar Show Notch Island restores presentation.
 - [ ] `NOT TESTED` — Studio / Notch Island / Settings checkboxes can be combined; each selected surface appears once; no duplicate windows; Debug window never appears in Release.
 - [ ] `NOT TESTED` — Show Notch Island checked while Island is disabled: Island does not appear; Settings shows the dependency hint and Enable entry; enabling Island presents it without rewriting unrelated prefs.
@@ -386,7 +386,7 @@ Regression evidence from `dev`: full `xcodebuild test -project Audune.xcodeproj 
 - [ ] `NOT TESTED` — Switching away from Audune and back, or reopening Studio / expanding Island, does not reapply Startup configuration.
 - [ ] `NOT TESTED` — Launch Audune at login: enabling registers via `SMAppService.mainApp`; disabling unregisters; toggle mirrors real system status after System Settings changes; `requiresApproval` shows guidance and Open Login Items.
 - [ ] `NOT TESTED` — Login launch with all surfaces unchecked stays quiet (menu bar only); with surfaces checked, the same checkbox rules apply as a manual launch.
-- [ ] `NOT TESTED` — Auto-start capture off by default; when on and already authorized, capture starts without a new prompt; when on but unauthorized, no permission dialog appears at launch and Menu Bar Start still works.
+- [ ] `NOT TESTED` — Auto-start capture is on by default; when already authorized, capture starts on cold launch without a new prompt. Turning it off keeps capture idle after launch. When unauthorized, no permission dialog appears and Menu Bar Start still works.
 - [ ] `NOT TESTED` — Startup Chinese and English copy in Settings → Startup is complete and fits the Settings window.
 
 ## I. Production polish (P1)

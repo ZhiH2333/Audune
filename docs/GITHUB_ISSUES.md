@@ -451,11 +451,12 @@ AUD-09, AUD-13, AUD-17 (Island enable APIs).
 Let users choose independent launch surfaces (Studio / Notch Island / Settings), visualization mode, optional Visual Preset, optional auto-capture, and Launch at Login via `SMAppService.mainApp`.
 
 ### Notes
-- Defaults preserve prior launch behavior (Studio/Settings off, Island follows `island.isEnabled`, `keepCurrent`, no preset, auto-capture off).
+- Defaults preserve prior launch surfaces (Studio/Settings off, Island follows `island.isEnabled`, `keepCurrent`, no preset); auto-capture is on by default and can be disabled.
 - Legacy `startup.destination` migrates once into surface booleans.
 - Island launch checkbox uses a session presentation gate; it does not silently rewrite `island.isEnabled`.
 - Launch at Login reads real `SMAppService` status; no UserDefaults mirror; no helper/LaunchAgents.
 - Auto-capture starts only when already authorized (`CGPreflightScreenCaptureAccess`); never prompted at login for permission.
+- [x] Start the existing shared Process Tap automatically on cold launch by default when capture permission is already granted; preserve the opt-out and never trigger a permission prompt during launch.
 - Applied once per process by `StartupApplicator`; not on activation or window reopen.
 - “Restore last session” remains out of scope (AUD-19).
 

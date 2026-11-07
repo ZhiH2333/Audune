@@ -15,7 +15,7 @@ final class StartupPreferencesTests: XCTestCase {
         defaults = nil
     }
 
-    func testMissingKeysUseBackwardCompatibleDefaults() {
+    func testMissingKeysUseStartupDefaults() {
         let loaded = StartupPreferences.load(from: defaults)
         XCTAssertEqual(loaded, .standard)
         XCTAssertFalse(loaded.openStudioAtLaunch)
@@ -23,7 +23,7 @@ final class StartupPreferencesTests: XCTestCase {
         XCTAssertFalse(loaded.openSettingsAtLaunch)
         XCTAssertEqual(loaded.visualMode, .keepCurrent)
         XCTAssertNil(loaded.presetID)
-        XCTAssertFalse(loaded.autoStartCapture)
+        XCTAssertTrue(loaded.autoStartCapture)
     }
 
     func testSaveAndLoadRoundTrip() {
@@ -183,7 +183,7 @@ final class StartupPreferencesTests: XCTestCase {
         XCTAssertNil(resolution.effectiveMode)
         XCTAssertNil(resolution.presetToApply)
         XCTAssertFalse(resolution.presetIDWasInvalid)
-        XCTAssertFalse(resolution.autoStartCapture)
+        XCTAssertTrue(resolution.autoStartCapture)
     }
 
     func testResolveAllSurfacesUnchecked() {
