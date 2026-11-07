@@ -236,6 +236,32 @@ final class IslandWindowControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testFullScreenFrameTracksDisplayReconfigurationWithoutLeavingFullScreen() throws {
+        let initialScreen = notchedScreen(id: "builtin-1", origin: CGPoint(x: -1512, y: 120))
+        let movedScreen = notchedScreen(id: "builtin-1", origin: CGPoint(x: -3000, y: -240))
+        var activeScreens = [initialScreen]
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            screenProvider: { activeScreens },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        XCTAssertEqual(controller.inspectWindowForTests().frame, initialScreen.frame)
+
+        activeScreens = [movedScreen]
+        controller.evaluateScreensAndApply(animated: false)
+
+        let inspection = controller.inspectWindowForTests()
+        XCTAssertTrue(inspection.isFullScreen)
+        XCTAssertEqual(inspection.frame, try IslandGeometry.analyze(screen: movedScreen).get().screenFrame)
+        XCTAssertEqual(inspection.state, .expanded)
+    }
+
+    @MainActor
     func testCollapsingIslandReleasesLyricsRuntimeDemand() {
         let screen = notchedScreen()
         let fake = FakeIslandNowPlayingController()

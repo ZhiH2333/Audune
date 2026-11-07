@@ -108,6 +108,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var lyricsStore: LocalLyricsStore?
     private var lyricsManager: LyricsManager?
     private var currentLyricsTrackKey: LyricsTrackKey?
+    private var lyricsFilePanelOpen = false
     /// Bumps when a new panel frame animation starts so stale completion handlers cannot flip chrome early.
     private var frameAnimationGeneration = 0
     /// Session-only gate for startup checkboxes. Does not persist into `IslandPreferences`.
@@ -313,7 +314,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
             expanding: model.isFullScreen,
             targetExpandedChrome: true,
-            animated: allowsOrderFront,
+            animated: false,
             hapticPattern: nil,
             hapticToken: hapticToken
         )
@@ -338,6 +339,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.lyricsState = .metadataUnavailable
             return
         }
+        guard lyricsFilePanelOpen == false else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "lrc") ?? .plainText]
         panel.allowsMultipleSelection = false
@@ -345,9 +347,27 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         panel.canChooseFiles = true
         panel.title = String(localized: "Import Lyrics")
         panel.message = String(localized: "Choose an LRC lyrics file for the current song.")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { [weak self] in
-            await self?.importLyrics(at: url)
+
+        lyricsFilePanelOpen = true
+        panel.orderOut(nil)
+        updateKeyMonitor(active: false)
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self] response in
+            guard let self else { return }
+            self.lyricsFilePanelOpen = false
+            guard self.didShutdown == false else { return }
+            self.updateKeyMonitor(active: self.stateContext.state.isExpandedOrPinned)
+            if self.allowsOrderFront,
+               self.isEffectivelyEnabled,
+               self.stateContext.state.isVisible,
+               self.model.isSupported
+            {
+                self.panel.orderFrontRegardless()
+            }
+            guard response == .OK, let url = panel.url else { return }
+            Task { [weak self] in
+                await self?.importLyrics(at: url)
+            }
         }
     }
 
@@ -950,7 +970,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             hapticToken: hapticToken
         )
 
-        if allowsOrderFront && panel.isVisible == false {
+        if allowsOrderFront && lyricsFilePanelOpen == false && panel.isVisible == false {
             panel.orderFrontRegardless()
         }
         startDisplayTimer()
