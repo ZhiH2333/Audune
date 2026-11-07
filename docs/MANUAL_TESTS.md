@@ -304,6 +304,7 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 
 Automated parser, clock, provider, manager, controller, localization, and presentation-timing tests do not verify real MediaRemote clients, macOS file dialogs, VoiceOver, typography, or full-screen motion. The only live external verification performed below is the LRCLIB HTTP request and the live Spotify session recorded below. Rows not marked `PASS` remain `PARTIAL` or `NOT TESTED` until checked in a real macOS session.
 
+- [ ] `NOT TESTED` — On a cold Audune launch with a track already playing, open Lyrics and confirm its elapsed time/progress and active lyric start near the player's reported position rather than jumping to the track end when the initial MediaRemote timestamp is stale.
 - [ ] `NOT TESTED` — Lyrics is off by default. In Settings → Notch Island → Lyrics, enabling “Enable Lyrics (Experimental)” reveals the Lyrics scene picker and lyric-specific preferences; disabling it while Lyrics is active returns to Visualizer and releases the temporary Now Playing demand without changing the persistent Now Playing toggle or Process Tap.
 - [ ] `NOT TESTED` — With “Enable Lyrics (Experimental)” disabled, the fullscreen scene picker has no Lyrics option and lyric-specific online, blur, and offset settings are hidden.
 

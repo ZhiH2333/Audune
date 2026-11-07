@@ -238,6 +238,41 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(projected, 19, accuracy: 0.25)
     }
 
+    func testStaleInitialTimestampDoesNotAdvanceClockToTrackEnd() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "Artist",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 12,
+                durationSeconds: 120,
+                playbackRate: 1,
+                bundleIdentifier: "com.example.player",
+                artwork: nil,
+                timestamp: Date().addingTimeInterval(-600)
+            )
+        )
+
+        let snapshot = service.snapshot
+        XCTAssertEqual(snapshot.playbackClockAnchor.elapsedSeconds, 12, accuracy: 0.1)
+        XCTAssertLessThan(snapshot.displayElapsed(), 15)
+        XCTAssertLessThan(
+            LyricsPlaybackClock.position(
+                anchor: snapshot.playbackClockAnchor,
+                isPlaying: snapshot.isPlaying,
+                playbackRate: snapshot.playbackRate,
+                durationSeconds: snapshot.durationSeconds,
+                nowUptime: ProcessInfo.processInfo.systemUptime
+            ),
+            15
+        )
+    }
+
     func testDisplayElapsedAdvancesWhilePlaying() {
         var snapshot = NowPlayingSnapshot.idle
         snapshot.isPlaying = true

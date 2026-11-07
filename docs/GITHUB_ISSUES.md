@@ -671,6 +671,7 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Enter
 - [x] Integrate LRCLIB's documented public API as the online provider (`/api/get`, 404 `/api/search`), with real request/response parsing, title/artist/album/duration matching, word-sync `lyricsfile` parsing with LRC fallback, cancellation, stale-response rejection, timeout, 429/`Retry-After`, bounded 503 retry, and truthful error mapping.
 - [x] Add `LyricsManager` for automatic local-first lookup, session-only online cache, per-track deduplication, generation checks, retry, and cancellation; expose an "Automatic Online Lyrics" setting (default on) with a privacy caption listing the fields sent.
 - [x] Add a default-off Experimental Lyrics setting in Notch Island; keep Lyrics out of the fullscreen scene picker until enabled and return to Visualizer/release temporary Now Playing demand when disabled.
+- [x] Ignore stale or future Now Playing clock timestamps on initial snapshots so Lyrics progress cannot saturate at the track duration.
 - [x] Document LRCLIB, its API source, query fields, licensing uncertainty, no persistence/upload policy, and residual risk in `docs/THIRD_PARTY_NOTICES.md`.
 
 ### Acceptance criteria

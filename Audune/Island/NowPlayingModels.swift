@@ -80,6 +80,8 @@ protocol NowPlayingControlling: AnyObject {
 
 @MainActor
 struct NowPlayingTrackPayload: Equatable {
+    static let maximumPlaybackClockAnchorAge: TimeInterval = 5
+
     var title: String
     var artist: String
     var album: String
@@ -107,5 +109,18 @@ struct NowPlayingTrackPayload: Equatable {
             return min(max(0, advanced), durationSeconds)
         }
         return max(0, advanced)
+    }
+
+    func withFreshPlaybackClockAnchor(at date: Date) -> NowPlayingTrackPayload {
+        let anchorAge = date.timeIntervalSince(timestamp)
+        guard anchorAge.isFinite,
+              anchorAge >= 0,
+              anchorAge <= Self.maximumPlaybackClockAnchorAge
+        else {
+            var refreshed = self
+            refreshed.timestamp = date
+            return refreshed
+        }
+        return self
     }
 }

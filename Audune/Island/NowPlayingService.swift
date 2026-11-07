@@ -176,34 +176,35 @@ final class NowPlayingService {
             )
             return
         }
+        let currentPayload = payload.withFreshPlaybackClockAnchor(at: Date())
 
-        evaluatePendingSeek(against: payload)
+        evaluatePendingSeek(against: currentPayload)
 
-        let seekOK = seekUnsupportedBundles.contains(payload.bundleIdentifier) == false
-        let hasContent = payload.title.isEmpty == false
-            || payload.artist.isEmpty == false
-            || payload.artwork != nil
-        let mergedClock = mergePlaybackClock(with: payload)
+        let seekOK = seekUnsupportedBundles.contains(currentPayload.bundleIdentifier) == false
+        let hasContent = currentPayload.title.isEmpty == false
+            || currentPayload.artist.isEmpty == false
+            || currentPayload.artwork != nil
+        let mergedClock = mergePlaybackClock(with: currentPayload)
 
         snapshot = NowPlayingSnapshot(
             availability: hasContent ? .listening : .empty,
-            title: payload.title,
-            artist: payload.artist,
-            album: payload.album,
-            isPlaying: payload.isPlaying,
+            title: currentPayload.title,
+            artist: currentPayload.artist,
+            album: currentPayload.album,
+            isPlaying: currentPayload.isPlaying,
             elapsedSeconds: mergedClock.elapsed,
-            durationSeconds: payload.durationSeconds,
-            playbackRate: payload.playbackRate,
-            bundleIdentifier: payload.bundleIdentifier,
-            artwork: payload.artwork ?? snapshot.artwork,
+            durationSeconds: currentPayload.durationSeconds,
+            playbackRate: currentPayload.playbackRate,
+            bundleIdentifier: currentPayload.bundleIdentifier,
+            artwork: currentPayload.artwork ?? snapshot.artwork,
             seekSupported: seekOK,
             lastUpdated: mergedClock.anchor,
             playbackClockAnchor: makePlaybackClockAnchor(
                 elapsed: mergedClock.elapsed,
                 wallClockAnchor: mergedClock.anchor,
-                isPlaying: payload.isPlaying,
-                playbackRate: payload.playbackRate,
-                durationSeconds: payload.durationSeconds
+                isPlaying: currentPayload.isPlaying,
+                playbackRate: currentPayload.playbackRate,
+                durationSeconds: currentPayload.durationSeconds
             )
         )
     }
