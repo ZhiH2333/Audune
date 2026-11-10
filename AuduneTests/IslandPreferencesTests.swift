@@ -76,6 +76,9 @@ final class IslandPreferencesTests: XCTestCase {
             automaticOnlineLyricsEnabled: false,
             lyricsBlurEnabled: false,
             lyricsOffsetSeconds: 1.5,
+            lyricsRoutingMode: .manual,
+            lyricsManualProviderID: "lrclib",
+            lyricsManualNodeID: "lrclib-official",
             nowPlayingLayout: IslandNowPlayingLayout(
                 showArtwork: false,
                 showTitleArtist: true,

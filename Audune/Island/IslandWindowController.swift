@@ -155,7 +155,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         self.defaults = defaults
         self.nowPlaying = nowPlaying ?? NowPlayingService()
         self.makeLyricsStore = lyricsStoreFactory ?? { try LocalLyricsStore.applicationStore() }
-        self.makeLyricsProvider = lyricsProviderFactory ?? { LRCLIBLyricsProvider() }
+        self.makeLyricsProvider = lyricsProviderFactory ?? {
+            LyricsRouter(selection: IslandPreferences.load().lyricsRoutingSelection)
+        }
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
         self.haptics = haptics

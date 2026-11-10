@@ -17,6 +17,9 @@ nonisolated enum IslandPreferenceKey {
     static let automaticOnlineLyrics = "island.automaticOnlineLyrics"
     static let lyricsBlurEnabled = "island.lyricsBlurEnabled"
     static let lyricsOffsetSeconds = "island.lyricsOffsetSeconds"
+    static let lyricsRoutingMode = "island.lyricsRoutingMode"
+    static let lyricsManualProviderID = "island.lyricsManualProviderID"
+    static let lyricsManualNodeID = "island.lyricsManualNodeID"
     static let showArtwork = "island.nowPlayingLayout.showArtwork"
     static let showTitleArtist = "island.nowPlayingLayout.showTitleArtist"
     static let showProgress = "island.nowPlayingLayout.showProgress"
@@ -72,8 +75,22 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var lyricsBlurEnabled: Bool
     /// Shifts the lyric timeline relative to playback. Positive values show lyrics later.
     var lyricsOffsetSeconds: Double
+    /// Multi-source lyrics routing mode (Auto Fastest / Auto Best Match / Manual).
+    var lyricsRoutingMode: LyricsRoutingMode
+    /// Manual provider id when `lyricsRoutingMode == .manual`.
+    var lyricsManualProviderID: String
+    /// Manual node id for providers that expose multiple nodes.
+    var lyricsManualNodeID: String
     /// Which Expanded Now Playing chrome pieces are shown when listening.
     var nowPlayingLayout: IslandNowPlayingLayout
+
+    var lyricsRoutingSelection: LyricsRoutingSelection {
+        LyricsRoutingSelection(
+            mode: lyricsRoutingMode,
+            providerID: lyricsManualProviderID.isEmpty ? nil : lyricsManualProviderID,
+            nodeID: lyricsManualNodeID.isEmpty ? nil : lyricsManualNodeID
+        )
+    }
 
     static let collapseDelayRange: ClosedRange<Double> = 0.15...1.5
     static let expandDelayRange: ClosedRange<Double> = 0.1...1.0
@@ -98,6 +115,9 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         automaticOnlineLyricsEnabled: true,
         lyricsBlurEnabled: true,
         lyricsOffsetSeconds: 0,
+        lyricsRoutingMode: .autoBestMatch,
+        lyricsManualProviderID: "",
+        lyricsManualNodeID: "",
         nowPlayingLayout: .standard
     )
 
@@ -184,6 +204,12 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         } else {
             lyricsOffsetSeconds = standard.lyricsOffsetSeconds
         }
+        let lyricsRoutingMode = defaults.string(forKey: IslandPreferenceKey.lyricsRoutingMode)
+            .flatMap(LyricsRoutingMode.init(rawValue:)) ?? standard.lyricsRoutingMode
+        let lyricsManualProviderID = defaults.string(forKey: IslandPreferenceKey.lyricsManualProviderID)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? standard.lyricsManualProviderID
+        let lyricsManualNodeID = defaults.string(forKey: IslandPreferenceKey.lyricsManualNodeID)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? standard.lyricsManualNodeID
         let nowPlayingLayout = IslandNowPlayingLayout(
             showArtwork: defaults.object(forKey: IslandPreferenceKey.showArtwork) == nil
                 ? standard.nowPlayingLayout.showArtwork
@@ -219,6 +245,9 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             automaticOnlineLyricsEnabled: automaticOnlineLyricsEnabled,
             lyricsBlurEnabled: lyricsBlurEnabled,
             lyricsOffsetSeconds: lyricsOffsetSeconds,
+            lyricsRoutingMode: lyricsRoutingMode,
+            lyricsManualProviderID: lyricsManualProviderID,
+            lyricsManualNodeID: lyricsManualNodeID,
             nowPlayingLayout: nowPlayingLayout
         ).normalized()
     }
@@ -250,6 +279,11 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             to: Self.lyricsOffsetRange,
             fallback: standard.lyricsOffsetSeconds
         )
+        result.lyricsManualProviderID = lyricsManualProviderID.trimmingCharacters(in: .whitespacesAndNewlines)
+        result.lyricsManualNodeID = lyricsManualNodeID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if result.lyricsRoutingMode == .manual, result.lyricsManualProviderID.isEmpty {
+            result.lyricsRoutingMode = .autoBestMatch
+        }
         return result
     }
 
@@ -275,6 +309,17 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         defaults.set(normalized.automaticOnlineLyricsEnabled, forKey: IslandPreferenceKey.automaticOnlineLyrics)
         defaults.set(normalized.lyricsBlurEnabled, forKey: IslandPreferenceKey.lyricsBlurEnabled)
         defaults.set(normalized.lyricsOffsetSeconds, forKey: IslandPreferenceKey.lyricsOffsetSeconds)
+        defaults.set(normalized.lyricsRoutingMode.rawValue, forKey: IslandPreferenceKey.lyricsRoutingMode)
+        if normalized.lyricsManualProviderID.isEmpty {
+            defaults.removeObject(forKey: IslandPreferenceKey.lyricsManualProviderID)
+        } else {
+            defaults.set(normalized.lyricsManualProviderID, forKey: IslandPreferenceKey.lyricsManualProviderID)
+        }
+        if normalized.lyricsManualNodeID.isEmpty {
+            defaults.removeObject(forKey: IslandPreferenceKey.lyricsManualNodeID)
+        } else {
+            defaults.set(normalized.lyricsManualNodeID, forKey: IslandPreferenceKey.lyricsManualNodeID)
+        }
         defaults.set(normalized.nowPlayingLayout.showArtwork, forKey: IslandPreferenceKey.showArtwork)
         defaults.set(normalized.nowPlayingLayout.showTitleArtist, forKey: IslandPreferenceKey.showTitleArtist)
         defaults.set(normalized.nowPlayingLayout.showProgress, forKey: IslandPreferenceKey.showProgress)
