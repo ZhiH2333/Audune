@@ -314,6 +314,17 @@ nonisolated enum LyricsProviderRegistry {
                 regionHint: .china,
                 attributionURL: URL(string: "https://github.com/metowolf/Meting")
             ),
+            // Placeholder for a user-supplied mirror. Not enabled until configured.
+            LyricsNodeDescriptor(
+                id: "meting-custom",
+                providerID: LyricsProviderID.meting.rawValue,
+                displayName: "Custom Meting Endpoint",
+                baseURL: URL(string: "https://example.invalid/meting/api")!,
+                regionHint: .china,
+                attributionURL: URL(string: "https://github.com/metowolf/Meting"),
+                enabled: false,
+                isCustom: true
+            ),
         ]
     )
 
