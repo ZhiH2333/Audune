@@ -302,7 +302,14 @@ Requires a real macOS GUI session, preferably **15.4+**. `IslandPreferencesTests
 
 ### Island Fullscreen Lyrics (AUD-27; experimental, opt-in)
 
-Automated parser, clock, provider, manager, controller, localization, and presentation-timing tests do not verify real MediaRemote clients, macOS file dialogs, VoiceOver, typography, or full-screen motion. The only live external verification performed below is the LRCLIB HTTP request and the live Spotify session recorded below. Rows not marked `PASS` remain `PARTIAL` or `NOT TESTED` until checked in a real macOS session.
+Automated parser, clock, provider, manager, controller, localization, and presentation-timing tests do not verify real MediaRemote clients, macOS file dialogs, VoiceOver, typography, or full-screen motion. Live external verification includes the LRCLIB HTTP request, the 2026-11-10 Multi-Source provider audit in `docs/LYRICS_PROVIDER_AUDIT.md`, and the earlier live Spotify session recorded below. Rows not marked `PASS` remain `PARTIAL` or `NOT TESTED` until checked in a real macOS session.
+
+### Multi-Source Lyrics routing (AUD-27 extension)
+
+- [x] `PASS` — Provider audit measured real HTTPS responses for LiriQo, LRC Mux, LRCLIB, Better Lyrics (cache hit), lrc.red, Lyrics.ovh, Meting/QQ, and LrcAPI; VVHAN DNS failed; LrcShare blocked without key. Results recorded in `docs/LYRICS_PROVIDER_AUDIT.md`.
+- [ ] `NOT TESTED` — In Fullscreen Lyrics, use the bottom-left source selector to switch Auto · Fastest Reliable, Auto · Best Match, and a manual Provider/Node; confirm the selection persists across relaunch and that manual failures do not silently change providers.
+- [ ] `NOT TESTED` — Confirm attribution footer shows the actual provider and aggregator upstream (for example `Lyrics via LiriQo · Apple Music`) with a working link when required.
+- [ ] `NOT TESTED` — With a Chinese track and a Western track, Auto Best Match returns usable lyrics without requiring a manual LRC import.
 
 - [ ] `NOT TESTED` — On a cold Audune launch with a track already playing, open Lyrics and confirm its elapsed time/progress and active lyric start near the player's reported position rather than jumping to the track end when the initial MediaRemote timestamp is stale.
 - [ ] `NOT TESTED` — Lyrics is off by default. In Settings → Notch Island → Lyrics, enabling “Enable Lyrics (Experimental)” reveals the Lyrics scene picker and lyric-specific preferences; disabling it while Lyrics is active returns to Visualizer and releases the temporary Now Playing demand without changing the persistent Now Playing toggle or Process Tap.

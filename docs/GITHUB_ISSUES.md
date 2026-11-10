@@ -650,7 +650,7 @@ AUD-09, AUD-13.
 **Milestone:** Island Fullscreen Lyrics — shipped on `dev`
 
 ### Goal
-Add Lyrics as a second scene inside the existing Island Fullscreen window. Entering Lyrics automatically identifies the current song, resolves local lyrics first, then searches an approved online provider. Keep Lyrics separate from Compact/Expanded wings, Studio, Menu Bar, and Desktop Magnet. Preserve the existing Now Playing preference and use the existing service only while a runtime Lyrics demand exists.
+Add Lyrics as a second scene inside the existing Island Fullscreen window. Entering Lyrics automatically identifies the current song, resolves local lyrics first, then searches audited online providers through the Multi-Source Lyrics Registry/Router. Keep Lyrics separate from Compact/Expanded wings, Studio, Menu Bar, and Desktop Magnet. Preserve the existing Now Playing preference and use the existing service only while a runtime Lyrics demand exists.
 
 ### Tasks
 - [x] Add independent Visualizer / Lyrics scene selection while preserving Spectrum / Waveform / Orbit selection.
@@ -669,7 +669,8 @@ Add Lyrics as a second scene inside the existing Island Fullscreen window. Enter
 - [x] Add a `Blur inactive lyrics` setting (default on) that disables distance blur while preserving opacity and Reduce Motion behavior.
 - [x] Add Apple Music-style manual browsing in the same native ScrollView: wheel/trackpad scrolling flattens the focused scale, blur, and opacity hierarchy while keeping the playing line highlighted; preserve the native scroll position and inertia, show a “Back to current lyric” control, and restore auto-follow after 3.5 s idle or on demand.
 - [x] Add a persisted manual lyrics offset (−5…+5 s, 0.1 s step; positive shows lyrics later), editable from a timer popover in the lyrics scene and from Settings → Lyrics; apply it to the lyric display clock, word fill, and interlude dots without moving progress or time labels.
-- [x] Integrate LRCLIB's documented public API as the online provider (`/api/get`, 404 `/api/search`), with real request/response parsing, title/artist/album/duration matching, word-sync `lyricsfile` parsing with LRC fallback, cancellation, stale-response rejection, timeout, 429/`Retry-After`, bounded 503 retry, and truthful error mapping.
+- [x] Integrate LRCLIB's documented public API as a first-class direct provider (`/api/get`, 404 `/api/search`), with real request/response parsing, title/artist/album/duration matching, word-sync `lyricsfile` parsing with LRC fallback, cancellation, stale-response rejection, timeout, 429/`Retry-After`, bounded 503 retry, and truthful error mapping.
+- [x] Ship Multi-Source Lyrics (Provider/Node/Aggregator registry, LiriQo + LRC Mux aggregators, international/China adapters, bounded-concurrency router, Auto Fastest/Best Match + manual node selection, left-corner source selector). Unverified or license-blocked sources stay out of default Auto; see `docs/LYRICS_PROVIDER_AUDIT.md`.
 - [x] Add `LyricsManager` for automatic local-first lookup, session-only online cache, per-track deduplication, generation checks, retry, and cancellation; expose an "Automatic Online Lyrics" setting (default on) with a privacy caption listing the fields sent.
 - [x] Add a default-off Experimental Lyrics setting in Notch Island; keep Lyrics out of the fullscreen scene picker until enabled and return to Visualizer/release temporary Now Playing demand when disabled.
 - [x] Ignore stale or future Now Playing clock timestamps on initial snapshots so Lyrics progress cannot saturate at the track duration.
