@@ -232,7 +232,13 @@ nonisolated struct LRCLIBLyricsProvider: OnlineLyricsProviding {
             kind: .lrclib,
             providerName: descriptor.displayName,
             providerRecordIdentifier: String(record.id),
-            isPersisted: false
+            isPersisted: false,
+            providerID: LyricsProviderID.lrclib.rawValue,
+            nodeID: LyricsProviderRegistry.lrclib.defaultNodes.first?.id,
+            upstreamProviderID: nil,
+            attributionURL: LyricsProviderRegistry.lrclib.attributionURL?.absoluteString,
+            matchConfidence: nil,
+            retrievedAt: Date()
         )
         return .found(result)
     }

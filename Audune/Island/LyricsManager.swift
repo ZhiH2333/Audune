@@ -214,6 +214,8 @@ final class LyricsManager {
             updateState(.networkError)
         case .networkError:
             updateState(.networkError)
+        case .unauthorized:
+            updateState(.providerUnavailable)
         case .providerUnavailable:
             updateState(.providerUnavailable)
         case .serverError:

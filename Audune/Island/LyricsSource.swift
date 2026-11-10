@@ -93,6 +93,7 @@ nonisolated enum OnlineLyricsLookup: Equatable, Sendable {
     case offline
     case timedOut
     case networkError
+    case unauthorized
     case providerUnavailable
     case serverError(statusCode: Int)
     case parseError
