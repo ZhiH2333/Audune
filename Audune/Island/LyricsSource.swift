@@ -267,14 +267,25 @@ nonisolated enum LRCParser {
 
         let parsedLines = grouped.enumerated().map { index, group -> LyricsLine in
             let lineEnd = grouped.indices.contains(index + 1) ? grouped[index + 1].time : nil
+            let translation: String?
+            let pronunciation: String?
+            if group.texts.count >= 3 {
+                translation = group.texts[1]
+                pronunciation = group.texts.dropFirst(2).joined(separator: " ")
+            } else if group.texts.count == 2 {
+                translation = group.texts[1]
+                pronunciation = nil
+            } else {
+                translation = nil
+                pronunciation = nil
+            }
             return LyricsLine(
                 id: index,
                 startSeconds: group.time,
                 endSeconds: lineEnd,
                 text: group.texts[0],
-                translation: group.texts.count > 1
-                    ? group.texts.dropFirst().joined(separator: "\n")
-                    : nil,
+                translation: translation,
+                pronunciation: pronunciation,
                 words: makeWords(
                     group.words,
                     offsetSeconds: offsetSeconds,

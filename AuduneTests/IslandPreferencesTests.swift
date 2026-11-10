@@ -79,6 +79,8 @@ final class IslandPreferencesTests: XCTestCase {
             lyricsRoutingMode: .manual,
             lyricsManualProviderID: "lrclib",
             lyricsManualNodeID: "lrclib-official",
+            showsLyricsTranslation: false,
+            showsLyricsPronunciation: false,
             nowPlayingLayout: IslandNowPlayingLayout(
                 showArtwork: false,
                 showTitleArtist: true,

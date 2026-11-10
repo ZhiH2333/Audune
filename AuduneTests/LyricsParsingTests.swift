@@ -213,4 +213,58 @@ final class LyricsParsingTests: XCTestCase {
         let yrcDocument = try LyricsFormatDetector.parse(yrc, trackKey: trackKey)
         XCTAssertEqual(yrcDocument.lines.first?.text, "你好")
     }
+
+    func testTTMLParserReadsDuetAgentsBackgroundVocalsTranslationsAndRomanization() throws {
+        let ttml = """
+        <tt xml:lang="ja" itunes:timing="Word">
+          <body>
+            <div>
+              <p begin="00:10.000" end="00:14.000" ttm:agent="v1">
+                <span begin="00:10.000" end="00:11.500">夜に</span>
+                <span begin="00:11.500" end="00:13.000">駆ける</span>
+                <span ttm:role="x-bg" begin="00:12.000" end="00:14.000">
+                  <span begin="00:12.000" end="00:13.000">Run</span>
+                  <span begin="00:13.000" end="00:14.000">away</span>
+                </span>
+                <span ttm:role="x-translation">奔向夜晚</span>
+                <span ttm:role="x-roman">yoru ni kakeru</span>
+              </p>
+              <p begin="00:14.500" end="00:18.000" ttm:agent="v2">
+                <span begin="00:14.500" end="00:16.000">君の声</span>
+              </p>
+            </div>
+          </body>
+        </tt>
+        """
+        let document = try LyricsFormatDetector.parse(ttml, trackKey: trackKey)
+        XCTAssertEqual(document.lines.count, 2)
+        XCTAssertTrue(document.hasTranslations)
+        XCTAssertTrue(document.hasPronunciations)
+
+        let first = document.lines[0]
+        XCTAssertFalse(first.isSecondaryVocal)
+        XCTAssertEqual(first.text, "夜に 駆ける")
+        XCTAssertEqual(first.words?.map(\.text), ["夜に", "駆ける"])
+        XCTAssertEqual(first.backgroundText, "Run away")
+        XCTAssertEqual(first.backgroundWords?.map(\.text), ["Run", "away"])
+        XCTAssertEqual(first.translation, "奔向夜晚")
+        XCTAssertEqual(first.pronunciation, "yoru ni kakeru")
+
+        let second = document.lines[1]
+        XCTAssertTrue(second.isSecondaryVocal)
+        XCTAssertEqual(second.text, "君の声")
+    }
+
+    func testLRCParserReadsThreeLineTimestampsAsTextTranslationAndPronunciation() throws {
+        let lrc = """
+        [00:05.00]夜に駆ける
+        [00:05.00]奔向夜晚
+        [00:05.00]yoru ni kakeru
+        """
+        let document = try LRCParser.parse(lrc, trackKey: trackKey)
+        XCTAssertEqual(document.lines.count, 1)
+        XCTAssertEqual(document.lines[0].text, "夜に駆ける")
+        XCTAssertEqual(document.lines[0].translation, "奔向夜晚")
+        XCTAssertEqual(document.lines[0].pronunciation, "yoru ni kakeru")
+    }
 }

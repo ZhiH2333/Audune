@@ -264,7 +264,64 @@ nonisolated struct LyricsLine: Codable, Equatable, Identifiable, Sendable {
     var translation: String?
     /// Optional pronunciation/romanization. Kept separate from the translation tier.
     var pronunciation: String? = nil
-    var words: [LyricsWord]?
+    var words: [LyricsWord]? = nil
+    /// True when duet metadata (`ttm:agent="v2"`) marks this line for the secondary vocalist.
+    var isSecondaryVocal: Bool = false
+    /// Optional background vocal text (`ttm:role="x-bg"`).
+    var backgroundText: String? = nil
+    /// Optional timed words for the background vocal line.
+    var backgroundWords: [LyricsWord]? = nil
+
+    init(
+        id: Int,
+        startSeconds: Double? = nil,
+        endSeconds: Double? = nil,
+        text: String,
+        translation: String? = nil,
+        pronunciation: String? = nil,
+        words: [LyricsWord]? = nil,
+        isSecondaryVocal: Bool = false,
+        backgroundText: String? = nil,
+        backgroundWords: [LyricsWord]? = nil
+    ) {
+        self.id = id
+        self.startSeconds = startSeconds
+        self.endSeconds = endSeconds
+        self.text = text
+        self.translation = translation
+        self.pronunciation = pronunciation
+        self.words = words
+        self.isSecondaryVocal = isSecondaryVocal
+        self.backgroundText = backgroundText
+        self.backgroundWords = backgroundWords
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case startSeconds
+        case endSeconds
+        case text
+        case translation
+        case pronunciation
+        case words
+        case isSecondaryVocal
+        case backgroundText
+        case backgroundWords
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        startSeconds = try container.decodeIfPresent(Double.self, forKey: .startSeconds)
+        endSeconds = try container.decodeIfPresent(Double.self, forKey: .endSeconds)
+        text = try container.decode(String.self, forKey: .text)
+        translation = try container.decodeIfPresent(String.self, forKey: .translation)
+        pronunciation = try container.decodeIfPresent(String.self, forKey: .pronunciation)
+        words = try container.decodeIfPresent([LyricsWord].self, forKey: .words)
+        isSecondaryVocal = try container.decodeIfPresent(Bool.self, forKey: .isSecondaryVocal) ?? false
+        backgroundText = try container.decodeIfPresent(String.self, forKey: .backgroundText)
+        backgroundWords = try container.decodeIfPresent([LyricsWord].self, forKey: .backgroundWords)
+    }
 }
 
 /// How precisely a document can follow playback. Derived from the data, never guessed.
@@ -340,5 +397,13 @@ nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
 
     var isPersistedLocally: Bool {
         source?.kind == .localImport || source == nil
+    }
+
+    var hasTranslations: Bool {
+        lines.contains { ($0.translation?.isEmpty == false) }
+    }
+
+    var hasPronunciations: Bool {
+        lines.contains { ($0.pronunciation?.isEmpty == false) }
     }
 }

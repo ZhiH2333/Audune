@@ -22,7 +22,7 @@ nonisolated enum TTMLLyricsParser {
         let parser = XMLParser(data: data)
         let delegate = TTMLParserDelegate()
         parser.delegate = delegate
-        parser.shouldProcessNamespaces = true
+        parser.shouldProcessNamespaces = false
         parser.shouldReportNamespacePrefixes = false
         guard parser.parse() else { throw TTMLLyricsParserError.invalidXML }
         guard delegate.lines.isEmpty == false else { throw TTMLLyricsParserError.noTimedLines }
@@ -34,10 +34,22 @@ nonisolated enum TTMLLyricsParser {
                 endSeconds: line.endSeconds,
                 text: line.text,
                 translation: line.translation,
-                pronunciation: nil,
+                pronunciation: line.pronunciation,
                 words: line.words.isEmpty
                     ? nil
                     : line.words.enumerated().map { wordIndex, word in
+                        LyricsWord(
+                            id: wordIndex,
+                            text: word.text,
+                            startSeconds: word.startSeconds,
+                            durationSeconds: word.durationSeconds
+                        )
+                    },
+                isSecondaryVocal: line.isSecondaryVocal,
+                backgroundText: line.backgroundText,
+                backgroundWords: line.backgroundWords.isEmpty
+                    ? nil
+                    : line.backgroundWords.enumerated().map { wordIndex, word in
                         LyricsWord(
                             id: wordIndex,
                             text: word.text,
@@ -87,21 +99,43 @@ private final class TTMLParserDelegate: NSObject, XMLParserDelegate {
         var startSeconds: Double?
         var endSeconds: Double?
         var translation: String?
+        var pronunciation: String?
         var words: [DraftWord]
+        var isSecondaryVocal: Bool
+        var backgroundText: String?
+        var backgroundWords: [DraftWord]
+    }
+
+    private enum SpanRole {
+        case word
+        case background
+        case translation
+        case roman
+    }
+
+    private struct ActiveSpan {
+        var role: SpanRole
+        var startSeconds: Double?
+        var endSeconds: Double?
+        var text: String = ""
+        var hadChildWords: Bool = false
     }
 
     private(set) var lines: [DraftLine] = []
     private(set) var language: String?
 
+    private var primaryAgent: String?
     private var currentLineStart: Double?
     private var currentLineEnd: Double?
     private var currentLineText = ""
+    private var currentTranslation: String?
+    private var currentPronunciation: String?
+    private var currentBackgroundText = ""
     private var currentWords: [DraftWord] = []
-    private var currentSpanStart: Double?
-    private var currentSpanEnd: Double?
-    private var currentSpanText = ""
+    private var currentBackgroundWords: [DraftWord] = []
+    private var currentIsSecondaryVocal = false
+    private var spanStack: [ActiveSpan] = []
     private var insideParagraph = false
-    private var insideSpan = false
     private var timingHint: String?
 
     func parser(
@@ -121,23 +155,53 @@ private final class TTMLParserDelegate: NSObject, XMLParserDelegate {
         case "p":
             insideParagraph = true
             currentLineText = ""
+            currentTranslation = nil
+            currentPronunciation = nil
+            currentBackgroundText = ""
             currentWords = []
+            currentBackgroundWords = []
+            spanStack = []
             currentLineStart = TTMLLyricsParser.parseClock(attributeDict["begin"])
             currentLineEnd = TTMLLyricsParser.parseClock(attributeDict["end"])
+            let agent = (attributeDict["ttm:agent"] ?? attributeDict["agent"])?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if let agent, agent.isEmpty == false {
+                if primaryAgent == nil {
+                    primaryAgent = agent
+                }
+                let lower = agent.lowercased()
+                currentIsSecondaryVocal = lower == "v2" || lower == "duet" || agent != primaryAgent
+            } else {
+                currentIsSecondaryVocal = false
+            }
         case "span":
             guard insideParagraph else { return }
-            insideSpan = true
-            currentSpanText = ""
-            currentSpanStart = TTMLLyricsParser.parseClock(attributeDict["begin"])
-            currentSpanEnd = TTMLLyricsParser.parseClock(attributeDict["end"])
+            let roleAttr = (attributeDict["ttm:role"] ?? attributeDict["role"] ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            let role: SpanRole = {
+                switch roleAttr {
+                case "x-bg", "bg": return .background
+                case "x-translation", "translation": return .translation
+                case "x-roman", "roman", "pronunciation": return .roman
+                default: return .word
+                }
+            }()
+            spanStack.append(
+                ActiveSpan(
+                    role: role,
+                    startSeconds: TTMLLyricsParser.parseClock(attributeDict["begin"]),
+                    endSeconds: TTMLLyricsParser.parseClock(attributeDict["end"])
+                )
+            )
         default:
             break
         }
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) {
-        if insideSpan {
-            currentSpanText += string
+        if spanStack.isEmpty == false {
+            spanStack[spanStack.count - 1].text += string
         } else if insideParagraph {
             currentLineText += string
         }
@@ -152,48 +216,105 @@ private final class TTMLParserDelegate: NSObject, XMLParserDelegate {
         let local = localName(elementName, qualifiedName: qName)
         switch local {
         case "span":
-            guard insideSpan else { return }
-            insideSpan = false
-            let text = collapseWhitespace(currentSpanText)
-            if text.isEmpty == false,
-               let start = currentSpanStart,
-               let end = currentSpanEnd,
-               end >= start
-            {
-                currentWords.append(
-                    DraftWord(
-                        text: text,
-                        startSeconds: start,
-                        durationSeconds: max(0, end - start)
-                    )
-                )
-                if currentLineText.isEmpty == false, currentLineText.hasSuffix(" ") == false {
-                    currentLineText += " "
+            guard let span = spanStack.popLast() else { return }
+            let insideBg = spanStack.contains(where: { $0.role == .background })
+            let text = collapseWhitespace(span.text)
+            switch span.role {
+            case .translation:
+                if insideBg == false, text.isEmpty == false {
+                    currentTranslation = text
                 }
-                currentLineText += text
+            case .roman:
+                if insideBg == false, text.isEmpty == false {
+                    currentPronunciation = text
+                }
+            case .background:
+                if span.hadChildWords == false, text.isEmpty == false {
+                    if let start = span.startSeconds, let end = span.endSeconds, end >= start {
+                        currentBackgroundWords.append(
+                            DraftWord(
+                                text: text,
+                                startSeconds: start,
+                                durationSeconds: max(0, end - start)
+                            )
+                        )
+                    }
+                    if currentBackgroundText.isEmpty == false, currentBackgroundText.hasSuffix(" ") == false {
+                        currentBackgroundText += " "
+                    }
+                    currentBackgroundText += text
+                }
+            case .word:
+                guard text.isEmpty == false else { break }
+                if insideBg {
+                    if let bgIndex = spanStack.lastIndex(where: { $0.role == .background }) {
+                        spanStack[bgIndex].hadChildWords = true
+                    }
+                    if let start = span.startSeconds, let end = span.endSeconds, end >= start {
+                        currentBackgroundWords.append(
+                            DraftWord(
+                                text: text,
+                                startSeconds: start,
+                                durationSeconds: max(0, end - start)
+                            )
+                        )
+                    }
+                    if currentBackgroundText.isEmpty == false, currentBackgroundText.hasSuffix(" ") == false {
+                        currentBackgroundText += " "
+                    }
+                    currentBackgroundText += text
+                } else if let start = span.startSeconds,
+                          let end = span.endSeconds,
+                          end >= start
+                {
+                    currentWords.append(
+                        DraftWord(
+                            text: text,
+                            startSeconds: start,
+                            durationSeconds: max(0, end - start)
+                        )
+                    )
+                    if currentLineText.isEmpty == false, currentLineText.hasSuffix(" ") == false {
+                        currentLineText += " "
+                    }
+                    currentLineText += text
+                } else {
+                    if currentLineText.isEmpty == false, currentLineText.hasSuffix(" ") == false {
+                        currentLineText += " "
+                    }
+                    currentLineText += text
+                }
             }
-            currentSpanText = ""
-            currentSpanStart = nil
-            currentSpanEnd = nil
         case "p":
             guard insideParagraph else { return }
             insideParagraph = false
             let text = collapseWhitespace(currentLineText)
+            let bgText = collapseWhitespace(currentBackgroundText)
             if text.isEmpty == false {
                 lines.append(
                     DraftLine(
                         text: text,
                         startSeconds: currentLineStart,
                         endSeconds: currentLineEnd,
-                        translation: nil,
-                        words: currentWords
+                        translation: currentTranslation,
+                        pronunciation: currentPronunciation,
+                        words: currentWords,
+                        isSecondaryVocal: currentIsSecondaryVocal,
+                        backgroundText: bgText.isEmpty ? nil : bgText,
+                        backgroundWords: currentBackgroundWords
                     )
                 )
             }
             currentLineText = ""
+            currentTranslation = nil
+            currentPronunciation = nil
+            currentBackgroundText = ""
             currentWords = []
+            currentBackgroundWords = []
+            currentIsSecondaryVocal = false
             currentLineStart = nil
             currentLineEnd = nil
+            spanStack = []
         default:
             break
         }

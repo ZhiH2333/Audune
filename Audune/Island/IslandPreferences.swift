@@ -20,6 +20,8 @@ nonisolated enum IslandPreferenceKey {
     static let lyricsRoutingMode = "island.lyricsRoutingMode"
     static let lyricsManualProviderID = "island.lyricsManualProviderID"
     static let lyricsManualNodeID = "island.lyricsManualNodeID"
+    static let showsLyricsTranslation = "island.showsLyricsTranslation"
+    static let showsLyricsPronunciation = "island.showsLyricsPronunciation"
     static let showArtwork = "island.nowPlayingLayout.showArtwork"
     static let showTitleArtist = "island.nowPlayingLayout.showTitleArtist"
     static let showProgress = "island.nowPlayingLayout.showProgress"
@@ -81,6 +83,10 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
     var lyricsManualProviderID: String
     /// Manual node id for providers that expose multiple nodes.
     var lyricsManualNodeID: String
+    /// Whether translated lyric lines are shown beneath the main text when available.
+    var showsLyricsTranslation: Bool = true
+    /// Whether romanized / phonetic pronunciation lines are shown when available.
+    var showsLyricsPronunciation: Bool = true
     /// Which Expanded Now Playing chrome pieces are shown when listening.
     var nowPlayingLayout: IslandNowPlayingLayout
 
@@ -210,6 +216,12 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? standard.lyricsManualProviderID
         let lyricsManualNodeID = defaults.string(forKey: IslandPreferenceKey.lyricsManualNodeID)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? standard.lyricsManualNodeID
+        let showsLyricsTranslation = defaults.object(forKey: IslandPreferenceKey.showsLyricsTranslation) == nil
+            ? standard.showsLyricsTranslation
+            : defaults.bool(forKey: IslandPreferenceKey.showsLyricsTranslation)
+        let showsLyricsPronunciation = defaults.object(forKey: IslandPreferenceKey.showsLyricsPronunciation) == nil
+            ? standard.showsLyricsPronunciation
+            : defaults.bool(forKey: IslandPreferenceKey.showsLyricsPronunciation)
         let nowPlayingLayout = IslandNowPlayingLayout(
             showArtwork: defaults.object(forKey: IslandPreferenceKey.showArtwork) == nil
                 ? standard.nowPlayingLayout.showArtwork
@@ -248,6 +260,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
             lyricsRoutingMode: lyricsRoutingMode,
             lyricsManualProviderID: lyricsManualProviderID,
             lyricsManualNodeID: lyricsManualNodeID,
+            showsLyricsTranslation: showsLyricsTranslation,
+            showsLyricsPronunciation: showsLyricsPronunciation,
             nowPlayingLayout: nowPlayingLayout
         ).normalized()
     }
@@ -320,6 +334,8 @@ nonisolated struct IslandPreferences: Equatable, Sendable {
         } else {
             defaults.set(normalized.lyricsManualNodeID, forKey: IslandPreferenceKey.lyricsManualNodeID)
         }
+        defaults.set(normalized.showsLyricsTranslation, forKey: IslandPreferenceKey.showsLyricsTranslation)
+        defaults.set(normalized.showsLyricsPronunciation, forKey: IslandPreferenceKey.showsLyricsPronunciation)
         defaults.set(normalized.nowPlayingLayout.showArtwork, forKey: IslandPreferenceKey.showArtwork)
         defaults.set(normalized.nowPlayingLayout.showTitleArtist, forKey: IslandPreferenceKey.showTitleArtist)
         defaults.set(normalized.nowPlayingLayout.showProgress, forKey: IslandPreferenceKey.showProgress)

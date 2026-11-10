@@ -473,7 +473,25 @@ struct IslandFullscreenLyricsView: View {
     @ViewBuilder
     private var sourceFooter: some View {
         VStack(alignment: .leading, spacing: 6) {
-            lyricsSourceSelector
+            HStack(spacing: 6) {
+                lyricsSourceSelector
+                if let document = model.lyricsState.document {
+                    if document.hasTranslations {
+                        tierTogglePill(
+                            symbol: "character.bubble",
+                            isOn: model.prefs.showsLyricsTranslation,
+                            action: { model.prefs.showsLyricsTranslation.toggle() }
+                        )
+                    }
+                    if document.hasPronunciations {
+                        tierTogglePill(
+                            symbol: "a.magnify",
+                            isOn: model.prefs.showsLyricsPronunciation,
+                            action: { model.prefs.showsLyricsPronunciation.toggle() }
+                        )
+                    }
+                }
+            }
             if let document = model.lyricsState.document {
                 HStack(spacing: 6) {
                     Circle()
@@ -501,6 +519,29 @@ struct IslandFullscreenLyricsView: View {
             await LyricsRoutingController.shared.refreshHealthSnapshots()
             healthSnapshots = LyricsRoutingController.shared.healthSnapshots
         }
+    }
+
+    private func tierTogglePill(
+        symbol: String,
+        isOn: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(isOn ? 0.92 : 0.42))
+                .frame(width: 26, height: 24)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(isOn ? 0.16 : 0.06))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(isOn ? 0.18 : 0.06), lineWidth: 0.5)
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var lyricsSourceSelector: some View {
@@ -931,6 +972,8 @@ struct IslandFullscreenLyricsView: View {
             metrics: metrics,
             reduceMotion: shouldReduceMotion,
             blurLyrics: model.prefs.lyricsBlurEnabled,
+            showsTranslation: model.prefs.showsLyricsTranslation,
+            showsPronunciation: model.prefs.showsLyricsPronunciation,
             isSeekSupported: seekSupported,
             lyricsOffsetSeconds: lyricsOffsetSeconds,
             onManualModeChange: { isManualBrowsing = $0 },
@@ -963,21 +1006,45 @@ struct IslandFullscreenLyricsView: View {
                     .padding(.bottom, max(6, metrics.activeFontSize * 0.20))
 
                 ForEach(document.lines) { line in
-                    VStack(alignment: .leading, spacing: 6) {
+                    let alignTrailing = line.isSecondaryVocal
+                    VStack(alignment: alignTrailing ? .trailing : .leading, spacing: 6) {
+                        if model.prefs.showsLyricsPronunciation,
+                           let pronunciation = line.pronunciation,
+                           pronunciation.isEmpty == false
+                        {
+                            Text(pronunciation)
+                                .font(.system(size: max(12, metrics.translationFontSize * 0.88), weight: .medium))
+                                .foregroundStyle(.white.opacity(0.46))
+                                .multilineTextAlignment(alignTrailing ? .trailing : .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
                         Text(line.text)
                             .font(.system(size: metrics.unsyncedFontSize, weight: .bold))
                             .foregroundStyle(.white.opacity(0.86))
-                            .multilineTextAlignment(.leading)
+                            .multilineTextAlignment(alignTrailing ? .trailing : .leading)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        if let translation = line.translation, translation.isEmpty == false {
+                        if let bg = line.backgroundText, bg.isEmpty == false {
+                            Text(formattedBackgroundVocal(bg))
+                                .font(.system(size: max(13, metrics.translationFontSize * 0.94), weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.52))
+                                .multilineTextAlignment(alignTrailing ? .trailing : .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if model.prefs.showsLyricsTranslation,
+                           let translation = line.translation,
+                           translation.isEmpty == false
+                        {
                             Text(translation)
                                 .font(.system(size: metrics.translationFontSize, weight: .regular))
                                 .foregroundStyle(.white.opacity(0.42))
-                                .multilineTextAlignment(.leading)
+                                .multilineTextAlignment(alignTrailing ? .trailing : .leading)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
                 }
             }
             .frame(maxWidth: 760, alignment: .leading)
@@ -1208,6 +1275,16 @@ struct IslandFullscreenLyricsView: View {
         reduceMotion && model.prefs.followsReduceMotion
     }
 
+    private func formattedBackgroundVocal(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if (trimmed.hasPrefix("(") && trimmed.hasSuffix(")"))
+            || (trimmed.hasPrefix("（") && trimmed.hasSuffix("）"))
+        {
+            return trimmed
+        }
+        return "(\(trimmed))"
+    }
+
     private func accessibilityLabel(for line: LyricsLine) -> String {
         if let translation = line.translation, translation.isEmpty == false {
             return "\(line.text), \(translation)"
@@ -1301,6 +1378,8 @@ private struct LyricsDepthStage: View, Equatable {
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
     var blurLyrics: Bool
+    var showsTranslation: Bool = true
+    var showsPronunciation: Bool = true
     var isSeekSupported: Bool = false
     var lyricsOffsetSeconds: Double = 0
     var onManualModeChange: (Bool) -> Void = { _ in }
@@ -1503,6 +1582,8 @@ private struct LyricsDepthStage: View, Equatable {
               lhs.metrics == rhs.metrics,
               lhs.reduceMotion == rhs.reduceMotion,
               lhs.blurLyrics == rhs.blurLyrics,
+              lhs.showsTranslation == rhs.showsTranslation,
+              lhs.showsPronunciation == rhs.showsPronunciation,
               lhs.isSeekSupported == rhs.isSeekSupported,
               lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
         else { return false }
@@ -1681,8 +1762,13 @@ private struct LyricsDepthStage: View, Equatable {
             ? 0
             : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
         let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
+        let alignTrailing = line.isSecondaryVocal
+        let hAlignment: HorizontalAlignment = alignTrailing ? .trailing : .leading
+        let frameAlignment: Alignment = alignTrailing ? .trailing : .leading
+        let textAlignment: TextAlignment = alignTrailing ? .trailing : .leading
+        let scaleAnchor: UnitPoint = alignTrailing ? .trailing : .leading
 
-        return VStack(alignment: .leading, spacing: lineGap) {
+        return VStack(alignment: hAlignment, spacing: lineGap) {
             if showsIntroDots {
                 LyricInterludeDots(
                     fontSize: rowFontSize,
@@ -1693,8 +1779,21 @@ private struct LyricsDepthStage: View, Equatable {
                 .transition(
                     reduceMotion
                         ? .opacity
-                        : .scale(scale: 0.72, anchor: .leading).combined(with: .opacity)
+                        : .scale(scale: 0.72, anchor: scaleAnchor).combined(with: .opacity)
                 )
+            }
+
+            if showsPronunciation,
+               let pronunciation = line.pronunciation,
+               pronunciation.isEmpty == false
+            {
+                Text(pronunciation)
+                    .font(.system(size: max(12, metrics.translationFontSize * 0.86), weight: .medium))
+                    .foregroundStyle(.white.opacity(opacity * 0.62))
+                    .lineSpacing(max(1, metrics.translationFontSize * 0.12))
+                    .multilineTextAlignment(textAlignment)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
 
             if let words = line.words, words.count >= 2 {
@@ -1707,6 +1806,7 @@ private struct LyricsDepthStage: View, Equatable {
                     opacity: opacity,
                     followsPlayback: isFocus && manualMode == false,
                     reduceMotion: reduceMotion,
+                    alignment: hAlignment,
                     accessibilityLabel: accessibilityLabel(for: line)
                 )
             } else {
@@ -1714,19 +1814,49 @@ private struct LyricsDepthStage: View, Equatable {
                     .font(.system(size: rowFontSize, weight: .bold))
                     .foregroundStyle(.white.opacity(opacity))
                     .lineSpacing(max(1, rowFontSize * 0.03))
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
 
-            if let translation = line.translation, translation.isEmpty == false {
+            if let bgText = line.backgroundText, bgText.isEmpty == false {
+                let formattedBg = formattedBackgroundText(bgText)
+                let bgFontSize = max(13, metrics.translationFontSize * 0.96)
+                if let bgWords = line.backgroundWords, bgWords.count >= 2 {
+                    LyricsTimedWordLine(
+                        words: bgWords,
+                        lineText: formattedBg,
+                        position: position,
+                        fontSize: bgFontSize,
+                        weight: .semibold,
+                        opacity: opacity * 0.72,
+                        followsPlayback: isFocus && manualMode == false,
+                        reduceMotion: reduceMotion,
+                        alignment: hAlignment,
+                        accessibilityLabel: formattedBg
+                    )
+                } else {
+                    Text(formattedBg)
+                        .font(.system(size: bgFontSize, weight: .semibold))
+                        .foregroundStyle(.white.opacity(opacity * 0.68))
+                        .lineSpacing(max(1, bgFontSize * 0.12))
+                        .multilineTextAlignment(textAlignment)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: frameAlignment)
+                }
+            }
+
+            if showsTranslation,
+               let translation = line.translation,
+               translation.isEmpty == false
+            {
                 Text(translation)
                     .font(.system(size: metrics.translationFontSize, weight: .regular))
                     .foregroundStyle(.white.opacity(translationOpacity))
                     .lineSpacing(max(2, metrics.translationFontSize * 0.16))
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: frameAlignment)
                     .opacity(translationReveal)
             }
 
@@ -1740,11 +1870,11 @@ private struct LyricsDepthStage: View, Equatable {
                 .transition(
                     reduceMotion
                         ? .opacity
-                        : .scale(scale: 0.72, anchor: .leading).combined(with: .opacity)
+                        : .scale(scale: 0.72, anchor: scaleAnchor).combined(with: .opacity)
                 )
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: frameAlignment)
         .background {
             if isHovered {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -1760,7 +1890,7 @@ private struct LyricsDepthStage: View, Equatable {
             reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.82).delay(staggerDelay),
             value: focus
         )
-        .scaleEffect(rowScale, anchor: .leading)
+        .scaleEffect(rowScale, anchor: scaleAnchor)
         .offset(y: rowCascadeY)
         .animation(
             reduceMotion ? nil : .spring(response: 0.50, dampingFraction: 0.76).delay(staggerDelay),
@@ -1777,6 +1907,16 @@ private struct LyricsDepthStage: View, Equatable {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
+    }
+
+    private func formattedBackgroundText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if (trimmed.hasPrefix("(") && trimmed.hasSuffix(")"))
+            || (trimmed.hasPrefix("（") && trimmed.hasSuffix("）"))
+        {
+            return trimmed
+        }
+        return "(\(trimmed))"
     }
 
     private func triggerCascadeSpring(from oldFocus: Int, to newFocus: Int) {
@@ -2189,6 +2329,7 @@ private struct LyricsTimedWordLine: View {
     var opacity: Double
     var followsPlayback: Bool
     var reduceMotion: Bool = false
+    var alignment: HorizontalAlignment = .leading
     var accessibilityLabel: String
 
     /// Word timings trim whitespace, so the display strings have to be rebuilt from the
@@ -2217,7 +2358,10 @@ private struct LyricsTimedWordLine: View {
     }
 
     var body: some View {
-        LyricsTokenFlowLayout(lineSpacing: max(4, fontSize * 0.14)) {
+        LyricsTokenFlowLayout(
+            lineSpacing: max(4, fontSize * 0.14),
+            alignment: alignment
+        ) {
             ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     ForEach(run, id: \.self) { index in
@@ -2235,7 +2379,7 @@ private struct LyricsTimedWordLine: View {
                 .fixedSize()
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: alignment == .trailing ? .trailing : .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -2417,6 +2561,7 @@ private struct LyricsWordFillMask: View {
 /// per-word frames, and measuring each token once keeps every playback update layout-free.
 private struct LyricsTokenFlowLayout: Layout {
     var lineSpacing: CGFloat = 6
+    var alignment: HorizontalAlignment = .leading
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let availableWidth = proposal.width ?? .infinity
@@ -2462,7 +2607,8 @@ private struct LyricsTokenFlowLayout: Layout {
         var y = bounds.minY
         for row in rows {
             let rowHeight = row.reduce(CGFloat.zero) { max($0, $1.size.height) }
-            var x = bounds.minX
+            let rowWidth = row.reduce(CGFloat.zero) { $0 + $1.size.width }
+            var x = alignment == .trailing ? max(bounds.minX, bounds.maxX - rowWidth) : bounds.minX
             for item in row {
                 item.subview.place(
                     at: CGPoint(x: x, y: y + (rowHeight - item.size.height) / 2),
