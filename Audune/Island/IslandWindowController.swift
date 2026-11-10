@@ -851,6 +851,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             retryLyrics: { [weak self] in
                 self?.lyricsManager?.retry()
+            },
+            selectLyricsRouting: { [weak self] selection in
+                self?.applyLyricsRoutingSelection(selection)
             }
         )
         let host = IslandHostingView(rootView: root)

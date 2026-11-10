@@ -18,11 +18,14 @@ struct IslandFullscreenLyricsView: View {
     var previousTrack: () -> Void
     var nextTrack: () -> Void
     var setLyricsOffset: (Double) -> Void
+    var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrubbedFraction: Double?
     @State private var isHoveringProgress = false
     @State private var isManualBrowsing = false
+    @State private var routingSelection = LyricsRoutingController.shared.selection
+    @State private var healthSnapshots: [LyricsNodeHealthSnapshot] = []
 
     var body: some View {
         GeometryReader { proxy in
@@ -451,19 +454,232 @@ struct IslandFullscreenLyricsView: View {
 
     @ViewBuilder
     private var sourceFooter: some View {
-        if let document = model.lyricsState.document {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(Color.white.opacity(0.44))
-                    .frame(width: 4, height: 4)
-                Text(sourceLabel(for: document))
-                    .font(.system(size: 10, weight: .medium))
-                    .tracking(0.5)
-                    .foregroundStyle(.white.opacity(0.30))
+        VStack(alignment: .leading, spacing: 6) {
+            lyricsSourceSelector
+            if let document = model.lyricsState.document {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.white.opacity(0.44))
+                        .frame(width: 4, height: 4)
+                    if let url = attributionURL(for: document) {
+                        Link(sourceLabel(for: document), destination: url)
+                            .font(.system(size: 10, weight: .medium))
+                            .tracking(0.5)
+                            .foregroundStyle(.white.opacity(0.34))
+                            .underline(false)
+                    } else {
+                        Text(sourceLabel(for: document))
+                            .font(.system(size: 10, weight: .medium))
+                            .tracking(0.5)
+                            .foregroundStyle(.white.opacity(0.30))
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(String(localized: "Lyrics source: \(sourceLabel(for: document))"))
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(String(localized: "Lyrics source: \(sourceLabel(for: document))"))
         }
+        .task {
+            routingSelection = LyricsRoutingController.shared.selection
+            await LyricsRoutingController.shared.refreshHealthSnapshots()
+            healthSnapshots = LyricsRoutingController.shared.healthSnapshots
+        }
+    }
+
+    private var lyricsSourceSelector: some View {
+        Menu {
+            Button {
+                applyRouting(.init(mode: .autoFastestReliable, providerID: nil, nodeID: nil))
+            } label: {
+                selectionLabel(
+                    LyricsRoutingMode.autoFastestReliable.displayName,
+                    selected: routingSelection.mode == .autoFastestReliable
+                )
+            }
+            Button {
+                applyRouting(.init(mode: .autoBestMatch, providerID: nil, nodeID: nil))
+            } label: {
+                selectionLabel(
+                    LyricsRoutingMode.autoBestMatch.displayName,
+                    selected: routingSelection.mode == .autoBestMatch
+                )
+            }
+
+            Divider()
+
+            Section(String(localized: "Aggregators")) {
+                ForEach(selectableProviders(type: .aggregator)) { provider in
+                    providerMenu(provider)
+                }
+            }
+            Section(String(localized: "International")) {
+                ForEach(selectableProviders(region: .international, excludingAggregators: true)) { provider in
+                    providerMenu(provider)
+                }
+            }
+            Section(String(localized: "China")) {
+                ForEach(selectableProviders(region: .china, excludingAggregators: true)) { provider in
+                    providerMenu(provider)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(routingMenuTitle)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                if let latency = currentLatencyLabel {
+                    Text(latency)
+                        .font(.system(size: 10, weight: .regular).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.42))
+                }
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.35))
+            }
+            .foregroundStyle(.white.opacity(0.72))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.white.opacity(0.08), in: Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .help(String(localized: "Choose lyrics source"))
+        .accessibilityLabel(String(localized: "Lyrics source selector"))
+    }
+
+    @ViewBuilder
+    private func providerMenu(_ provider: LyricsProviderCapability) -> some View {
+        let nodes = provider.defaultNodes.filter(\.enabled)
+        if nodes.count > 1 {
+            Menu(provider.displayName) {
+                Button {
+                    applyRouting(.init(mode: .manual, providerID: provider.id, nodeID: nil))
+                } label: {
+                    selectionLabel(
+                        String(localized: "Auto Node"),
+                        selected: routingSelection.mode == .manual
+                            && routingSelection.providerID == provider.id
+                            && routingSelection.nodeID == nil
+                    )
+                }
+                ForEach(nodes) { node in
+                    Button {
+                        applyRouting(.init(mode: .manual, providerID: provider.id, nodeID: node.id))
+                    } label: {
+                        selectionLabel(
+                            nodeLabel(provider: provider, node: node),
+                            selected: routingSelection.mode == .manual
+                                && routingSelection.providerID == provider.id
+                                && routingSelection.nodeID == node.id
+                        )
+                    }
+                }
+            }
+        } else {
+            Button {
+                applyRouting(
+                    .init(
+                        mode: .manual,
+                        providerID: provider.id,
+                        nodeID: nodes.first?.id
+                    )
+                )
+            } label: {
+                selectionLabel(
+                    providerLabel(provider),
+                    selected: routingSelection.mode == .manual
+                        && routingSelection.providerID == provider.id
+                )
+            }
+        }
+    }
+
+    private func selectionLabel(_ title: String, selected: Bool) -> some View {
+        HStack {
+            Text(title)
+            if selected {
+                Image(systemName: "checkmark")
+            }
+        }
+    }
+
+    private func applyRouting(_ selection: LyricsRoutingSelection) {
+        routingSelection = selection
+        selectLyricsRouting(selection)
+    }
+
+    private var routingMenuTitle: String {
+        switch routingSelection.mode {
+        case .autoFastestReliable, .autoBestMatch:
+            return routingSelection.mode.displayName
+        case .manual:
+            if let id = routingSelection.providerID,
+               let provider = LyricsProviderRegistry.capability(id: id)
+            {
+                if let nodeID = routingSelection.nodeID,
+                   let node = provider.defaultNodes.first(where: { $0.id == nodeID })
+                {
+                    return "\(provider.displayName) · \(node.displayName)"
+                }
+                return provider.displayName
+            }
+            return String(localized: "Manual")
+        }
+    }
+
+    private var currentLatencyLabel: String? {
+        let nodeID = routingSelection.nodeID
+            ?? model.lyricsState.document?.source?.nodeID
+        guard let nodeID,
+              let snap = healthSnapshots.first(where: { $0.nodeID == nodeID }),
+              let latency = snap.ewmaLatencySeconds
+        else {
+            return nil
+        }
+        if latency < 1 { return String(format: "%.0fms", latency * 1000) }
+        return String(format: "%.1fs", latency)
+    }
+
+    private func selectableProviders(
+        type: LyricsProviderType? = nil,
+        region: LyricsProviderRegionHint? = nil,
+        excludingAggregators: Bool = false
+    ) -> [LyricsProviderCapability] {
+        LyricsProviderRegistry.selectableProviders.filter { provider in
+            if let type, provider.providerType != type { return false }
+            if excludingAggregators, provider.providerType == .aggregator { return false }
+            if let region, provider.region != region, provider.region != .global { return false }
+            return true
+        }
+    }
+
+    private func providerLabel(_ provider: LyricsProviderCapability) -> String {
+        let sync = provider.highestSyncLevel.rawValue
+        return "\(provider.displayName) · \(sync)"
+    }
+
+    private func nodeLabel(provider: LyricsProviderCapability, node: LyricsNodeDescriptor) -> String {
+        if let snap = healthSnapshots.first(where: { $0.nodeID == node.id }),
+           let latency = snap.ewmaLatencySeconds
+        {
+            let latencyText = latency < 1
+                ? String(format: "%.0fms", latency * 1000)
+                : String(format: "%.1fs", latency)
+            return "\(node.displayName) · \(latencyText) · \(snap.state.rawValue)"
+        }
+        return "\(node.displayName) · \(provider.highestSyncLevel.rawValue)"
+    }
+
+    private func attributionURL(for document: LyricsDocument) -> URL? {
+        if let raw = document.source?.attributionURL, let url = URL(string: raw) {
+            return url
+        }
+        if let providerID = document.source?.resolvedProviderID,
+           let url = LyricsProviderRegistry.capability(id: providerID)?.attributionURL
+        {
+            return url
+        }
+        return nil
     }
 
     // MARK: - Lyrics stage
@@ -969,18 +1185,21 @@ struct IslandFullscreenLyricsView: View {
         case .localImport:
             return String(localized: "Imported LRC")
         case .lrclib:
-            return document.source?.providerName ?? String(localized: "LRCLIB")
+            let name = document.source?.providerName ?? String(localized: "LRCLIB")
+            return String(localized: "Lyrics by \(name)")
         case .online:
-            if let upstream = document.source?.upstreamProviderID, upstream.isEmpty == false,
-               let provider = document.source?.providerName, provider.isEmpty == false
-            {
-                return "\(provider) · \(upstream)"
-            }
-            return document.source?.providerName
+            let provider = document.source?.providerName
                 ?? document.source?.resolvedProviderID
                 ?? String(localized: "Lyrics")
+            if let upstream = document.source?.upstreamProviderID, upstream.isEmpty == false {
+                return String(localized: "Lyrics via \(provider) · \(upstream)")
+            }
+            return String(localized: "Lyrics by \(provider)")
         case nil:
-            return document.source?.providerName ?? String(localized: "Lyrics")
+            if let name = document.source?.providerName {
+                return String(localized: "Lyrics by \(name)")
+            }
+            return String(localized: "Lyrics")
         }
     }
 

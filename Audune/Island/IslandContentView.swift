@@ -229,6 +229,7 @@ struct IslandContentView: View {
     var chooseLyricsCandidate: (UUID) -> Void = { _ in }
     var deleteLyrics: (UUID) -> Void = { _ in }
     var retryLyrics: () -> Void = {}
+    var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -397,7 +398,8 @@ struct IslandContentView: View {
                                 togglePlay: toggleNowPlaying,
                                 previousTrack: previousTrack,
                                 nextTrack: nextTrack,
-                                setLyricsOffset: setLyricsOffset
+                                setLyricsOffset: setLyricsOffset,
+                                selectLyricsRouting: selectLyricsRouting
                             )
                             .transition(.opacity)
                         }
