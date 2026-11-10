@@ -21,8 +21,6 @@ struct IslandFullscreenLyricsView: View {
     var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var scrubbedFraction: Double?
-    @State private var isHoveringProgress = false
     @State private var isManualBrowsing = false
     @State private var routingSelection = LyricsRoutingController.shared.selection
     @State private var healthSnapshots: [LyricsNodeHealthSnapshot] = []
@@ -315,88 +313,11 @@ struct IslandFullscreenLyricsView: View {
     // MARK: - Playback
 
     private var progressBlock: some View {
-        Group {
-            if validDuration {
-                VStack(alignment: .leading, spacing: 7) {
-                    progressBar
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(timeLabel(displayedPosition))
-                            .foregroundStyle(.white.opacity(0.58))
-                        Spacer(minLength: 8)
-                        Text(remainingLabel)
-                            .foregroundStyle(.white.opacity(0.38))
-                    }
-                    .font(.system(size: 11.5, weight: .medium).monospacedDigit())
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(String(localized: "Playback position"))
-                    .accessibilityValue(playbackAccessibilityValue())
-                }
-            } else if model.nowPlaying.hasTrack {
-                Text(timeLabel(displayedPosition))
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.48))
-                    .accessibilityLabel(String(localized: "Playback position"))
-                    .accessibilityValue(timeLabel(displayedPosition))
-            }
-        }
-    }
-
-    private var progressBar: some View {
-        GeometryReader { proxy in
-            let width = max(proxy.size.width, 1)
-            let actual = LyricsPlaybackClock.progress(
-                position: model.lyricsPositionSeconds,
-                duration: model.nowPlaying.durationSeconds
-            ) ?? 0
-            let fraction = min(max(scrubbedFraction ?? actual, 0), 1)
-            let canSeek = model.nowPlaying.seekSupported && validDuration
-            let isExpandedTrack = canSeek && (isHoveringProgress || scrubbedFraction != nil)
-            let trackHeight: CGFloat = isExpandedTrack ? 7 : 4
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(isExpandedTrack ? 0.24 : 0.17))
-                    .frame(height: trackHeight)
-
-                Capsule()
-                    .fill(Color.white.opacity(isExpandedTrack ? 1.0 : (canSeek ? 0.90 : 0.72)))
-                    .frame(width: max(0, width * fraction), height: trackHeight)
-                    .shadow(
-                        color: .white.opacity(isExpandedTrack ? 0.30 : 0),
-                        radius: isExpandedTrack ? 6 : 0
-                    )
-            }
-            .frame(height: 18)
-            .contentShape(Rectangle())
-            .onHover { isHoveringProgress = $0 }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        guard canSeek else { return }
-                        scrubbedFraction = min(max(value.location.x / width, 0), 1)
-                    }
-                    .onEnded { value in
-                        guard canSeek, let fraction = scrubbedFraction else { return }
-                        seek(fraction * model.nowPlaying.durationSeconds)
-                        scrubbedFraction = nil
-                        _ = value
-                    }
-            )
-            .animation(
-                shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
-                value: isExpandedTrack
-            )
-            .animation(.easeOut(duration: 0.16), value: scrubbedFraction == nil)
-            .accessibilityElement()
-            .accessibilityLabel(String(localized: "Playback progress"))
-            .accessibilityValue(playbackAccessibilityValue())
-            .accessibilityAdjustableAction { direction in
-                guard canSeek else { return }
-                let delta = direction == .increment ? 5.0 : -5.0
-                seek(min(max(model.lyricsPositionSeconds + delta, 0), model.nowPlaying.durationSeconds))
-            }
-        }
-        .frame(height: 18)
+        LyricsProgressSection(
+            model: model,
+            shouldReduceMotion: shouldReduceMotion,
+            seek: seek
+        )
     }
 
     private func transportRow(scale: CGFloat) -> some View {
@@ -928,47 +849,16 @@ struct IslandFullscreenLyricsView: View {
     private func synchronizedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
         let lyricsOffsetSeconds = model.prefs.lyricsOffsetSeconds
         let seekSupported = model.nowPlaying.seekSupported
-        let displayPos = model.lyricsDisplayPositionSeconds
-        let interlude = LyricsPlaybackClock.isInterlude(
-            in: document.lines,
-            activeIndex: model.activeLyricsLineIndex,
-            at: displayPos
-        )
-        let introWait = LyricsPlaybackClock.isIntroWait(
-            in: document.lines,
-            at: displayPos
-        )
-        let interludeProgress = LyricsPlaybackClock.interludeProgress(
-            in: document.lines,
-            activeIndex: model.activeLyricsLineIndex,
-            at: displayPos
-        )
-        let isTranslationRevealing: Bool = {
-            guard let activeIndex = model.activeLyricsLineIndex,
-                  document.lines.indices.contains(activeIndex),
-                  let translation = document.lines[activeIndex].translation,
-                  translation.isEmpty == false,
-                  let start = document.lines[activeIndex].startSeconds
-            else { return false }
-            let elapsed = displayPos - start
-            return elapsed >= 0 && elapsed < (IslandMotion.lyricsTranslationDelaySeconds + IslandMotion.lyricsTranslationFadeSeconds + 0.08)
-        }()
-        let needsLivePosition = (
-            document.synchronization == .wordSynced
-            || document.synchronization == .syllableSynced
-            || interlude
-            || introWait
-            || isTranslationRevealing
-        ) && isManualBrowsing == false
 
         return LyricsDepthStage(
             document: document,
             activeIndex: model.activeLyricsLineIndex,
-            position: needsLivePosition ? displayPos : 0,
             isPlaying: model.nowPlaying.isPlaying,
-            interlude: interlude,
-            introWait: introWait,
-            interludeProgress: interludeProgress,
+            clockAnchor: model.nowPlaying.playbackClockAnchor,
+            playbackRate: model.nowPlaying.playbackRate,
+            durationSeconds: model.nowPlaying.durationSeconds,
+            interlude: model.isLyricsInterlude,
+            introWait: model.isLyricsIntroWait,
             metrics: metrics,
             reduceMotion: shouldReduceMotion,
             blurLyrics: model.prefs.lyricsBlurEnabled,
@@ -1227,19 +1117,6 @@ struct IslandFullscreenLyricsView: View {
         return album.isEmpty ? nil : album
     }
 
-    private var displayedPosition: TimeInterval {
-        if let fraction = scrubbedFraction, validDuration {
-            return fraction * model.nowPlaying.durationSeconds
-        }
-        return model.lyricsPositionSeconds
-    }
-
-    private var remainingLabel: String {
-        guard validDuration else { return "" }
-        let remaining = max(model.nowPlaying.durationSeconds - displayedPosition, 0)
-        return "-\(timeLabel(remaining))"
-    }
-
     private var canControlPlayback: Bool {
         model.nowPlaying.hasTrack && model.nowPlaying.availability == .listening
     }
@@ -1335,6 +1212,131 @@ struct IslandFullscreenLyricsView: View {
             return String(localized: "Plain lyrics without timing")
         }
     }
+}
+
+/// Isolated playback progress view so position updates only invalidate the progress bar
+/// and time labels, never the full-screen lyrics stage.
+private struct LyricsProgressSection: View {
+    @Bindable var model: IslandModel
+    var shouldReduceMotion: Bool
+    var seek: (Double) -> Void
+
+    @State private var scrubbedFraction: Double?
+    @State private var isHoveringProgress = false
+
+    private var validDuration: Bool {
+        model.nowPlaying.durationSeconds.isFinite && model.nowPlaying.durationSeconds > 0
+    }
+
+    private var displayedPosition: TimeInterval {
+        if let fraction = scrubbedFraction, validDuration {
+            return fraction * model.nowPlaying.durationSeconds
+        }
+        return model.lyricsPositionSeconds
+    }
+
+    private var remainingLabel: String {
+        guard validDuration else { return "" }
+        let remaining = max(model.nowPlaying.durationSeconds - displayedPosition, 0)
+        return "-\(timeLabel(remaining))"
+    }
+
+    var body: some View {
+        Group {
+            if validDuration {
+                VStack(alignment: .leading, spacing: 7) {
+                    progressBar
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(timeLabel(displayedPosition))
+                            .foregroundStyle(.white.opacity(0.58))
+                        Spacer(minLength: 8)
+                        Text(remainingLabel)
+                            .foregroundStyle(.white.opacity(0.38))
+                    }
+                    .font(.system(size: 11.5, weight: .medium).monospacedDigit())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(String(localized: "Playback position"))
+                    .accessibilityValue(playbackAccessibilityValue())
+                }
+            } else if model.nowPlaying.hasTrack {
+                Text(timeLabel(displayedPosition))
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.48))
+                    .accessibilityLabel(String(localized: "Playback position"))
+                    .accessibilityValue(timeLabel(displayedPosition))
+            }
+        }
+    }
+
+    private var progressBar: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let canSeek = model.nowPlaying.seekSupported && validDuration
+            let isExpandedTrack = canSeek && (isHoveringProgress || scrubbedFraction != nil)
+            let trackHeight: CGFloat = isExpandedTrack ? 7 : 4
+
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: model.nowPlaying.isPlaying == false || scrubbedFraction != nil)) { _ in
+                let livePos = model.nowPlaying.isPlaying
+                    ? LyricsPlaybackClock.position(
+                        anchor: model.nowPlaying.playbackClockAnchor,
+                        isPlaying: model.nowPlaying.isPlaying,
+                        playbackRate: model.nowPlaying.playbackRate,
+                        durationSeconds: model.nowPlaying.durationSeconds,
+                        nowUptime: ProcessInfo.processInfo.systemUptime
+                    )
+                    : model.lyricsPositionSeconds
+                let actual = LyricsPlaybackClock.progress(
+                    position: livePos,
+                    duration: model.nowPlaying.durationSeconds
+                ) ?? 0
+                let fraction = min(max(scrubbedFraction ?? actual, 0), 1)
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(isExpandedTrack ? 0.24 : 0.17))
+                        .frame(height: trackHeight)
+
+                    Capsule()
+                        .fill(Color.white.opacity(isExpandedTrack ? 1.0 : (canSeek ? 0.90 : 0.72)))
+                        .frame(width: max(0, width * fraction), height: trackHeight)
+                        .shadow(
+                            color: .white.opacity(isExpandedTrack ? 0.30 : 0),
+                            radius: isExpandedTrack ? 6 : 0
+                        )
+                }
+                .frame(height: 18)
+            }
+            .contentShape(Rectangle())
+            .onHover { isHoveringProgress = $0 }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard canSeek else { return }
+                        scrubbedFraction = min(max(value.location.x / width, 0), 1)
+                    }
+                    .onEnded { value in
+                        guard canSeek, let fraction = scrubbedFraction else { return }
+                        seek(fraction * model.nowPlaying.durationSeconds)
+                        scrubbedFraction = nil
+                        _ = value
+                    }
+            )
+            .animation(
+                shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
+                value: isExpandedTrack
+            )
+            .animation(.easeOut(duration: 0.16), value: scrubbedFraction == nil)
+            .accessibilityElement()
+            .accessibilityLabel(String(localized: "Playback progress"))
+            .accessibilityValue(playbackAccessibilityValue())
+            .accessibilityAdjustableAction { direction in
+                guard canSeek else { return }
+                let delta = direction == .increment ? 5.0 : -5.0
+                seek(min(max(model.lyricsPositionSeconds + delta, 0), model.nowPlaying.durationSeconds))
+            }
+        }
+        .frame(height: 18)
+    }
 
     private func playbackAccessibilityValue() -> String {
         guard validDuration else { return timeLabel(displayedPosition) }
@@ -1370,11 +1372,12 @@ private struct LyricsPlayerGeometryPreferenceKey: PreferenceKey {
 private struct LyricsDepthStage: View, Equatable {
     var document: LyricsDocument
     var activeIndex: Int?
-    var position: TimeInterval
     var isPlaying: Bool
+    var clockAnchor: PlaybackClockAnchor
+    var playbackRate: Double
+    var durationSeconds: Double
     var interlude: Bool
     var introWait: Bool = false
-    var interludeProgress: Double? = nil
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
     var blurLyrics: Bool
@@ -1392,6 +1395,7 @@ private struct LyricsDepthStage: View, Equatable {
     @State private var isManualScrolling = false
     @State private var hasUserScrolled = false
     @State private var autoResumeTask: Task<Void, Never>?
+    @State private var lastResumeScheduleUptime: TimeInterval = 0
 
     private var focusIndex: Int {
         min(max(activeIndex ?? 0, 0), max(document.lines.count - 1, 0))
@@ -1409,16 +1413,19 @@ private struct LyricsDepthStage: View, Equatable {
             let isReady = rowHeights[focus] != nil
             // Apple Music keeps the lyric measure comfortably narrower than the whole
             // right column, so long lines never turn into full-window banners.
-            // Leave 7% of the column as breathing room for the active line's
-            // 1.06 visual scale; scaling never changes layout, so it must not clip.
-            let contentWidth = min(proxy.size.width * 0.93, metrics.isCompact ? 760 : 820)
+            // Reserve horizontal inset inside the ScrollView so the large rounded hover
+            // selection pill and 1.06 visual scale never clip against the scroll view edge.
+            let pillHInset: CGFloat = metrics.isCompact ? 24 : 32
+            let pillVInset: CGFloat = metrics.isCompact ? 16 : 22
+            let contentWidth = min(max(180, proxy.size.width * 0.86 - pillHInset), metrics.isCompact ? 720 : 780)
+            let effectiveRowGap = max(2, metrics.rowGap - pillVInset * 1.35)
 
             ScrollViewReader { reader in
                 ZStack(alignment: .bottomTrailing) {
                     ScrollView(.vertical) {
-                        VStack(spacing: metrics.rowGap) {
+                        VStack(spacing: effectiveRowGap) {
                             Color.clear
-                                .frame(height: focusTop)
+                                .frame(height: max(0, focusTop - pillVInset))
                                 .accessibilityHidden(true)
 
                             ForEach(0..<count, id: \.self) { index in
@@ -1436,9 +1443,11 @@ private struct LyricsDepthStage: View, Equatable {
                                         focus: focus,
                                         isInterlude: interlude && index == focus,
                                         manualMode: isManualScrolling,
-                                        isHovered: hoveredLineIndex == index
+                                        isHovered: hoveredLineIndex == index,
+                                        contentWidth: contentWidth,
+                                        pillHInset: pillHInset,
+                                        pillVInset: pillVInset
                                     )
-                                    .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(canSeekLine == false)
@@ -1449,7 +1458,6 @@ private struct LyricsDepthStage: View, Equatable {
                                         hoveredLineIndex = nil
                                     }
                                 }
-                                .frame(width: contentWidth, alignment: .leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .id(index)
                                 .onGeometryChange(for: CGFloat.self) { geometry in
@@ -1507,17 +1515,12 @@ private struct LyricsDepthStage: View, Equatable {
                         )
                     }
                     .onScrollPhaseChange { _, phase in
-                        guard phase == .tracking || phase == .interacting || phase == .decelerating else {
-                            return
+                        if phase == .tracking || phase == .interacting || phase == .decelerating {
+                            beginManualBrowsing()
+                            scheduleAutoResume(force: true)
+                        } else if phase == .idle, isManualScrolling {
+                            scheduleAutoResume(force: true)
                         }
-                        beginManualBrowsing()
-                        scheduleAutoResume()
-                    }
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        geometry.contentOffset.y
-                    } action: { _, _ in
-                        guard hasUserScrolled, isManualScrolling else { return }
-                        scheduleAutoResume()
                     }
 
                     if isManualScrolling {
@@ -1530,6 +1533,7 @@ private struct LyricsDepthStage: View, Equatable {
                 .overlay {
                     LyricsScrollMonitor {
                         beginManualBrowsing()
+                        scheduleAutoResume(force: false)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .allowsHitTesting(false)
@@ -1542,6 +1546,7 @@ private struct LyricsDepthStage: View, Equatable {
             if ProcessInfo.processInfo.environment["AUDUNE_LYRICS_MANUAL_PREVIEW"] == "1",
                isManualScrolling == false {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    hoveredLineIndex = focusIndex
                     beginManualBrowsing()
                 }
             }
@@ -1573,21 +1578,21 @@ private struct LyricsDepthStage: View, Equatable {
     }
 
     static func == (lhs: LyricsDepthStage, rhs: LyricsDepthStage) -> Bool {
-        guard lhs.document == rhs.document,
-              lhs.activeIndex == rhs.activeIndex,
-              lhs.isPlaying == rhs.isPlaying,
-              lhs.interlude == rhs.interlude,
-              lhs.introWait == rhs.introWait,
-              lhs.interludeProgress == rhs.interludeProgress,
-              lhs.metrics == rhs.metrics,
-              lhs.reduceMotion == rhs.reduceMotion,
-              lhs.blurLyrics == rhs.blurLyrics,
-              lhs.showsTranslation == rhs.showsTranslation,
-              lhs.showsPronunciation == rhs.showsPronunciation,
-              lhs.isSeekSupported == rhs.isSeekSupported,
-              lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
-        else { return false }
-        return lhs.position == rhs.position
+        lhs.document == rhs.document
+            && lhs.activeIndex == rhs.activeIndex
+            && lhs.isPlaying == rhs.isPlaying
+            && lhs.clockAnchor == rhs.clockAnchor
+            && lhs.playbackRate == rhs.playbackRate
+            && lhs.durationSeconds == rhs.durationSeconds
+            && lhs.interlude == rhs.interlude
+            && lhs.introWait == rhs.introWait
+            && lhs.metrics == rhs.metrics
+            && lhs.reduceMotion == rhs.reduceMotion
+            && lhs.blurLyrics == rhs.blurLyrics
+            && lhs.showsTranslation == rhs.showsTranslation
+            && lhs.showsPronunciation == rhs.showsPronunciation
+            && lhs.isSeekSupported == rhs.isSeekSupported
+            && lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
     }
 
     private func scrollToFocus(
@@ -1641,7 +1646,12 @@ private struct LyricsDepthStage: View, Equatable {
         }
     }
 
-    private func scheduleAutoResume() {
+    private func scheduleAutoResume(force: Bool = false) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if force == false, now - lastResumeScheduleUptime < 0.25, autoResumeTask != nil {
+            return
+        }
+        lastResumeScheduleUptime = now
         autoResumeTask?.cancel()
         autoResumeTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(3500))
@@ -1693,7 +1703,10 @@ private struct LyricsDepthStage: View, Equatable {
         focus: Int,
         isInterlude: Bool,
         manualMode: Bool,
-        isHovered: Bool = false
+        isHovered: Bool = false,
+        contentWidth: CGFloat,
+        pillHInset: CGFloat,
+        pillVInset: CGFloat
     ) -> some View {
         let distance = abs(index - focus)
         let isFocus = distance == 0 && hasActiveLine
@@ -1729,7 +1742,9 @@ private struct LyricsDepthStage: View, Equatable {
         // The reference animation uses a light 1.5–2 pt blur rather than a heavy
         // frosted layer, so the next lines stay readable but recede. Hovering a line
         // sharpens it immediately like Apple Music so the user can read and click it.
-        let blurRadius: CGFloat = (manualMode || isHovered || reduceMotion || blurLyrics == false || isFocus)
+        // Rows with baseOpacity == 0 (visualDistance > 4) are completely invisible, so
+        // skip allocating an offscreen Gaussian blur pass for them.
+        let blurRadius: CGFloat = (manualMode || isHovered || reduceMotion || blurLyrics == false || isFocus || visualDistance > 4)
             ? 0
             : min(1.5 + CGFloat(visualDistance) * 0.45 + (isPast ? 0.3 : 0), 3.2)
         // Scale is a render transform, not layout. Every row keeps the same font
@@ -1737,28 +1752,19 @@ private struct LyricsDepthStage: View, Equatable {
         // leading edge, exactly like the reference's transform-origin: left center.
         let rowScale: CGFloat = manualMode ? 1 : (reduceMotion ? 1 : (isFocus ? 1.06 : 0.96))
         let rowFontSize = metrics.activeFontSize
-        let clockTranslationReveal: Double = {
-            guard isFocus, position > 0, let start = line.startSeconds else {
-                return focusTranslationReveal
-            }
-            return LyricsPresentationTiming.translationOpacity(
-                lineStartSeconds: start,
-                positionSeconds: position
-            )
-        }()
-        let translationReveal = manualMode ? 1 : (isFocus ? clockTranslationReveal : 1)
+        let translationReveal = manualMode ? 1 : (isFocus ? focusTranslationReveal : 1)
         let lineGap = max(5, metrics.activeFontSize * 0.15)
         let activeGlow = (manualMode == false && isFocus && isWaiting == false) ? 0.18 : 0.0
         let translationOpacity: Double = manualMode
             ? (isFocus ? 0.82 : LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false))
             : (isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal
-        let staggerDelay = manualMode
+        let staggerDelay = (manualMode || visualDistance > 5)
             ? 0
             : LyricsPresentationTiming.staggeredRowDelay(
                 distance: visualDistance,
                 reduceMotion: reduceMotion
             )
-        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isFocus)
+        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isFocus || visualDistance > 5)
             ? 0
             : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
         let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
@@ -1767,13 +1773,23 @@ private struct LyricsDepthStage: View, Equatable {
         let frameAlignment: Alignment = alignTrailing ? .trailing : .leading
         let textAlignment: TextAlignment = alignTrailing ? .trailing : .leading
         let scaleAnchor: UnitPoint = alignTrailing ? .trailing : .leading
+        let followsWordClock = isFocus && manualMode == false
+
+        let pillCornerRadius: CGFloat = metrics.isCompact ? 26 : 34
+        let pillShape = RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
 
         return VStack(alignment: hAlignment, spacing: lineGap) {
             if showsIntroDots {
                 LyricInterludeDots(
                     fontSize: rowFontSize,
                     animated: isPlaying && reduceMotion == false && manualMode == false,
-                    countdownProgress: interludeProgress
+                    lines: document.lines,
+                    activeIndex: nil,
+                    clockAnchor: clockAnchor,
+                    isPlaying: isPlaying,
+                    playbackRate: playbackRate,
+                    durationSeconds: durationSeconds,
+                    lyricsOffsetSeconds: lyricsOffsetSeconds
                 )
                 .padding(.bottom, max(4, lineGap * 0.35))
                 .transition(
@@ -1800,11 +1816,15 @@ private struct LyricsDepthStage: View, Equatable {
                 LyricsTimedWordLine(
                     words: words,
                     lineText: line.text,
-                    position: position,
+                    clockAnchor: clockAnchor,
+                    isPlaying: isPlaying,
+                    playbackRate: playbackRate,
+                    durationSeconds: durationSeconds,
+                    lyricsOffsetSeconds: lyricsOffsetSeconds,
                     fontSize: rowFontSize,
                     weight: .bold,
                     opacity: opacity,
-                    followsPlayback: isFocus && manualMode == false,
+                    followsPlayback: followsWordClock,
                     reduceMotion: reduceMotion,
                     alignment: hAlignment,
                     accessibilityLabel: accessibilityLabel(for: line)
@@ -1826,11 +1846,15 @@ private struct LyricsDepthStage: View, Equatable {
                     LyricsTimedWordLine(
                         words: bgWords,
                         lineText: formattedBg,
-                        position: position,
+                        clockAnchor: clockAnchor,
+                        isPlaying: isPlaying,
+                        playbackRate: playbackRate,
+                        durationSeconds: durationSeconds,
+                        lyricsOffsetSeconds: lyricsOffsetSeconds,
                         fontSize: bgFontSize,
                         weight: .semibold,
                         opacity: opacity * 0.72,
-                        followsPlayback: isFocus && manualMode == false,
+                        followsPlayback: followsWordClock,
                         reduceMotion: reduceMotion,
                         alignment: hAlignment,
                         accessibilityLabel: formattedBg
@@ -1864,7 +1888,13 @@ private struct LyricsDepthStage: View, Equatable {
                 LyricInterludeDots(
                     fontSize: rowFontSize,
                     animated: isPlaying && reduceMotion == false && manualMode == false,
-                    countdownProgress: interludeProgress
+                    lines: document.lines,
+                    activeIndex: index,
+                    clockAnchor: clockAnchor,
+                    isPlaying: isPlaying,
+                    playbackRate: playbackRate,
+                    durationSeconds: durationSeconds,
+                    lyricsOffsetSeconds: lyricsOffsetSeconds
                 )
                 .padding(.top, max(2, lineGap * 0.2))
                 .transition(
@@ -1874,16 +1904,25 @@ private struct LyricsDepthStage: View, Equatable {
                 )
             }
         }
-        .frame(maxWidth: .infinity, alignment: frameAlignment)
+        .frame(width: contentWidth, alignment: frameAlignment)
+        .padding(.horizontal, pillHInset)
+        .padding(.vertical, pillVInset)
         .background {
             if isHovered {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-                    .padding(.horizontal, -14)
-                    .padding(.vertical, -8)
-                    .transition(.opacity)
+                pillShape
+                    .fill(Color.white.opacity(manualMode ? 0.16 : 0.12))
+                    .overlay(
+                        pillShape
+                            .strokeBorder(Color.white.opacity(manualMode ? 0.24 : 0.16), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.24), radius: 16, y: 4)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .contentShape(pillShape)
+        .scaleEffect(isHovered && reduceMotion == false ? 1.015 : 1.0, anchor: scaleAnchor)
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
         .animation(
@@ -1901,7 +1940,7 @@ private struct LyricsDepthStage: View, Equatable {
             value: cascadeOffset
         )
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: isHovered)
+        .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.82), value: isHovered)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: isWaiting)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: showsIntroDots)
         .accessibilityElement(children: .ignore)
@@ -1957,7 +1996,13 @@ private struct LyricsDepthStage: View, Equatable {
 private struct LyricInterludeDots: View {
     var fontSize: CGFloat
     var animated: Bool
-    var countdownProgress: Double? = nil
+    var lines: [LyricsLine] = []
+    var activeIndex: Int? = nil
+    var clockAnchor: PlaybackClockAnchor = .zero
+    var isPlaying: Bool = false
+    var playbackRate: Double = 1
+    var durationSeconds: Double = 0
+    var lyricsOffsetSeconds: Double = 0
 
     private var dotSize: CGFloat {
         min(max(fontSize * 0.20, 6), 12)
@@ -1967,8 +2012,8 @@ private struct LyricInterludeDots: View {
 
     /// Swells slightly during the final 18% of the wait window so the dots visibly gather
     /// energy right before the singer enters, matching Apple Music's interlude cue.
-    private var anticipationScale: CGFloat {
-        guard animated, let progress = countdownProgress, progress > 0.82 else { return 1.0 }
+    private static func anticipationScale(progress: Double?) -> CGFloat {
+        guard let progress, progress > 0.82 else { return 1.0 }
         let normalized = min(max((progress - 0.82) / 0.18, 0), 1)
         return 1.0 + 0.14 * CGFloat(sin(normalized * .pi))
     }
@@ -1977,8 +2022,23 @@ private struct LyricInterludeDots: View {
 
     var body: some View {
         if animated {
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+            TimelineView(.animation) { timeline in
                 let elapsed = timeline.date.timeIntervalSince(start)
+                let livePos = LyricsPlaybackClock.presentationPosition(
+                    LyricsPlaybackClock.position(
+                        anchor: clockAnchor,
+                        isPlaying: isPlaying,
+                        playbackRate: playbackRate,
+                        durationSeconds: durationSeconds,
+                        nowUptime: ProcessInfo.processInfo.systemUptime
+                    ),
+                    offsetSeconds: lyricsOffsetSeconds
+                )
+                let countdown = LyricsPlaybackClock.interludeProgress(
+                    in: lines,
+                    activeIndex: activeIndex,
+                    at: livePos
+                )
                 HStack(spacing: spacing) {
                     ForEach(0..<3, id: \.self) { index in
                         let phase = Self.phase(elapsed: elapsed, index: index)
@@ -1990,7 +2050,7 @@ private struct LyricInterludeDots: View {
                             .shadow(color: .white.opacity(0.28 * phase), radius: dotSize * 0.6)
                     }
                 }
-                .scaleEffect(anticipationScale, anchor: .leading)
+                .scaleEffect(Self.anticipationScale(progress: countdown), anchor: .leading)
             }
             .frame(height: dotSize * 1.9)
             .accessibilityHidden(true)
@@ -2323,7 +2383,11 @@ private struct LyricsOffsetButton: View {
 private struct LyricsTimedWordLine: View {
     var words: [LyricsWord]
     var lineText: String
-    var position: TimeInterval
+    var clockAnchor: PlaybackClockAnchor
+    var isPlaying: Bool
+    var playbackRate: Double
+    var durationSeconds: Double
+    var lyricsOffsetSeconds: Double
     var fontSize: CGFloat
     var weight: Font.Weight
     var opacity: Double
@@ -2358,25 +2422,37 @@ private struct LyricsTimedWordLine: View {
     }
 
     var body: some View {
-        LyricsTokenFlowLayout(
-            lineSpacing: max(4, fontSize * 0.14),
-            alignment: alignment
-        ) {
-            ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    ForEach(run, id: \.self) { index in
-                        LyricsWordFill(
-                            text: tokens[index],
-                            progress: progress(for: words[index]),
-                            durationSeconds: words[index].durationSeconds,
-                            font: .system(size: fontSize, weight: weight),
-                            opacity: opacity,
-                            glow: followsPlayback,
-                            reduceMotion: reduceMotion
-                        )
-                    }
+        let tokenStrings = tokens
+        let groupedRuns = runs
+        Group {
+            if followsPlayback {
+                // Only the single active line runs a display-rate (60/120 Hz ProMotion)
+                // TimelineView; all inactive lines stay completely static off the animation loop.
+                TimelineView(.animation(minimumInterval: nil, paused: isPlaying == false)) { _ in
+                    let livePosition = LyricsPlaybackClock.presentationPosition(
+                        LyricsPlaybackClock.position(
+                            anchor: clockAnchor,
+                            isPlaying: isPlaying,
+                            playbackRate: playbackRate,
+                            durationSeconds: durationSeconds,
+                            nowUptime: ProcessInfo.processInfo.systemUptime
+                        ),
+                        offsetSeconds: lyricsOffsetSeconds
+                    )
+                    wordFlowContent(
+                        tokenStrings: tokenStrings,
+                        groupedRuns: groupedRuns,
+                        position: livePosition,
+                        active: true
+                    )
                 }
-                .fixedSize()
+            } else {
+                wordFlowContent(
+                    tokenStrings: tokenStrings,
+                    groupedRuns: groupedRuns,
+                    position: 0,
+                    active: false
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: alignment == .trailing ? .trailing : .leading)
@@ -2384,9 +2460,33 @@ private struct LyricsTimedWordLine: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func progress(for word: LyricsWord) -> Double {
-        guard followsPlayback else { return 1 }
-        return LyricsPlaybackClock.wordProgress(for: word, at: position)
+    private func wordFlowContent(
+        tokenStrings: [String],
+        groupedRuns: [[Int]],
+        position: TimeInterval,
+        active: Bool
+    ) -> some View {
+        LyricsTokenFlowLayout(
+            lineSpacing: max(4, fontSize * 0.14),
+            alignment: alignment
+        ) {
+            ForEach(Array(groupedRuns.enumerated()), id: \.offset) { _, run in
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    ForEach(run, id: \.self) { index in
+                        LyricsWordFill(
+                            text: tokenStrings[index],
+                            progress: active ? LyricsPlaybackClock.wordProgress(for: words[index], at: position) : 1,
+                            durationSeconds: words[index].durationSeconds,
+                            font: .system(size: fontSize, weight: weight),
+                            opacity: opacity,
+                            glow: active,
+                            reduceMotion: reduceMotion
+                        )
+                    }
+                }
+                .fixedSize()
+            }
+        }
     }
 
     /// Greedily aligns each timed token with the original line so the gaps between them

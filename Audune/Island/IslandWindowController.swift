@@ -617,11 +617,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     func refreshNowPlayingSnapshot() {
-        model.nowPlaying = wantsNowPlayingListening || lyricsRuntimeDemand != nil
+        let target = wantsNowPlayingListening || lyricsRuntimeDemand != nil
             ? nowPlaying.snapshot
             : .idle
+        if model.nowPlaying != target {
+            model.nowPlaying = target
+        }
         if model.isFullScreen, model.fullScreenScene == .lyrics {
-            updateLyricsPresentation()
+            updateLyricsPresentation(forceSyncPosition: true)
         }
     }
 
@@ -668,24 +671,29 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         refreshLyricsForCurrentTrack()
     }
 
-    private func updateLyricsPresentation() {
+    private func updateLyricsPresentation(forceSyncPosition: Bool = true) {
         let snapshot = nowPlaying.snapshot
         guard snapshot.availability != .unavailable else {
             currentLyricsTrackKey = nil
             lyricsManager?.deactivate()
-            model.lyricsState = .nowPlayingUnavailable
+            if model.lyricsState != .nowPlayingUnavailable {
+                model.lyricsState = .nowPlayingUnavailable
+            }
             setActiveLyricsLineIndex(nil)
-            model.lyricsPositionSeconds = 0
-            model.lyricsDisplayPositionSeconds = 0
+            if model.lyricsPositionSeconds != 0 { model.lyricsPositionSeconds = 0 }
+            if model.lyricsDisplayPositionSeconds != 0 { model.lyricsDisplayPositionSeconds = 0 }
             return
         }
         guard let trackKey = lyricsTrackKey(from: snapshot) else {
             currentLyricsTrackKey = nil
             lyricsManager?.deactivate()
-            model.lyricsState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
+            let fallbackState: LyricsPresentationState = snapshot.hasTrack ? .metadataUnavailable : .noTrack
+            if model.lyricsState != fallbackState {
+                model.lyricsState = fallbackState
+            }
             setActiveLyricsLineIndex(nil)
-            model.lyricsPositionSeconds = 0
-            model.lyricsDisplayPositionSeconds = 0
+            if model.lyricsPositionSeconds != 0 { model.lyricsPositionSeconds = 0 }
+            if model.lyricsDisplayPositionSeconds != 0 { model.lyricsDisplayPositionSeconds = 0 }
             return
         }
 
@@ -693,9 +701,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             currentLyricsTrackKey = trackKey
             model.lyricsTrackRevision &+= 1
             setActiveLyricsLineIndex(nil)
+            beginLyricsLookup(for: trackKey)
+            updateLyricsLinePosition(forceSyncPosition: true)
+            return
         }
-        beginLyricsLookup(for: trackKey)
-        updateLyricsLinePosition()
+        if forceSyncPosition {
+            beginLyricsLookup(for: trackKey)
+        }
+        updateLyricsLinePosition(forceSyncPosition: forceSyncPosition)
     }
 
     private func lyricsTrackKey(from snapshot: NowPlayingSnapshot) -> LyricsTrackKey? {
@@ -724,7 +737,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func updateLyricsLinePosition() {
+    private func updateLyricsLinePosition(forceSyncPosition: Bool = true) {
         let snapshot = nowPlaying.snapshot
         let position = LyricsPlaybackClock.position(
             anchor: snapshot.playbackClockAnchor,
@@ -737,20 +750,58 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             position,
             offsetSeconds: model.prefs.lyricsOffsetSeconds
         )
-        model.lyricsPositionSeconds = position
-        model.lyricsDisplayPositionSeconds = displayPosition
         guard let document = model.lyricsState.document else {
             setActiveLyricsLineIndex(nil)
+            if forceSyncPosition || abs(position - model.lyricsPositionSeconds) >= 0.25 || Int(position) != Int(model.lyricsPositionSeconds) {
+                model.lyricsPositionSeconds = position
+                model.lyricsDisplayPositionSeconds = displayPosition
+            }
             return
         }
-        setActiveLyricsLineIndex(LyricsPlaybackClock.activeLineIndex(
+        let nextIndex = LyricsPlaybackClock.activeLineIndex(
             in: document.lines,
             at: displayPosition
-        ))
+        )
+        let nextInterlude = LyricsPlaybackClock.isInterlude(
+            in: document.lines,
+            activeIndex: nextIndex,
+            at: displayPosition
+        )
+        let nextIntroWait = LyricsPlaybackClock.isIntroWait(
+            in: document.lines,
+            at: displayPosition
+        )
+        let lineChanged = nextIndex != model.activeLyricsLineIndex
+        let stateChanged = nextInterlude != model.isLyricsInterlude || nextIntroWait != model.isLyricsIntroWait
+
+        if lineChanged {
+            model.activeLyricsLineIndex = nextIndex
+        }
+        if model.isLyricsInterlude != nextInterlude {
+            model.isLyricsInterlude = nextInterlude
+        }
+        if model.isLyricsIntroWait != nextIntroWait {
+            model.isLyricsIntroWait = nextIntroWait
+        }
+        if forceSyncPosition
+            || lineChanged
+            || stateChanged
+            || Int(position) != Int(model.lyricsPositionSeconds)
+            || abs(position - model.lyricsPositionSeconds) >= 0.25
+        {
+            model.lyricsPositionSeconds = position
+            model.lyricsDisplayPositionSeconds = displayPosition
+        }
     }
 
     private func setActiveLyricsLineIndex(_ index: Int?) {
-        model.activeLyricsLineIndex = index
+        if model.activeLyricsLineIndex != index {
+            model.activeLyricsLineIndex = index
+        }
+        if index == nil {
+            if model.isLyricsInterlude { model.isLyricsInterlude = false }
+            if model.isLyricsIntroWait { model.isLyricsIntroWait = false }
+        }
     }
 
     #if DEBUG
@@ -1229,7 +1280,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     private var desiredTimerInterval: TimeInterval {
-        model.isFullScreen && model.fullScreenScene == .lyrics ? (1.0 / 60.0) : (1.0 / 30.0)
+        1.0 / 30.0
     }
 
     private func startDisplayTimer() {
@@ -1262,12 +1313,23 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         let now = ContinuousClock.now
         let dt = lastTick.map { Double((now - $0).components.seconds) + Double((now - $0).components.attoseconds) / 1e18 } ?? 0
         lastTick = now
-        model.snapshot = spike.snapshots.load()
+        let isShowingFullScreenLyrics = model.isFullScreen && model.fullScreenScene == .lyrics
+
         if model.prefs.nowPlayingEnabled || lyricsRuntimeDemand != nil {
-            model.nowPlaying = nowPlaying.snapshot
+            if model.nowPlaying != nowPlaying.snapshot {
+                model.nowPlaying = nowPlaying.snapshot
+            }
         }
-        if model.isFullScreen, model.fullScreenScene == .lyrics {
-            updateLyricsPresentation()
+        if isShowingFullScreenLyrics {
+            updateLyricsPresentation(forceSyncPosition: false)
+        } else {
+            let latestSnapshot = spike.snapshots.load()
+            if model.snapshot.sequence != latestSnapshot.sequence
+                || model.snapshot.isSilent != latestSnapshot.isSilent
+            {
+                model.snapshot = latestSnapshot
+            }
+            refreshVisuals(dt: dt)
         }
         if allowsOrderFront,
            stateContext.state == .expanded,
@@ -1277,7 +1339,6 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         {
             applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
         }
-        refreshVisuals(dt: dt)
     }
 
     private func refreshVisuals(dt: Double = 0) {

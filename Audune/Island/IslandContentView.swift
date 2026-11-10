@@ -86,6 +86,8 @@ final class IslandModel {
     /// word karaoke, and interlude dots without moving the progress clock.
     var lyricsDisplayPositionSeconds: TimeInterval = 0
     var activeLyricsLineIndex: Int?
+    var isLyricsInterlude = false
+    var isLyricsIntroWait = false
     var lyricsTrackRevision: UInt64 = 0
 
     var isSupported: Bool {
@@ -243,6 +245,7 @@ struct IslandContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFullScreenChromeVisible = true
     @State private var chromeAutoHideTask: Task<Void, Never>?
+    @State private var lastChromeWakeUptime: TimeInterval = 0
 
     var body: some View {
         Group {
@@ -479,9 +482,15 @@ struct IslandContentView: View {
     }
 
     private func wakeFullScreenChrome() {
+        let now = ProcessInfo.processInfo.systemUptime
         if isFullScreenChromeVisible == false {
             isFullScreenChromeVisible = true
+            lastChromeWakeUptime = now
+            scheduleFullScreenChromeAutoHide()
+            return
         }
+        guard now - lastChromeWakeUptime >= 0.45 else { return }
+        lastChromeWakeUptime = now
         scheduleFullScreenChromeAutoHide()
     }
 
