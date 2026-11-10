@@ -211,13 +211,20 @@ nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
     var lines: [LyricsLine]
     /// Missing in documents saved before source tracking existed; those are local imports.
     var source: LyricsSourceInfo? = nil
+    /// Optional richer sync declaration from a trusted parser/provider (e.g. TTML syllable).
+    /// Never raise precision above what `lines` actually contain.
+    var declaredSynchronization: LyricsSynchronization? = nil
 
     var synchronization: LyricsSynchronization {
         guard lines.contains(where: { $0.startSeconds != nil }) else { return .unsynced }
         let hasWords = lines.contains { line in
             line.words?.isEmpty == false
         }
-        return hasWords ? .wordSynced : .lineSynced
+        guard hasWords else { return .lineSynced }
+        if declaredSynchronization == .syllableSynced {
+            return .syllableSynced
+        }
+        return .wordSynced
     }
 
     var isSynchronized: Bool {

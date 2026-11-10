@@ -67,7 +67,7 @@ final class AggregatorLyricsProviderTests: XCTestCase {
         XCTAssertEqual(document.lines.first?.text, "I been tryna call")
         XCTAssertEqual(document.lines.first?.startSeconds, 27.395)
         XCTAssertEqual(document.lines.first?.words?.count, 4)
-        XCTAssertEqual(document.synchronization, .wordSynced)
+        XCTAssertEqual(document.synchronization, .syllableSynced)
         XCTAssertEqual(document.source?.providerID, LyricsProviderID.liriqo.rawValue)
         XCTAssertEqual(document.source?.upstreamProviderID, "Apple Music")
         XCTAssertEqual(document.source?.kind, .online)

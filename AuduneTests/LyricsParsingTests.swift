@@ -144,4 +144,73 @@ final class LyricsParsingTests: XCTestCase {
         XCTAssertTrue(LyricsfileParser.isInstrumental("version: '1.0'\ninstrumental: true\nlines: []"))
         XCTAssertFalse(LyricsfileParser.isInstrumental("version: '1.0'\nlines: []"))
     }
+
+    func testYRCParserReadsStyledWordTimings() throws {
+        let contents = """
+        [54260,3090](54260,900,0)Stop (55160,480,0)and (55640,1710,0)stare
+        [57380,1500](57380,150,0)I (57530,600,0)think
+        """
+        let document = try YRCLyricsParser.parse(contents, trackKey: trackKey)
+        XCTAssertEqual(document.lines.count, 2)
+        XCTAssertEqual(document.lines[0].text, "Stop and stare")
+        XCTAssertEqual(try XCTUnwrap(document.lines[0].startSeconds), 54.26, accuracy: 0.001)
+        XCTAssertEqual(document.lines[0].words?.map(\.text), ["Stop", "and", "stare"])
+        XCTAssertEqual(document.synchronization, .wordSynced)
+    }
+
+    func testYRCParserReadsJSONLines() throws {
+        let contents = #"{"t":1000,"c":[{"tx":"Hello","tr":[0,400]},{"tx":" ","tr":[400,50]},{"tx":"world","tr":[450,500]}]}"#
+        let document = try YRCLyricsParser.parse(contents, trackKey: trackKey)
+        XCTAssertEqual(document.lines.first?.text.replacingOccurrences(of: " ", with: ""), "Helloworld")
+        XCTAssertEqual(document.lines.first?.words?.count, 3)
+    }
+
+    func testQRCParserReadsWordTimings() throws {
+        let contents = "[0,1230](0,240)词(240,180)语(420,300)测试"
+        let document = try QRCLyricsParser.parse(contents, trackKey: trackKey)
+        XCTAssertEqual(document.lines.first?.text, "词语测试")
+        XCTAssertEqual(document.lines.first?.words?.count, 3)
+        XCTAssertEqual(document.synchronization, .wordSynced)
+    }
+
+    func testKRCParserReadsPlaintextAndRejectsEncrypted() throws {
+        let contents = "[1000,2000]<0,500,0>你<500,700,0>好"
+        let document = try KRCLyricsParser.parse(contents, trackKey: trackKey)
+        XCTAssertEqual(document.lines.first?.text, "你好")
+        XCTAssertEqual(document.lines.first?.words?.map(\.text), ["你", "好"])
+
+        XCTAssertThrowsError(try KRCLyricsParser.parse("krc1\u{0000}encrypted", trackKey: trackKey)) {
+            XCTAssertEqual($0 as? AdvancedLyricsParserError, .unsupportedEncryptedKRC)
+        }
+    }
+
+    func testDeclaredSyllableSyncDoesNotInventWordData() {
+        var document = LyricsDocument(
+            id: UUID(),
+            trackKey: trackKey,
+            language: nil,
+            lines: [
+                LyricsLine(id: 0, startSeconds: 1, endSeconds: 2, text: "Hi", translation: nil, words: nil)
+            ],
+            source: nil,
+            declaredSynchronization: .syllableSynced
+        )
+        XCTAssertEqual(document.synchronization, .lineSynced)
+
+        document.lines[0].words = [
+            LyricsWord(id: 0, text: "H", startSeconds: 1, durationSeconds: 0.2),
+            LyricsWord(id: 1, text: "i", startSeconds: 1.2, durationSeconds: 0.3),
+        ]
+        XCTAssertEqual(document.synchronization, .syllableSynced)
+    }
+
+    func testFormatDetectorRoutesTTMLAndYRC() throws {
+        let ttml = #"<tt><body><div><p begin="1.0" end="2.0"><span begin="1.0" end="1.4">A</span> <span begin="1.4" end="2.0">B</span></p></div></body></tt>"#
+        let ttmlDocument = try LyricsFormatDetector.parse(ttml, trackKey: trackKey)
+        XCTAssertEqual(ttmlDocument.lines.first?.words?.count, 2)
+
+        let yrc = "[1000,800](1000,400,0)你(1400,400,0)好"
+        let yrcDocument = try LyricsFormatDetector.parse(yrc, trackKey: trackKey)
+        XCTAssertEqual(yrcDocument.lines.first?.text, "你好")
+    }
 }

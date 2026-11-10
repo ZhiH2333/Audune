@@ -159,12 +159,17 @@ nonisolated struct LiriQoLyricsProvider: OnlineLyricsProviding {
             retrievedAt: Date()
         )
 
-        if let document = TimedLyricsDocumentBuilder.document(
+        if var document = TimedLyricsDocumentBuilder.document(
             trackKey: trackKey,
             lines: timedLines,
             source: source,
             preferSyllable: syncLevel == "syllable" || syncLevel == "character"
         ), document.lines.isEmpty == false {
+            if syncLevel == "syllable" || syncLevel == "character",
+               document.lines.contains(where: { ($0.words?.isEmpty == false) })
+            {
+                document.declaredSynchronization = .syllableSynced
+            }
             return .found(document)
         }
 
