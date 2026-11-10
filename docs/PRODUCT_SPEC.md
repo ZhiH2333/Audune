@@ -153,11 +153,12 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 可在歌词界面右上角计时按钮或 Settings → Notch Island → Lyrics 调整全局歌词偏移（−5…+5 秒，步进 0.1 秒，正值让歌词更晚出现）。偏移只作用于歌词显示、字级填充和间奏点，不改变进度条与时间标签，并持久化到本机偏好。
 - 宽 < 780 pt 或高 < 580 pt 时自动切换为紧凑纵向布局：封面与标题/艺人/专辑/来源同排，进度条与走带控件同排，歌词舞台在下方；短窗口减少可见上下文行数。两种布局共用同一播放状态与歌词时钟，不创建第二套播放器。
 - 本地 LRC 使用安全文件访问读取，解析后保存在本机，并以跨播放器稳定的 Lyrics Track Key（规范化标题 + 艺人，专辑/时长用于消歧）关联；Playback Identity 与 Track Key 不混用。重复导入替换同曲目的本地歌词，可单独删除。
-- 在线来源为 LRCLIB 公开 API（`/api/get`，404 时 `/api/search`），默认开启，可在 Settings → Notch Island → Lyrics 关闭。请求只发送标题、艺人、专辑和时长，使用标准 User-Agent，遵守超时、429 `Retry-After` 与 503 重试边界；解析后仅在会话内缓存，不写入磁盘、不上传、不打包歌词。
-- 同步类型明确区分 Unsynced / Line Synced / Word Synced。仅当来源提供真实逐字时间时才启用逐字填充；普通 LRC 不伪造字级时间。播放时间以 NowPlayingService 为权威，PlaybackClock 只做连续投影。暂停冻结、恢复继续、Seek 重定位、切歌重置；翻译入场同样由播放位置驱动。
+- 在线来源为经审核的 Multi-Source Lyrics Registry（见 `docs/LYRICS_PROVIDER_AUDIT.md` 与 `Audune/Island/LyricsProviders/`）。默认 Auto 池仅包含审计通过且 `enabledByDefault` 的 Provider（当前含 LiriQo、LRC Mux、LRCLIB、lrc.red、Meting）。未审核、许可不明、需 Key 但无 Key、或标记为 Experimental/Candidate/Disabled 的来源不得进入默认自动查询。LRCLIB 仍使用其公开 API（`/api/get`，404 时 `/api/search`）。在线检索默认开启，可在 Settings → Notch Island → Lyrics 关闭。请求只发送各 Provider 能力描述允许的最少字段（通常为标题、艺人、专辑、时长，必要时 ISRC）；从不发送音频、封面、账号标识、播放历史或诊断数据。使用标准 User-Agent，遵守超时、429 `Retry-After` 与有界重试；在线结果默认仅会话内缓存，不写入磁盘、不上传、不打包、不再分发歌词。Aggregator 的上游署名可展示，但不得把上游虚构成可选手动 Node，除非其 API 真正暴露选择能力。
+- 同步类型明确区分 Unsynced / Line Synced / Word Synced / Syllable Synced。仅当来源提供真实对应时间时才启用该级填充；普通 LRC 或纯文本不得伪造字级/音节时间。播放时间以 NowPlayingService 为权威，PlaybackClock 只做连续投影。暂停冻结、恢复继续、Seek 重定位、切歌重置；翻译入场同样由播放位置驱动。
 - 状态包括识别歌曲、检查本地、在线搜索、加载、找到、纯音乐、未找到、离线、Provider 不可用、限流、网络错误、解析失败、导入失败与取消；所有状态都有独立文案和重试/导入入口，不使用统一的「在线不可用」。
 - 进入 Lyrics 只获取临时 Now Playing runtime demand，不改写或锁定 `Show Now Playing when expanded`；退出、Island 折叠/禁用、窗口销毁或服务 shutdown 时释放。Island 的 Experimental Now Playing 产品状态不变，Process Tap 生命周期不受影响。
-- 已知限制：LRCLIB 的歌词记录授权与正式隐私条款仍无法完全核验；仓库 MIT 许可只覆盖服务端代码。Audune 因此不打包、不持久化、不再分发在线歌词，只做会话内展示，并在 `docs/THIRD_PARTY_NOTICES.md` 记录剩余风险。逐字数据是否可用取决于具体曲目。真实播放器、VoiceOver、Reduce Motion 与多显示器行为仍需按 `docs/MANUAL_TESTS.md` 手动验收。
+- Fullscreen Lyrics 左下角提供紧凑来源选择器：Auto · Fastest Reliable、Auto · Best Match，以及已启用 Provider/Node 的手动选择；手动选择持久化，失败时不得静默改源。当前展示的署名必须反映实际返回来源（含 Aggregator 上游，若 API 提供）。
+- 已知限制：各在线歌词服务的记录授权与正式隐私条款往往无法完全核验；开源服务端许可不覆盖上游歌词内容。Audune 因此不打包、不持久化、不再分发在线歌词，只做会话内展示，并在 `docs/THIRD_PARTY_NOTICES.md` 与审计表记录剩余风险。逐字/音节数据是否可用取决于具体曲目与来源。真实播放器、VoiceOver、Reduce Motion 与多显示器行为仍需按 `docs/MANUAL_TESTS.md` 手动验收。
 
 ### v0.4+ — 其他播放器 / 视觉扩展
 

@@ -21,17 +21,67 @@ nonisolated enum LyricsQueryField: String, CaseIterable, Equatable, Sendable {
     case artist
     case album
     case duration
+    case isrc
 }
 
 nonisolated struct LyricsProviderDescriptor: Equatable, Sendable {
+    /// Stable provider id. Legacy `.lrclib` remains for existing call sites and tests.
     nonisolated enum Kind: String, Equatable, Sendable {
         case lrclib
+        case liriqo
+        case lrcmux
+        case betterlyrics
+        case lrcred
+        case lyricsovh
+        case meting
+        case netease
+        case qqmusic
+        case kugou
+        case lrcshare
+        case lrcapi
+        case vvhan
+        case router
     }
 
     var kind: Kind
     var displayName: String
     var websiteURL: URL
     var queryFields: [LyricsQueryField]
+
+    var providerID: String {
+        switch kind {
+        case .router: return "router"
+        default: return kind.rawValue
+        }
+    }
+
+    init(
+        kind: Kind,
+        displayName: String,
+        websiteURL: URL,
+        queryFields: [LyricsQueryField]
+    ) {
+        self.kind = kind
+        self.displayName = displayName
+        self.websiteURL = websiteURL
+        self.queryFields = queryFields
+    }
+
+    init(capability: LyricsProviderCapability) {
+        let kind = Kind(rawValue: capability.id) ?? .lrclib
+        self.kind = kind
+        self.displayName = capability.displayName
+        self.websiteURL = capability.documentationURL
+            ?? capability.attributionURL
+            ?? capability.termsURL
+            ?? URL(string: "https://example.invalid")!
+        var fields: [LyricsQueryField] = []
+        if capability.supportsSearchByTitle { fields.append(contentsOf: [.title, .artist]) }
+        if capability.supportsAlbum { fields.append(.album) }
+        if capability.supportsDuration { fields.append(.duration) }
+        if capability.supportsISRC { fields.append(.isrc) }
+        self.queryFields = fields
+    }
 }
 
 /// Every failure is distinct so the UI can explain what actually happened.

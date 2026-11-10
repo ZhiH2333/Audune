@@ -659,7 +659,8 @@ struct IslandFullscreenLyricsView: View {
             // Word timing is the only thing that needs a per-frame position. Line-synced
             // documents stay visually stable between line changes, which also keeps the
             // blurred stage off the 30 Hz redraw path.
-            position: document.synchronization == .wordSynced && isManualBrowsing == false
+            position: (document.synchronization == .wordSynced || document.synchronization == .syllableSynced)
+                && isManualBrowsing == false
                 ? model.lyricsDisplayPositionSeconds
                 : 0,
             isPlaying: model.nowPlaying.isPlaying,
@@ -968,14 +969,25 @@ struct IslandFullscreenLyricsView: View {
         case .localImport:
             return String(localized: "Imported LRC")
         case .lrclib:
-            return String(localized: "LRCLIB")
+            return document.source?.providerName ?? String(localized: "LRCLIB")
+        case .online:
+            if let upstream = document.source?.upstreamProviderID, upstream.isEmpty == false,
+               let provider = document.source?.providerName, provider.isEmpty == false
+            {
+                return "\(provider) · \(upstream)"
+            }
+            return document.source?.providerName
+                ?? document.source?.resolvedProviderID
+                ?? String(localized: "Lyrics")
         case nil:
-            return String(localized: "Lyrics")
+            return document.source?.providerName ?? String(localized: "Lyrics")
         }
     }
 
     private func syncDescription(for document: LyricsDocument) -> String {
         switch document.synchronization {
+        case .syllableSynced:
+            return String(localized: "Syllable-synchronized lyrics")
         case .wordSynced:
             return String(localized: "Word-by-word synchronized lyrics")
         case .lineSynced:
@@ -1228,7 +1240,10 @@ private struct LyricsDepthStage: View, Equatable {
               lhs.isSeekSupported == rhs.isSeekSupported,
               lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
         else { return false }
-        return lhs.document.synchronization != .wordSynced || lhs.position == rhs.position
+        let needsWordPosition =
+            lhs.document.synchronization == .wordSynced
+            || lhs.document.synchronization == .syllableSynced
+        return needsWordPosition == false || lhs.position == rhs.position
     }
 
     private func scrollToFocus(

@@ -165,18 +165,28 @@ nonisolated enum LyricsSynchronization: String, Codable, Equatable, Sendable {
     case unsynced
     case lineSynced
     case wordSynced
+    case syllableSynced
 }
 
 nonisolated struct LyricsSourceInfo: Codable, Equatable, Sendable {
     nonisolated enum Kind: String, Codable, Equatable, Sendable {
         case localImport
         case lrclib
+        case online
     }
 
     var kind: Kind
     var providerName: String?
     var providerRecordIdentifier: String?
     var isPersisted: Bool
+    /// Stable provider id from LyricsProviderRegistry when known.
+    var providerID: String? = nil
+    var nodeID: String? = nil
+    /// Aggregator upstream attribution only (not a selectable Audune node).
+    var upstreamProviderID: String? = nil
+    var attributionURL: String? = nil
+    var matchConfidence: Double? = nil
+    var retrievedAt: Date? = nil
 
     static let localImport = LyricsSourceInfo(
         kind: .localImport,
@@ -184,6 +194,14 @@ nonisolated struct LyricsSourceInfo: Codable, Equatable, Sendable {
         providerRecordIdentifier: nil,
         isPersisted: true
     )
+
+    var resolvedProviderID: String? {
+        if let providerID, providerID.isEmpty == false { return providerID }
+        switch kind {
+        case .lrclib: return LyricsProviderID.lrclib.rawValue
+        case .localImport, .online: return nil
+        }
+    }
 }
 
 nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
