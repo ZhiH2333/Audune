@@ -319,7 +319,32 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
             expanding: model.isFullScreen,
             targetExpandedChrome: true,
-            animated: false,
+            animated: allowsOrderFront,
+            hapticPattern: nil,
+            hapticToken: hapticToken
+        )
+    }
+
+    func openFullScreenLyrics() {
+        guard stateContext.state.isExpandedOrPinned,
+              let geometry = model.geometry,
+              model.prefs.lyricsEnabled
+        else { return }
+        model.isFullScreen = true
+        model.fullScreenScene = .lyrics
+        stateContext.exitedAt = nil
+        collapseTask?.cancel()
+        collapseTask = nil
+        syncNowPlayingListening()
+        refreshLyricsForCurrentTrack()
+        if timer != nil {
+            startDisplayTimer()
+        }
+        updatePanelFrame(
+            geometry.screenFrame,
+            expanding: true,
+            targetExpandedChrome: true,
+            animated: allowsOrderFront,
             hapticPattern: nil,
             hapticToken: hapticToken
         )
@@ -846,6 +871,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             selectFullScreenScene: { [weak self] scene in
                 self?.setFullScreenScene(scene)
             },
+            openFullScreenLyrics: { [weak self] in
+                self?.openFullScreenLyrics()
+            },
             importLyrics: { [weak self] in
                 self?.importLyricsFromFile()
             },
@@ -1139,17 +1167,60 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         haptics.perform(pattern)
     }
 
+    @discardableResult
+    func handleKeyDown(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags = []) -> Bool {
+        if keyCode == 53 {
+            escapeExpandedPresentation()
+            return true
+        }
+        guard model.isFullScreen, lyricsFilePanelOpen == false else { return false }
+        let flags = modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        switch keyCode {
+        case 49 where flags.isEmpty:
+            // Space: Play / Pause
+            guard model.nowPlaying.hasTrack, model.nowPlaying.availability == .listening else {
+                return false
+            }
+            nowPlaying.togglePlayPause()
+            refreshNowPlayingSnapshot()
+            return true
+        case 123 where flags.subtracting([.numericPad, .function]).isEmpty:
+            // Left arrow: Seek -5s
+            guard model.nowPlaying.seekSupported,
+                  model.nowPlaying.durationSeconds.isFinite,
+                  model.nowPlaying.durationSeconds > 0
+            else { return false }
+            nowPlaying.seek(to: max(0, model.lyricsPositionSeconds - 5))
+            refreshNowPlayingSnapshot()
+            return true
+        case 124 where flags.subtracting([.numericPad, .function]).isEmpty:
+            // Right arrow: Seek +5s
+            guard model.nowPlaying.seekSupported,
+                  model.nowPlaying.durationSeconds.isFinite,
+                  model.nowPlaying.durationSeconds > 0
+            else { return false }
+            nowPlaying.seek(to: min(model.nowPlaying.durationSeconds, model.lyricsPositionSeconds + 5))
+            refreshNowPlayingSnapshot()
+            return true
+        case 37 where flags == .command:
+            // Command+L: Toggle Visualizer / Lyrics scene
+            guard model.prefs.lyricsEnabled else { return false }
+            setFullScreenScene(model.fullScreenScene == .lyrics ? .visualizer : .lyrics)
+            return true
+        default:
+            return false
+        }
+    }
+
     private func updateKeyMonitor(active: Bool) {
         if active {
             guard keyMonitor == nil else { return }
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                if event.keyCode == 53 {
-                    MainActor.assumeIsolated {
-                        self?.escapeExpandedPresentation()
-                    }
-                    return nil
+                let handled = MainActor.assumeIsolated {
+                    self?.handleKeyDown(keyCode: event.keyCode, modifierFlags: event.modifierFlags) ?? false
                 }
-                return event
+                return handled ? nil : event
             }
         } else if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)

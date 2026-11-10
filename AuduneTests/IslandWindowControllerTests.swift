@@ -21,13 +21,15 @@ private final class FakeIslandNowPlayingController: NowPlayingControlling {
     var onListenerTerminated: (() -> Void)?
     private(set) var startCount = 0
     private(set) var stopCount = 0
+    private(set) var togglePlayPauseCount = 0
+    private(set) var lastSeekSeconds: Double?
 
     func startListening() { startCount += 1 }
     func stopListening() { stopCount += 1 }
-    func togglePlayPause() {}
+    func togglePlayPause() { togglePlayPauseCount += 1 }
     func nextTrack() {}
     func previousTrack() {}
-    func setTime(seconds: Double) {}
+    func setTime(seconds: Double) { lastSeekSeconds = seconds }
 
     func emit(_ payload: NowPlayingTrackPayload?) {
         onTrackReceived?(payload)
@@ -831,5 +833,59 @@ final class IslandWindowControllerTests: XCTestCase {
         controller.expand()
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
         XCTAssertEqual(controller.inspectWindowForTests().frame, try IslandGeometry.analyze(screen: screen).get().expandedPlayerFrame())
+    }
+
+    @MainActor
+    func testOpenFullScreenLyricsAndKeyboardShortcutsControlSceneAndPlayback() throws {
+        let screen = notchedScreen()
+        let geometry = try IslandGeometry.analyze(screen: screen).get()
+        let fake = FakeIslandNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            nowPlaying: service,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.openFullScreenLyrics()
+        XCTAssertTrue(controller.model.isFullScreen)
+        XCTAssertEqual(controller.model.fullScreenScene, .lyrics)
+        XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.screenFrame)
+
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Song",
+                artist: "Artist",
+                album: "Album",
+                isPlaying: true,
+                elapsedSeconds: 30,
+                durationSeconds: 180,
+                playbackRate: 1,
+                bundleIdentifier: "com.apple.Music",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
+        controller.refreshNowPlayingSnapshot()
+
+        // Space toggles play/pause
+        XCTAssertTrue(controller.handleKeyDown(keyCode: 49))
+        XCTAssertEqual(fake.togglePlayPauseCount, 1)
+
+        // Right arrow seeks +5s, left arrow seeks -5s
+        XCTAssertTrue(controller.handleKeyDown(keyCode: 124))
+        XCTAssertEqual(try XCTUnwrap(fake.lastSeekSeconds), 35, accuracy: 0.5)
+        XCTAssertTrue(controller.handleKeyDown(keyCode: 123))
+        XCTAssertEqual(try XCTUnwrap(fake.lastSeekSeconds), 30, accuracy: 0.5)
+
+        // Command+L toggles between Lyrics and Visualizer
+        XCTAssertTrue(controller.handleKeyDown(keyCode: 37, modifierFlags: [.command]))
+        XCTAssertEqual(controller.model.fullScreenScene, .visualizer)
+        XCTAssertTrue(controller.handleKeyDown(keyCode: 37, modifierFlags: [.command]))
+        XCTAssertEqual(controller.model.fullScreenScene, .lyrics)
     }
 }

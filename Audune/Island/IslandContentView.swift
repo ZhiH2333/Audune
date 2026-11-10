@@ -96,6 +96,15 @@ final class IslandModel {
         state == .pinned
     }
 
+    var activeLyricsPreviewText: String? {
+        guard let document = lyricsState.document,
+              let index = activeLyricsLineIndex,
+              document.lines.indices.contains(index)
+        else { return nil }
+        let text = document.lines[index].text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
     var statusSummary: String {
         if let geometry {
             if prefs.isEnabled == false {
@@ -225,12 +234,15 @@ struct IslandContentView: View {
     var setLyricsOffset: (Double) -> Void = { _ in }
     var seekNowPlaying: (Double) -> Void = { _ in }
     var selectFullScreenScene: (IslandFullScreenScene) -> Void = { _ in }
+    var openFullScreenLyrics: () -> Void = {}
     var importLyrics: () -> Void = {}
     var chooseLyricsCandidate: (UUID) -> Void = { _ in }
     var deleteLyrics: (UUID) -> Void = { _ in }
     var retryLyrics: () -> Void = {}
     var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isFullScreenChromeVisible = true
+    @State private var chromeAutoHideTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -328,10 +340,13 @@ struct IslandContentView: View {
                         IslandExpandedNowPlayingView(
                             snapshot: model.nowPlaying,
                             layout: model.prefs.nowPlayingLayout,
+                            showsLyricsButton: model.prefs.lyricsEnabled,
+                            activeLyricLine: model.activeLyricsPreviewText,
                             onTogglePlay: toggleNowPlaying,
                             onPrevious: previousTrack,
                             onNext: nextTrack,
-                            onSeek: seekNowPlaying
+                            onSeek: seekNowPlaying,
+                            onOpenLyrics: openFullScreenLyrics
                         )
                         .padding(.horizontal, 18)
                         .padding(.top, 2)
@@ -377,6 +392,11 @@ struct IslandContentView: View {
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 24)
+                .opacity(model.fullScreenScene == .lyrics && isFullScreenChromeVisible == false ? 0 : 1)
+                .animation(
+                    reduceMotion ? nil : .easeInOut(duration: isFullScreenChromeVisible ? 0.18 : 0.42),
+                    value: isFullScreenChromeVisible
+                )
 
                 ZStack(alignment: .bottom) {
                     Group {
@@ -424,15 +444,61 @@ struct IslandContentView: View {
         .overlay(alignment: .top) {
             if model.fullScreenScene == .lyrics {
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.16))
+                    .fill(Color.white.opacity(isFullScreenChromeVisible ? 0.16 : 0))
                     .frame(width: 42, height: 5)
                     .padding(.top, 26)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: isFullScreenChromeVisible ? 0.18 : 0.42),
+                        value: isFullScreenChromeVisible
+                    )
             }
+        }
+        .onContinuousHover { phase in
+            switch phase {
+            case .active:
+                wakeFullScreenChrome()
+            case .ended:
+                scheduleFullScreenChromeAutoHide()
+            }
+        }
+        .onAppear {
+            wakeFullScreenChrome()
+        }
+        .onChange(of: model.fullScreenScene) { _, _ in
+            wakeFullScreenChrome()
+        }
+        .onDisappear {
+            chromeAutoHideTask?.cancel()
+            chromeAutoHideTask = nil
+            isFullScreenChromeVisible = true
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+    }
+
+    private func wakeFullScreenChrome() {
+        if isFullScreenChromeVisible == false {
+            isFullScreenChromeVisible = true
+        }
+        scheduleFullScreenChromeAutoHide()
+    }
+
+    private func scheduleFullScreenChromeAutoHide() {
+        chromeAutoHideTask?.cancel()
+        chromeAutoHideTask = nil
+        guard model.isFullScreen, model.fullScreenScene == .lyrics else {
+            isFullScreenChromeVisible = true
+            return
+        }
+        chromeAutoHideTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(3000))
+            guard !Task.isCancelled else { return }
+            if model.isFullScreen, model.fullScreenScene == .lyrics {
+                isFullScreenChromeVisible = false
+            }
+        }
     }
 
     private var fullScreenScenePicker: some View {
@@ -588,6 +654,14 @@ struct IslandContentView: View {
                 selected: false,
                 action: openSettings
             )
+            if model.prefs.lyricsEnabled {
+                IslandIconButton(
+                    symbol: "text.quote",
+                    label: String(localized: "Lyrics"),
+                    selected: false,
+                    action: openFullScreenLyrics
+                )
+            }
             IslandIconButton(
                 symbol: "arrow.up.left.and.arrow.down.right",
                 label: String(localized: "Enter full screen"),

@@ -350,24 +350,21 @@ struct IslandFullscreenLyricsView: View {
             ) ?? 0
             let fraction = min(max(scrubbedFraction ?? actual, 0), 1)
             let canSeek = model.nowPlaying.seekSupported && validDuration
-            let showsKnob = canSeek && (isHoveringProgress || scrubbedFraction != nil)
+            let isExpandedTrack = canSeek && (isHoveringProgress || scrubbedFraction != nil)
+            let trackHeight: CGFloat = isExpandedTrack ? 7 : 4
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.17))
-                    .frame(height: 4)
+                    .fill(Color.white.opacity(isExpandedTrack ? 0.24 : 0.17))
+                    .frame(height: trackHeight)
 
                 Capsule()
-                    .fill(Color.white.opacity(canSeek ? 0.94 : 0.72))
-                    .frame(width: max(0, width * fraction), height: 4)
-
-                if showsKnob {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: scrubbedFraction == nil ? 9 : 12, height: scrubbedFraction == nil ? 9 : 12)
-                        .offset(x: min(max(width * fraction - 6, 0), max(width - 12, 0)))
-                        .shadow(color: .black.opacity(0.36), radius: 4)
-                }
+                    .fill(Color.white.opacity(isExpandedTrack ? 1.0 : (canSeek ? 0.90 : 0.72)))
+                    .frame(width: max(0, width * fraction), height: trackHeight)
+                    .shadow(
+                        color: .white.opacity(isExpandedTrack ? 0.30 : 0),
+                        radius: isExpandedTrack ? 6 : 0
+                    )
             }
             .frame(height: 18)
             .contentShape(Rectangle())
@@ -384,6 +381,10 @@ struct IslandFullscreenLyricsView: View {
                         scrubbedFraction = nil
                         _ = value
                     }
+            )
+            .animation(
+                shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
+                value: isExpandedTrack
             )
             .animation(.easeOut(duration: 0.16), value: scrubbedFraction == nil)
             .accessibilityElement()
@@ -1308,6 +1309,7 @@ private struct LyricsDepthStage: View, Equatable {
     @State private var rowHeights: [Int: CGFloat] = [:]
     @State private var focusTranslationReveal: Double = 1
     @State private var cascadeOffset: CGFloat = 0
+    @State private var hoveredLineIndex: Int?
     @State private var isManualScrolling = false
     @State private var hasUserScrolled = false
     @State private var autoResumeTask: Task<Void, Never>?
@@ -1342,35 +1344,30 @@ private struct LyricsDepthStage: View, Equatable {
 
                             ForEach(0..<count, id: \.self) { index in
                                 let line = document.lines[index]
-                                Group {
-                                    if isManualScrolling {
-                                        Button {
-                                            seekToLine(index: index)
-                                        } label: {
-                                            lyricRow(
-                                                line: line,
-                                                index: index,
-                                                focus: focus,
-                                                isInterlude: interlude && index == focus,
-                                                manualMode: true
-                                            )
-                                            .contentShape(Rectangle())
-                                        }
-                                        .buttonStyle(.plain)
-                                        .disabled(
-                                            LyricsPlaybackClock.canSeek(
-                                                to: line,
-                                                isSeekSupported: isSeekSupported
-                                            ) == false || onSeekLine == nil
-                                        )
-                                    } else {
-                                        lyricRow(
-                                            line: line,
-                                            index: index,
-                                            focus: focus,
-                                            isInterlude: interlude && index == focus,
-                                            manualMode: false
-                                        )
+                                let canSeekLine = LyricsPlaybackClock.canSeek(
+                                    to: line,
+                                    isSeekSupported: isSeekSupported
+                                ) && onSeekLine != nil
+                                Button {
+                                    seekToLine(index: index)
+                                } label: {
+                                    lyricRow(
+                                        line: line,
+                                        index: index,
+                                        focus: focus,
+                                        isInterlude: interlude && index == focus,
+                                        manualMode: isManualScrolling,
+                                        isHovered: hoveredLineIndex == index
+                                    )
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(canSeekLine == false)
+                                .onHover { hovering in
+                                    if hovering {
+                                        hoveredLineIndex = index
+                                    } else if hoveredLineIndex == index {
+                                        hoveredLineIndex = nil
                                     }
                                 }
                                 .frame(width: contentWidth, alignment: .leading)
@@ -1480,6 +1477,7 @@ private struct LyricsDepthStage: View, Equatable {
             autoResumeTask = nil
             rowHeights = [:]
             cascadeOffset = 0
+            hoveredLineIndex = nil
             isManualScrolling = false
             hasUserScrolled = false
             revealFocusTranslation()
@@ -1613,7 +1611,8 @@ private struct LyricsDepthStage: View, Equatable {
         index: Int,
         focus: Int,
         isInterlude: Bool,
-        manualMode: Bool
+        manualMode: Bool,
+        isHovered: Bool = false
     ) -> some View {
         let distance = abs(index - focus)
         let isFocus = distance == 0 && hasActiveLine
@@ -1642,12 +1641,14 @@ private struct LyricsDepthStage: View, Equatable {
         // same size and blur, and opacity only distinguishes the line that is
         // currently playing. This mirrors Apple Music, where the viewport becomes a
         // readable index of the song while the user is scrolling.
-        let opacity = manualMode
+        let rawOpacity = manualMode
             ? LyricsPresentationTiming.manualBrowsingOpacity(isFocused: isFocus)
             : (isPast ? baseOpacity * 0.72 : baseOpacity)
+        let opacity = isHovered ? max(rawOpacity, 0.88) : rawOpacity
         // The reference animation uses a light 1.5–2 pt blur rather than a heavy
-        // frosted layer, so the next lines stay readable but recede.
-        let blurRadius: CGFloat = (manualMode || reduceMotion || blurLyrics == false || isFocus)
+        // frosted layer, so the next lines stay readable but recede. Hovering a line
+        // sharpens it immediately like Apple Music so the user can read and click it.
+        let blurRadius: CGFloat = (manualMode || isHovered || reduceMotion || blurLyrics == false || isFocus)
             ? 0
             : min(1.5 + CGFloat(visualDistance) * 0.45 + (isPast ? 0.3 : 0), 3.2)
         // Scale is a render transform, not layout. Every row keeps the same font
@@ -1744,6 +1745,15 @@ private struct LyricsDepthStage: View, Equatable {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            if isHovered {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .padding(.horizontal, -14)
+                    .padding(.vertical, -8)
+                    .transition(.opacity)
+            }
+        }
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
         .animation(
@@ -1761,6 +1771,7 @@ private struct LyricsDepthStage: View, Equatable {
             value: cascadeOffset
         )
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: isHovered)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: isWaiting)
         .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: showsIntroDots)
         .accessibilityElement(children: .ignore)

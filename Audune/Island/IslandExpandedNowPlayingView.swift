@@ -5,10 +5,13 @@ import SwiftUI
 struct IslandExpandedNowPlayingView: View {
     var snapshot: NowPlayingSnapshot
     var layout: IslandNowPlayingLayout = .standard
+    var showsLyricsButton: Bool = false
+    var activeLyricLine: String? = nil
     var onTogglePlay: () -> Void
     var onPrevious: () -> Void
     var onNext: () -> Void
     var onSeek: (Double) -> Void
+    var onOpenLyrics: () -> Void = {}
 
     @State private var isScrubbing = false
     @State private var scrubValue: Double = 0
@@ -52,7 +55,15 @@ struct IslandExpandedNowPlayingView: View {
 
         return HStack(alignment: .center, spacing: 14) {
             if layout.showArtwork {
-                artworkView
+                if showsLyricsButton {
+                    Button(action: onOpenLyrics) {
+                        artworkView
+                    }
+                    .buttonStyle(.plain)
+                    .help(String(localized: "Lyrics"))
+                } else {
+                    artworkView
+                }
             }
             VStack(alignment: .leading, spacing: 8) {
                 if layout.showTitleArtist {
@@ -66,8 +77,32 @@ struct IslandExpandedNowPlayingView: View {
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(Color.white.opacity(0.62))
                                 .lineLimit(1)
+                            if showsLyricsButton, let activeLyricLine, activeLyricLine.isEmpty == false {
+                                Button(action: onOpenLyrics) {
+                                    Text(activeLyricLine)
+                                        .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                                        .foregroundStyle(Color.white.opacity(0.82))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                         Spacer(minLength: 8)
+                        if showsLyricsButton {
+                            Button(action: onOpenLyrics) {
+                                Image(systemName: "quote.bubble")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.white.opacity(0.86))
+                                    .frame(width: 24, height: 24)
+                                    .background(Circle().fill(Color.white.opacity(0.10)))
+                                    .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(String(localized: "Lyrics"))
+                            .accessibilityLabel(String(localized: "Lyrics"))
+                        }
                         sourceBadge
                     }
                 }
