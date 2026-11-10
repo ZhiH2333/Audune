@@ -156,7 +156,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         self.nowPlaying = nowPlaying ?? NowPlayingService()
         self.makeLyricsStore = lyricsStoreFactory ?? { try LocalLyricsStore.applicationStore() }
         self.makeLyricsProvider = lyricsProviderFactory ?? {
-            LyricsRouter(selection: IslandPreferences.load().lyricsRoutingSelection)
+            LyricsRoutingController.shared.makeProvider()
         }
         self.screenProvider = screenProvider
         self.allowsOrderFront = allowsOrderFront
@@ -627,6 +627,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private func refreshLyricsForCurrentTrack() {
         currentLyricsTrackKey = nil
         updateLyricsPresentation()
+    }
+
+    /// Rebuilds the online provider after the user changes Auto/Manual routing.
+    func applyLyricsRoutingSelection(_ selection: LyricsRoutingSelection) {
+        LyricsRoutingController.shared.apply(selection)
+        lyricsManager?.deactivate()
+        lyricsManager = nil
+        refreshLyricsForCurrentTrack()
     }
 
     private func updateLyricsPresentation() {
