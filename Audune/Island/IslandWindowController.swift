@@ -312,6 +312,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if model.isFullScreen, model.fullScreenScene == .lyrics {
             refreshLyricsForCurrentTrack()
         }
+        if timer != nil {
+            startDisplayTimer()
+        }
         updatePanelFrame(
             model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
             expanding: model.isFullScreen,
@@ -332,6 +335,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         } else {
             lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
+        }
+        if timer != nil {
+            startDisplayTimer()
         }
     }
 
@@ -1151,10 +1157,19 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    private var desiredTimerInterval: TimeInterval {
+        model.isFullScreen && model.fullScreenScene == .lyrics ? (1.0 / 60.0) : (1.0 / 30.0)
+    }
+
     private func startDisplayTimer() {
-        guard timer == nil else { return }
+        let interval = desiredTimerInterval
+        if let existing = timer {
+            guard abs(existing.timeInterval - interval) > 0.000_5 else { return }
+            existing.invalidate()
+            self.timer = nil
+        }
         tick()
-        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.tickFromTimer()
         }
         RunLoop.main.add(timer, forMode: .common)

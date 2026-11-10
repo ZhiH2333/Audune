@@ -215,27 +215,44 @@ struct IslandFullscreenLyricsView: View {
 
     private func artwork(side: CGFloat) -> some View {
         let radius = min(max(side * 0.028, 8), 16)
+        let isPlaying = model.nowPlaying.isPlaying && model.nowPlaying.hasTrack
+        let artScale = LyricsPresentationTiming.artworkScale(
+            isPlaying: isPlaying,
+            reduceMotion: shouldReduceMotion
+        )
         return ZStack {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(Color.white.opacity(0.08))
+            ZStack {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
 
-            if let artwork = model.nowPlaying.artwork {
-                Image(nsImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Image(systemName: "music.note")
-                    .font(.system(size: max(32, side * 0.22), weight: .light))
-                    .foregroundStyle(.white.opacity(0.34))
+                if let artwork = model.nowPlaying.artwork {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Image(systemName: "music.note")
+                        .font(.system(size: max(32, side * 0.22), weight: .light))
+                        .foregroundStyle(.white.opacity(0.34))
+                }
             }
+            .frame(width: side, height: side)
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(
+                color: .black.opacity(isPlaying ? 0.48 : 0.24),
+                radius: isPlaying ? max(22, side * 0.075) : max(12, side * 0.042),
+                y: isPlaying ? max(12, side * 0.045) : max(6, side * 0.022)
+            )
+            .scaleEffect(artScale)
+            .animation(
+                shouldReduceMotion ? nil : .spring(response: 0.50, dampingFraction: 0.74),
+                value: isPlaying
+            )
         }
         .frame(width: side, height: side)
-        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.46), radius: max(22, side * 0.075), y: max(12, side * 0.045))
         .anchorPreference(key: LyricsPlayerGeometryPreferenceKey.self, value: .bounds) {
             .init(artwork: $0)
         }
@@ -869,22 +886,47 @@ struct IslandFullscreenLyricsView: View {
     private func synchronizedLyrics(document: LyricsDocument, metrics: LyricsSceneMetrics) -> some View {
         let lyricsOffsetSeconds = model.prefs.lyricsOffsetSeconds
         let seekSupported = model.nowPlaying.seekSupported
+        let displayPos = model.lyricsDisplayPositionSeconds
+        let interlude = LyricsPlaybackClock.isInterlude(
+            in: document.lines,
+            activeIndex: model.activeLyricsLineIndex,
+            at: displayPos
+        )
+        let introWait = LyricsPlaybackClock.isIntroWait(
+            in: document.lines,
+            at: displayPos
+        )
+        let interludeProgress = LyricsPlaybackClock.interludeProgress(
+            in: document.lines,
+            activeIndex: model.activeLyricsLineIndex,
+            at: displayPos
+        )
+        let isTranslationRevealing: Bool = {
+            guard let activeIndex = model.activeLyricsLineIndex,
+                  document.lines.indices.contains(activeIndex),
+                  let translation = document.lines[activeIndex].translation,
+                  translation.isEmpty == false,
+                  let start = document.lines[activeIndex].startSeconds
+            else { return false }
+            let elapsed = displayPos - start
+            return elapsed >= 0 && elapsed < (IslandMotion.lyricsTranslationDelaySeconds + IslandMotion.lyricsTranslationFadeSeconds + 0.08)
+        }()
+        let needsLivePosition = (
+            document.synchronization == .wordSynced
+            || document.synchronization == .syllableSynced
+            || interlude
+            || introWait
+            || isTranslationRevealing
+        ) && isManualBrowsing == false
+
         return LyricsDepthStage(
             document: document,
             activeIndex: model.activeLyricsLineIndex,
-            // Word timing is the only thing that needs a per-frame position. Line-synced
-            // documents stay visually stable between line changes, which also keeps the
-            // blurred stage off the 30 Hz redraw path.
-            position: (document.synchronization == .wordSynced || document.synchronization == .syllableSynced)
-                && isManualBrowsing == false
-                ? model.lyricsDisplayPositionSeconds
-                : 0,
+            position: needsLivePosition ? displayPos : 0,
             isPlaying: model.nowPlaying.isPlaying,
-            interlude: LyricsPlaybackClock.isInterlude(
-                in: document.lines,
-                activeIndex: model.activeLyricsLineIndex,
-                at: model.lyricsDisplayPositionSeconds
-            ),
+            interlude: interlude,
+            introWait: introWait,
+            interludeProgress: interludeProgress,
             metrics: metrics,
             reduceMotion: shouldReduceMotion,
             blurLyrics: model.prefs.lyricsBlurEnabled,
@@ -1253,6 +1295,8 @@ private struct LyricsDepthStage: View, Equatable {
     var position: TimeInterval
     var isPlaying: Bool
     var interlude: Bool
+    var introWait: Bool = false
+    var interludeProgress: Double? = nil
     var metrics: LyricsSceneMetrics
     var reduceMotion: Bool
     var blurLyrics: Bool
@@ -1263,6 +1307,7 @@ private struct LyricsDepthStage: View, Equatable {
 
     @State private var rowHeights: [Int: CGFloat] = [:]
     @State private var focusTranslationReveal: Double = 1
+    @State private var cascadeOffset: CGFloat = 0
     @State private var isManualScrolling = false
     @State private var hasUserScrolled = false
     @State private var autoResumeTask: Task<Void, Never>?
@@ -1426,13 +1471,15 @@ private struct LyricsDepthStage: View, Equatable {
             }
             #endif
         }
-        .onChange(of: focusIndex) { _, _ in
+        .onChange(of: focusIndex) { oldFocus, newFocus in
             revealFocusTranslation()
+            triggerCascadeSpring(from: oldFocus, to: newFocus)
         }
         .onChange(of: document.id) {
             autoResumeTask?.cancel()
             autoResumeTask = nil
             rowHeights = [:]
+            cascadeOffset = 0
             isManualScrolling = false
             hasUserScrolled = false
             revealFocusTranslation()
@@ -1453,16 +1500,15 @@ private struct LyricsDepthStage: View, Equatable {
               lhs.activeIndex == rhs.activeIndex,
               lhs.isPlaying == rhs.isPlaying,
               lhs.interlude == rhs.interlude,
+              lhs.introWait == rhs.introWait,
+              lhs.interludeProgress == rhs.interludeProgress,
               lhs.metrics == rhs.metrics,
               lhs.reduceMotion == rhs.reduceMotion,
               lhs.blurLyrics == rhs.blurLyrics,
               lhs.isSeekSupported == rhs.isSeekSupported,
               lhs.lyricsOffsetSeconds == rhs.lyricsOffsetSeconds
         else { return false }
-        let needsWordPosition =
-            lhs.document.synchronization == .wordSynced
-            || lhs.document.synchronization == .syllableSynced
-        return needsWordPosition == false || lhs.position == rhs.position
+        return lhs.position == rhs.position
     }
 
     private func scrollToFocus(
@@ -1609,14 +1655,47 @@ private struct LyricsDepthStage: View, Equatable {
         // leading edge, exactly like the reference's transform-origin: left center.
         let rowScale: CGFloat = manualMode ? 1 : (reduceMotion ? 1 : (isFocus ? 1.06 : 0.96))
         let rowFontSize = metrics.activeFontSize
-        let translationReveal = manualMode ? 1 : (isFocus ? focusTranslationReveal : 1)
+        let clockTranslationReveal: Double = {
+            guard isFocus, position > 0, let start = line.startSeconds else {
+                return focusTranslationReveal
+            }
+            return LyricsPresentationTiming.translationOpacity(
+                lineStartSeconds: start,
+                positionSeconds: position
+            )
+        }()
+        let translationReveal = manualMode ? 1 : (isFocus ? clockTranslationReveal : 1)
         let lineGap = max(5, metrics.activeFontSize * 0.15)
         let activeGlow = (manualMode == false && isFocus && isWaiting == false) ? 0.18 : 0.0
         let translationOpacity: Double = manualMode
             ? (isFocus ? 0.82 : LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false))
             : (isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal
+        let staggerDelay = manualMode
+            ? 0
+            : LyricsPresentationTiming.staggeredRowDelay(
+                distance: visualDistance,
+                reduceMotion: reduceMotion
+            )
+        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isFocus)
+            ? 0
+            : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
+        let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
 
         return VStack(alignment: .leading, spacing: lineGap) {
+            if showsIntroDots {
+                LyricInterludeDots(
+                    fontSize: rowFontSize,
+                    animated: isPlaying && reduceMotion == false && manualMode == false,
+                    countdownProgress: interludeProgress
+                )
+                .padding(.bottom, max(4, lineGap * 0.35))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .scale(scale: 0.72, anchor: .leading).combined(with: .opacity)
+                )
+            }
+
             if let words = line.words, words.count >= 2 {
                 LyricsTimedWordLine(
                     words: words,
@@ -1626,6 +1705,7 @@ private struct LyricsDepthStage: View, Equatable {
                     weight: .bold,
                     opacity: opacity,
                     followsPlayback: isFocus && manualMode == false,
+                    reduceMotion: reduceMotion,
                     accessibilityLabel: accessibilityLabel(for: line)
                 )
             } else {
@@ -1652,21 +1732,51 @@ private struct LyricsDepthStage: View, Equatable {
             if isWaiting {
                 LyricInterludeDots(
                     fontSize: rowFontSize,
-                    animated: isPlaying && reduceMotion == false && manualMode == false
+                    animated: isPlaying && reduceMotion == false && manualMode == false,
+                    countdownProgress: interludeProgress
                 )
                 .padding(.top, max(2, lineGap * 0.2))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .scale(scale: 0.72, anchor: .leading).combined(with: .opacity)
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.38), value: focus)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.82).delay(staggerDelay),
+            value: focus
+        )
         .scaleEffect(rowScale, anchor: .leading)
-        .animation(reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.72), value: focus)
+        .offset(y: rowCascadeY)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.50, dampingFraction: 0.76).delay(staggerDelay),
+            value: focus
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.78).delay(staggerDelay),
+            value: cascadeOffset
+        )
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)
+        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: isWaiting)
+        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: showsIntroDots)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
+    }
+
+    private func triggerCascadeSpring(from oldFocus: Int, to newFocus: Int) {
+        guard reduceMotion == false, isManualScrolling == false, oldFocus != newFocus else {
+            return
+        }
+        let direction: CGFloat = newFocus > oldFocus ? 1 : -1
+        cascadeOffset = direction * 14
+        withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+            cascadeOffset = 0
+        }
     }
 
     private func revealFocusTranslation() {
@@ -1696,6 +1806,7 @@ private struct LyricsDepthStage: View, Equatable {
 private struct LyricInterludeDots: View {
     var fontSize: CGFloat
     var animated: Bool
+    var countdownProgress: Double? = nil
 
     private var dotSize: CGFloat {
         min(max(fontSize * 0.20, 6), 12)
@@ -1703,23 +1814,34 @@ private struct LyricInterludeDots: View {
 
     private var spacing: CGFloat { dotSize * 1.30 }
 
+    /// Swells slightly during the final 18% of the wait window so the dots visibly gather
+    /// energy right before the singer enters, matching Apple Music's interlude cue.
+    private var anticipationScale: CGFloat {
+        guard animated, let progress = countdownProgress, progress > 0.82 else { return 1.0 }
+        let normalized = min(max((progress - 0.82) / 0.18, 0), 1)
+        return 1.0 + 0.14 * CGFloat(sin(normalized * .pi))
+    }
+
     @State private var start = Date()
 
     var body: some View {
         if animated {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
                 let elapsed = timeline.date.timeIntervalSince(start)
                 HStack(spacing: spacing) {
                     ForEach(0..<3, id: \.self) { index in
                         let phase = Self.phase(elapsed: elapsed, index: index)
                         Circle()
-                            .fill(Color.white.opacity(0.30 + 0.70 * phase))
+                            .fill(Color.white.opacity(0.32 + 0.68 * phase))
                             .frame(width: dotSize, height: dotSize)
-                            .offset(y: -dotSize * phase)
+                            .scaleEffect(0.88 + 0.22 * phase)
+                            .offset(y: -dotSize * 0.85 * phase)
+                            .shadow(color: .white.opacity(0.28 * phase), radius: dotSize * 0.6)
                     }
                 }
+                .scaleEffect(anticipationScale, anchor: .leading)
             }
-            .frame(height: dotSize * 1.8)
+            .frame(height: dotSize * 1.9)
             .accessibilityHidden(true)
             .onAppear { start = Date() }
         } else {
@@ -1730,7 +1852,7 @@ private struct LyricInterludeDots: View {
                         .frame(width: dotSize, height: dotSize)
                 }
             }
-            .frame(height: dotSize * 1.8)
+            .frame(height: dotSize * 1.9)
             .accessibilityHidden(true)
         }
     }
@@ -2055,6 +2177,7 @@ private struct LyricsTimedWordLine: View {
     var weight: Font.Weight
     var opacity: Double
     var followsPlayback: Bool
+    var reduceMotion: Bool = false
     var accessibilityLabel: String
 
     /// Word timings trim whitespace, so the display strings have to be rebuilt from the
@@ -2090,9 +2213,11 @@ private struct LyricsTimedWordLine: View {
                         LyricsWordFill(
                             text: tokens[index],
                             progress: progress(for: words[index]),
+                            durationSeconds: words[index].durationSeconds,
                             font: .system(size: fontSize, weight: weight),
                             opacity: opacity,
-                            glow: followsPlayback
+                            glow: followsPlayback,
+                            reduceMotion: reduceMotion
                         )
                     }
                 }
@@ -2178,12 +2303,40 @@ private struct LyricsTimedWordLine: View {
 private struct LyricsWordFill: View {
     var text: String
     var progress: Double
+    var durationSeconds: TimeInterval = 0
     var font: Font
     var opacity: Double
     var glow: Bool
+    var reduceMotion: Bool = false
 
-    private var isCurrentWord: Bool {
-        glow && progress > 0 && progress < 1
+    private var liftOffset: CGFloat {
+        guard glow else { return 0 }
+        return CGFloat(
+            LyricsPresentationTiming.wordLiftOffset(
+                progress: progress,
+                durationSeconds: durationSeconds,
+                reduceMotion: reduceMotion
+            )
+        )
+    }
+
+    private var emphasisScale: CGFloat {
+        guard glow else { return 1.0 }
+        return CGFloat(
+            LyricsPresentationTiming.wordEmphasisScale(
+                progress: progress,
+                durationSeconds: durationSeconds,
+                reduceMotion: reduceMotion
+            )
+        )
+    }
+
+    private var glowOpacity: Double {
+        guard glow else { return 0 }
+        return LyricsPresentationTiming.wordGlowOpacity(
+            progress: progress,
+            durationSeconds: durationSeconds
+        )
     }
 
     var body: some View {
@@ -2199,14 +2352,14 @@ private struct LyricsWordFill: View {
                             LyricsWordFillMask(progress: progress)
                         }
                         .shadow(
-                            color: .white.opacity(glow ? 0.38 : 0),
-                            radius: glow ? 9 : 0
+                            color: .white.opacity(glowOpacity),
+                            radius: durationSeconds >= 0.75 ? 12 : 9
                         )
                 }
             }
         }
-        .offset(y: isCurrentWord ? -1.5 : 0)
-        .animation(.easeOut(duration: 0.14), value: isCurrentWord)
+        .scaleEffect(emphasisScale, anchor: .bottom)
+        .offset(y: liftOffset)
     }
 
     private var sungText: some View {

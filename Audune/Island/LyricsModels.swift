@@ -98,6 +98,48 @@ nonisolated struct LyricsPlaybackClock {
         return position >= end + 0.8 && position <= nextStart - 0.35
     }
 
+    /// True during a long instrumental intro before the first timed lyric line begins.
+    static func isIntroWait(
+        in lines: [LyricsLine],
+        at position: TimeInterval,
+        minimumLead: TimeInterval = 3.0
+    ) -> Bool {
+        guard position.isFinite, position >= 0 else { return false }
+        guard let firstLine = lines.first(where: { ($0.startSeconds ?? .nan).isFinite }),
+              let firstStart = firstLine.startSeconds,
+              firstStart >= minimumLead
+        else { return false }
+        return position >= 0.25 && position <= firstStart - 0.35
+    }
+
+    /// Normalized progress (0...1) through the active intro or interlude wait window.
+    /// Used by the three breathing dots to swell and gather right before singing resumes.
+    static func interludeProgress(
+        in lines: [LyricsLine],
+        activeIndex: Int?,
+        at position: TimeInterval,
+        minimumGap: TimeInterval = 3.0
+    ) -> Double? {
+        guard position.isFinite else { return nil }
+        if activeIndex == nil {
+            guard isIntroWait(in: lines, at: position, minimumLead: minimumGap),
+                  let firstStart = lines.first(where: { ($0.startSeconds ?? .nan).isFinite })?.startSeconds
+            else { return nil }
+            let windowStart = 0.25
+            let windowEnd = max(windowStart + 0.01, firstStart - 0.35)
+            return min(max((position - windowStart) / (windowEnd - windowStart), 0), 1)
+        }
+        guard isInterlude(in: lines, activeIndex: activeIndex, at: position, minimumGap: minimumGap),
+              let activeIndex,
+              let end = lines[activeIndex].endSeconds,
+              lines.indices.contains(activeIndex + 1),
+              let nextStart = lines[activeIndex + 1].startSeconds
+        else { return nil }
+        let windowStart = end + 0.8
+        let windowEnd = max(windowStart + 0.01, nextStart - 0.35)
+        return min(max((position - windowStart) / (windowEnd - windowStart), 0), 1)
+    }
+
     static func wordProgress(for word: LyricsWord, at position: TimeInterval) -> Double {
         guard position.isFinite, word.startSeconds.isFinite, word.durationSeconds.isFinite,
               word.durationSeconds > 0
@@ -130,6 +172,71 @@ nonisolated enum LyricsPresentationTiming {
             return 1
         }
         return translationOpacity(sinceLineFocus: max(0, positionSeconds - lineStartSeconds))
+    }
+
+    /// Smooth sinusoidal arch (-sin(progress * pi)) so the active word lifts and settles
+    /// continuously instead of snapping on a boolean boundary.
+    static func wordLiftOffset(
+        progress: Double,
+        durationSeconds: TimeInterval,
+        reduceMotion: Bool = false
+    ) -> Double {
+        guard reduceMotion == false,
+              progress.isFinite,
+              progress > 0,
+              progress < 1
+        else {
+            return 0
+        }
+        let duration = durationSeconds.isFinite ? max(0, durationSeconds) : 0
+        let maxLift = duration >= 0.75 ? 2.6 : 1.85
+        return -sin(progress * .pi) * maxLift
+    }
+
+    /// Long sustained words (>= 0.75 s) gently bloom in scale at the peak of the vowel,
+    /// mirroring Apple Music's emphasized vocal treatment.
+    static func wordEmphasisScale(
+        progress: Double,
+        durationSeconds: TimeInterval,
+        reduceMotion: Bool = false
+    ) -> Double {
+        guard reduceMotion == false,
+              progress.isFinite,
+              progress > 0,
+              progress < 1,
+              durationSeconds.isFinite,
+              durationSeconds >= 0.75
+        else {
+            return 1.0
+        }
+        let extra = min((durationSeconds - 0.60) * 0.045, 0.060)
+        return 1.0 + extra * sin(progress * .pi)
+    }
+
+    /// Continuous glow envelope that peaks mid-word and fades smoothly to zero at
+    /// completion so the trailing edge never flashes off abruptly at progress == 1.
+    static func wordGlowOpacity(
+        progress: Double,
+        durationSeconds: TimeInterval
+    ) -> Double {
+        guard progress.isFinite, progress > 0, progress < 1 else { return 0 }
+        let duration = durationSeconds.isFinite ? max(0, durationSeconds) : 0
+        let peak = duration >= 0.75 ? 0.54 : 0.38
+        return peak * sin(progress * .pi)
+    }
+
+    /// Cascading stagger delay (in seconds) per row distance from the focused line,
+    /// producing Apple Music's wave-like spring progression.
+    static func staggeredRowDelay(distance: Int, reduceMotion: Bool = false) -> Double {
+        guard reduceMotion == false, distance > 0 else { return 0 }
+        return Double(min(distance, 7)) * 0.028
+    }
+
+    /// Album artwork scale in the Lyrics player column: full size while playing,
+    /// recessed while paused, matching Apple Music's spring artwork state.
+    static func artworkScale(isPlaying: Bool, reduceMotion: Bool = false) -> Double {
+        guard reduceMotion == false else { return 1.0 }
+        return isPlaying ? 1.0 : 0.86
     }
 }
 

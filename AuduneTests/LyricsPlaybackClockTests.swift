@@ -121,6 +121,16 @@ final class LyricsPlaybackClockTests: XCTestCase {
             LyricsLine(id: 1, startSeconds: 7, endSeconds: 9, text: "Second", translation: nil, words: nil)
         ]
         XCTAssertFalse(LyricsPlaybackClock.isInterlude(in: shortGap, activeIndex: 0, at: 6))
+
+        // Intro wait before the first timed line when firstStart >= 3.0s
+        let introLines = [
+            LyricsLine(id: 0, startSeconds: 6, endSeconds: 9, text: "Opening", translation: nil, words: nil)
+        ]
+        XCTAssertFalse(LyricsPlaybackClock.isIntroWait(in: introLines, at: 0.1))
+        XCTAssertTrue(LyricsPlaybackClock.isIntroWait(in: introLines, at: 2.0))
+        XCTAssertFalse(LyricsPlaybackClock.isIntroWait(in: introLines, at: 5.8))
+        XCTAssertNotNil(LyricsPlaybackClock.interludeProgress(in: introLines, activeIndex: nil, at: 3.0))
+        XCTAssertNotNil(LyricsPlaybackClock.interludeProgress(in: lines, activeIndex: 0, at: 7.5))
     }
 
     func testWordProgressDoesNotInventTiming() {
