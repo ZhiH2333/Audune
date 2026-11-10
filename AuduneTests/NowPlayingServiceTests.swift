@@ -382,4 +382,71 @@ final class NowPlayingServiceTests: XCTestCase {
         let stillPaused = service.snapshot.displayElapsed(at: t0.addingTimeInterval(5))
         XCTAssertEqual(stillPaused, pausedAt, accuracy: 0.05)
     }
+
+    func testResumeAfterLongPauseDoesNotAdvanceByPauseDuration() {
+        let fake = FakeNowPlayingController()
+        let service = NowPlayingService(controllerFactory: { fake })
+        service.startIfNeeded()
+
+        let t0 = Date()
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 40,
+                durationSeconds: 200,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0
+            )
+        )
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: false,
+                elapsedSeconds: 45,
+                durationSeconds: 200,
+                playbackRate: 0,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0.addingTimeInterval(5)
+            )
+        )
+        let pausedAt = service.snapshot.displayElapsed(at: t0.addingTimeInterval(5))
+        XCTAssertFalse(service.snapshot.isPlaying)
+
+        // Simulate leaving lyrics fullscreen while paused, then coming back and pressing play
+        // after a long pause. MediaRemote reports nearly the same elapsed.
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: pausedAt,
+                durationSeconds: 200,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: t0.addingTimeInterval(35)
+            )
+        )
+
+        let anchor = service.snapshot.playbackClockAnchor
+        let projected = LyricsPlaybackClock.position(
+            anchor: anchor,
+            isPlaying: service.snapshot.isPlaying,
+            playbackRate: service.snapshot.playbackRate,
+            durationSeconds: service.snapshot.durationSeconds,
+            nowUptime: ProcessInfo.processInfo.systemUptime
+        )
+        XCTAssertTrue(service.snapshot.isPlaying)
+        XCTAssertEqual(projected, pausedAt, accuracy: 1.0)
+        XCTAssertLessThan(abs(projected - pausedAt), 5)
+    }
 }

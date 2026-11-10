@@ -258,6 +258,16 @@ final class NowPlayingService {
             return (local, now)
         }
 
+        // Paused → playing: keep the frozen local elapsed unless MediaRemote disagrees
+        // substantially, but always refresh the wall-clock anchor. Reusing the pause-time
+        // lastUpdated would advance lyrics by the entire pause duration on resume.
+        if snapshot.isPlaying == false && payload.isPlaying == true {
+            if abs(delta) > Self.elapsedSmoothingTolerance {
+                return (incomingElapsed, incomingAnchor)
+            }
+            return (snapshot.elapsedSeconds, now)
+        }
+
         // Same track, small disagreement → keep local anchor (stops 2:23 → 0:41 style jumps).
         if abs(delta) <= Self.elapsedSmoothingTolerance {
             return (snapshot.elapsedSeconds, snapshot.lastUpdated)
