@@ -89,20 +89,6 @@ struct IslandExpandedNowPlayingView: View {
                             }
                         }
                         Spacer(minLength: 8)
-                        if showsLyricsButton {
-                            Button(action: onOpenLyrics) {
-                                Image(systemName: "quote.bubble")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(Color.white.opacity(0.86))
-                                    .frame(width: 24, height: 24)
-                                    .background(Circle().fill(Color.white.opacity(0.10)))
-                                    .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
-                                    .contentShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .help(String(localized: "Lyrics"))
-                            .accessibilityLabel(String(localized: "Lyrics"))
-                        }
                         sourceBadge
                     }
                 }
