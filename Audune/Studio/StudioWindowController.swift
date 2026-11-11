@@ -21,6 +21,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     private var lastNearAt: TimeInterval = 0
     private var smoothedStudio: [Float] = []
     private var smoothedWave: [Float] = []
+    private var echoWave: [Float] = []
     private var didShutdown = false
     private var saveTask: Task<Void, Never>?
     private var preferredSizeTask: Task<Void, Never>?
@@ -304,6 +305,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         StudioPreferences.reset(in: defaults)
         smoothedStudio = []
         smoothedWave = []
+        echoWave = []
         spectrumState = SpectrumDynamicsState()
         orbitState = SpectrumDynamicsState()
         apply(StudioPreferences.standard)
@@ -620,13 +622,21 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         guard model.prefs.mode == .waveform else { return }
         let live = model.snapshot.waveform
         let target = model.snapshot.isSilent ? Array(repeating: Float(0), count: live.count) : live
+        let smoothing = Float(model.prefs.waveform.smoothing)
         smoothedWave = WaveformPath.mix(
             current: smoothedWave,
             toward: target,
-            smoothing: Float(model.prefs.waveform.smoothing),
+            smoothing: smoothing,
+            dt: dt
+        )
+        echoWave = WaveformPath.echoMix(
+            current: echoWave,
+            toward: target,
+            smoothing: smoothing,
             dt: dt
         )
         model.displayWaveform = smoothedWave
+        model.echoWaveform = echoWave
     }
 
     private func clampOntoVisibleScreen() {

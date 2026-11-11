@@ -9,6 +9,7 @@ final class StudioModel {
     var studioSpectrum = Array(repeating: Float(0), count: StudioPreferences.standard.spectrum.barCount)
     var spectrumPeaks: [Float] = []
     var displayWaveform = AudioSnapshot.zero.waveform
+    var echoWaveform = AudioSnapshot.zero.waveform
     var settingsCategory: SettingsCategory = .appearance
     var pointerInside = false
     var pointerDown = false
@@ -121,6 +122,7 @@ struct StudioContentView: View {
                 spectrum: model.studioSpectrum,
                 peaks: model.spectrumPeaks,
                 waveform: model.displayWaveform,
+                echoWaveform: model.echoWaveform,
                 drawsBars: drawsBars
             )
             .frame(width: frame.width, height: frame.height)
@@ -160,7 +162,7 @@ struct StudioContentView: View {
         case .orbit:
             return SpectrumDynamics.isSettled(levels: model.studioSpectrum) == false
         case .waveform:
-            return SpectrumDynamics.isSettled(levels: model.displayWaveform) == false
+            return SpectrumDynamics.isSettled(levels: model.displayWaveform, peaks: model.echoWaveform) == false
         }
     }
 }

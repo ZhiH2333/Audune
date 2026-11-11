@@ -164,6 +164,30 @@ final class OrbitLayoutTests: XCTestCase {
         XCTAssertGreaterThan(rising.levels[0], 1 - falling.levels[0])
     }
 
+    func testCoreRingBreathesWithLowEnergyAndSettlesInSilence() throws {
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 400)
+        let geometry = try XCTUnwrap(OrbitLayout.geometry(in: bounds, count: 48))
+
+        let silentRing = OrbitLayout.coreRingStyle(
+            geometry: geometry,
+            spectrum: Array(repeating: 0.8, count: 24),
+            drawsLevels: false,
+            baseOpacity: 0.9
+        )
+        let activeRing = OrbitLayout.coreRingStyle(
+            geometry: geometry,
+            spectrum: Array(repeating: 0.8, count: 24),
+            drawsLevels: true,
+            baseOpacity: 0.9
+        )
+
+        XCTAssertEqual(silentRing.lineWidth, 0.5, accuracy: 0.000_1)
+        XCTAssertEqual(silentRing.opacity, 0.9 * 0.22, accuracy: 0.000_1)
+        XCTAssertGreaterThan(activeRing.lineWidth, silentRing.lineWidth)
+        XCTAssertGreaterThan(activeRing.opacity, silentRing.opacity)
+        XCTAssertEqual(activeRing.radius, geometry.startRadius, accuracy: 0.000_1)
+    }
+
     private func assertInside(_ point: CGPoint, _ bounds: CGRect, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertGreaterThanOrEqual(point.x, bounds.minX, file: file, line: line)
         XCTAssertLessThanOrEqual(point.x, bounds.maxX, file: file, line: line)

@@ -18,6 +18,12 @@ nonisolated struct OrbitBar: Equatable {
     var width: CGFloat
 }
 
+nonisolated struct OrbitCoreRingStyle: Equatable {
+    var radius: CGFloat
+    var lineWidth: CGFloat
+    var opacity: Double
+}
+
 /// Ring of rounded radial bars driven by real band energy. Silence leaves a ring of dots; nothing rotates.
 nonisolated enum OrbitLayout {
     static let defaultInnerRatio: CGFloat = 0.55
@@ -186,6 +192,24 @@ nonisolated enum OrbitLayout {
         return Path(roundedRect: rect, cornerRadius: bar.width / 2).applying(transform)
     }
 
+    /// Inner reference ring that breathes subtly with low-frequency energy and settles to a 0.5 pt hairline in silence.
+    static func coreRingStyle(
+        geometry: OrbitGeometry,
+        spectrum: [Float],
+        drawsLevels: Bool,
+        baseOpacity: Double
+    ) -> OrbitCoreRingStyle {
+        let base = baseOpacity.isFinite ? min(max(baseOpacity, 0), 1) : 1
+        let low = drawsLevels ? CGFloat(lowBandEnergy(spectrum)) : 0
+        let lineWidth = 0.5 + 1.25 * low
+        let ringOpacity = min(max(base * (0.22 + 0.36 * Double(low)), 0), 1)
+        return OrbitCoreRingStyle(
+            radius: geometry.startRadius,
+            lineWidth: lineWidth,
+            opacity: ringOpacity
+        )
+    }
+
     private static func isDrawable(_ rect: CGRect) -> Bool {
         rect.width > 1 && rect.height > 1 && rect.minX.isFinite && rect.minY.isFinite
             && rect.width.isFinite && rect.height.isFinite
@@ -258,23 +282,48 @@ struct OrbitCanvas: View {
                 )
                 layers = [dual.inner, dual.outer]
             }
+            let coreStyle = OrbitLayout.coreRingStyle(
+                geometry: geometry,
+                spectrum: source,
+                drawsLevels: drawsLevels,
+                baseOpacity: opacity
+            )
             let ring = Path(ellipseIn: CGRect(
-                x: geometry.center.x - geometry.startRadius,
-                y: geometry.center.y - geometry.startRadius,
-                width: geometry.startRadius * 2,
-                height: geometry.startRadius * 2
+                x: geometry.center.x - coreStyle.radius,
+                y: geometry.center.y - coreStyle.radius,
+                width: coreStyle.radius * 2,
+                height: coreStyle.radius * 2
             ))
-            context.stroke(ring, with: .color(color.opacity(opacity * 0.22)), style: StrokeStyle(lineWidth: 0.5))
+            context.stroke(
+                ring,
+                with: .color(color.opacity(coreStyle.opacity)),
+                style: StrokeStyle(lineWidth: coreStyle.lineWidth)
+            )
 
             let fill = GraphicsContext.Shading.color(color.opacity(opacity))
             let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
+            let backing = GraphicsContext.Shading.color(Color.black.opacity(opacity * 0.22))
             for (layerIndex, bars) in layers.enumerated() {
+                let layerOpacity = layerMode == .dualBand && layerIndex == 0 ? opacity * 0.72 : opacity
                 let layerFill = layerMode == .dualBand && layerIndex == 0
-                    ? GraphicsContext.Shading.color(color.opacity(opacity * 0.72))
+                    ? GraphicsContext.Shading.color(color.opacity(layerOpacity))
                     : fill
                 for bar in bars {
                     let shape = OrbitLayout.capsule(for: bar)
-                    context.fill(shape, with: layerFill)
+                    context.fill(shape, with: backing)
+                    if hypot(bar.end.x - bar.start.x, bar.end.y - bar.start.y) > 2 {
+                        let radialFill = GraphicsContext.Shading.linearGradient(
+                            Gradient(colors: [
+                                color.opacity(layerOpacity * 0.65),
+                                color.opacity(layerOpacity)
+                            ]),
+                            startPoint: bar.start,
+                            endPoint: bar.end
+                        )
+                        context.fill(shape, with: radialFill)
+                    } else {
+                        context.fill(shape, with: layerFill)
+                    }
                     if drawsStroke {
                         context.stroke(shape, with: outline, style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineJoin: .round))
                     }

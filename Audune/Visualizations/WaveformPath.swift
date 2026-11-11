@@ -114,6 +114,34 @@ nonisolated enum WaveformPath {
         return result
     }
 
+    /// Slower companion trace (~90–750 ms) that trails behind the primary waveform to add depth on transients.
+    static func echoMix(current: [Float], toward: [Float], smoothing: Float, dt: Double) -> [Float] {
+        let count = max(toward.count, 1)
+        let amount = smoothing.isFinite ? min(max(smoothing, 0), 1) : 0
+        let tau = 0.09 + Double(amount) * 0.66
+        let follow: Float
+        if dt > 0, tau > 0 {
+            follow = Float(1 - exp(-dt / tau))
+        } else {
+            follow = max(0.35 - amount * 0.25, 0.03)
+        }
+        var result = [Float]()
+        result.reserveCapacity(count)
+        for index in 0..<count {
+            let now = index < current.count && current[index].isFinite ? current[index] : 0
+            let next = index < toward.count && toward[index].isFinite ? toward[index] : 0
+            let mixed = now + (next - now) * follow
+            result.append(mixed.isFinite ? min(max(mixed, -1), 1) : 0)
+        }
+        return result
+    }
+
+    /// Horizontal opacity stops that fade both ends of the stroke to match the amplitude taper.
+    static func horizontalFadeOpacities(baseOpacity: Double) -> (edge: Double, center: Double) {
+        let base = baseOpacity.isFinite ? min(max(baseOpacity, 0), 1) : 1
+        return (edge: base * 0.18, center: base)
+    }
+
     /// Reduces real samples to at most `count` points by keeping the largest swing in each slice.
     /// It never creates more points than it was given.
     static func reduced(_ samples: [Float], to count: Int) -> [Float] {
@@ -237,6 +265,7 @@ nonisolated enum WaveformPath {
 
 struct WaveformCanvas: View {
     var samples: [Float]
+    var echoSamples: [Float] = []
     var color: Color
     var opacity: Double = 1
     var amplitude: Double = 0.55
@@ -273,36 +302,60 @@ struct WaveformCanvas: View {
             base.addLine(to: CGPoint(x: safe.maxX, y: safe.midY))
             context.stroke(base, with: .color(color.opacity(opacity * 0.18)), style: StrokeStyle(lineWidth: 0.5))
 
+            let fade = WaveformPath.horizontalFadeOpacities(baseOpacity: opacity)
+            let strokeGradient = GraphicsContext.Shading.linearGradient(
+                Gradient(stops: [
+                    .init(color: color.opacity(fade.edge), location: 0),
+                    .init(color: color.opacity(fade.center), location: WaveformPath.edgeFade),
+                    .init(color: color.opacity(fade.center), location: 1 - WaveformPath.edgeFade),
+                    .init(color: color.opacity(fade.edge), location: 1)
+                ]),
+                startPoint: CGPoint(x: safe.minX, y: safe.midY),
+                endPoint: CGPoint(x: safe.maxX, y: safe.midY)
+            )
+
+            // Secondary companion echo trace for transient depth.
+            if echoSamples.count >= 2 {
+                let echoPoints = WaveformPath.plottedPoints(
+                    samples: echoSamples,
+                    metrics: metrics,
+                    visualAmplitude: amplitude,
+                    density: density,
+                    smoothing: Float(smoothing)
+                )
+                if let echoFirst = echoPoints.first {
+                    let echoLine = Self.curve(echoPoints, in: safe, from: echoFirst)
+                    context.stroke(
+                        echoLine,
+                        with: .color(color.opacity(opacity * 0.24)),
+                        style: StrokeStyle(lineWidth: CGFloat(max(lineWidth * 0.8, 0.5)), lineCap: .round, lineJoin: .round)
+                    )
+                }
+            }
+
             // Clamp paths to safeBounds (stroke inset), not a shrunk inner band.
             let line = Self.curve(points, in: safe, from: first)
             let fill = fillStrength.isFinite ? min(max(fillStrength, 0), 1) : 0.32
+            let mainStroke = StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
+            let backingStroke = StrokeStyle(lineWidth: CGFloat(lineWidth + 1.0), lineCap: .round, lineJoin: .round)
 
             switch style {
             case .line:
-                context.stroke(
-                    line,
-                    with: .color(color.opacity(opacity)),
-                    style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
-                )
+                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
+                context.stroke(line, with: strokeGradient, style: mainStroke)
             case .softFill:
                 if fill > 0 {
                     Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill)
                 }
-                context.stroke(
-                    line,
-                    with: .color(color.opacity(opacity)),
-                    style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
-                )
+                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
+                context.stroke(line, with: strokeGradient, style: mainStroke)
             case .mirror:
                 let reflected = WaveformPath.mirrored(points, in: safe)
                 if fill > 0 {
                     Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill * 0.55)
                 }
-                context.stroke(
-                    line,
-                    with: .color(color.opacity(opacity)),
-                    style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
-                )
+                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
+                context.stroke(line, with: strokeGradient, style: mainStroke)
                 if let mirrorFirst = reflected.first {
                     let mirrorLine = Self.curve(reflected, in: safe, from: mirrorFirst)
                     context.stroke(

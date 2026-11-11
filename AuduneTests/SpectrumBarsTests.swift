@@ -198,6 +198,28 @@ final class SpectrumBarsTests: XCTestCase {
         XCTAssertTrue([broken.red, broken.green, broken.blue].allSatisfy { $0.isFinite })
     }
 
+    func testRestingDotsAndVerticalOpacitiesStayBoundedAndAligned() {
+        let bounds = CGRect(x: 10, y: 20, width: 320, height: 120)
+        let dots = SpectrumBars.restingDots(in: bounds, count: 32, gap: 2)
+        let activeBars = SpectrumBars.bars(spectrum: Array(repeating: 0.5, count: 32), in: bounds, count: 32, gap: 2)
+
+        XCTAssertEqual(dots.count, 32)
+        assertInside(dots, bounds: bounds)
+        for (dot, bar) in zip(dots, activeBars) {
+            XCTAssertEqual(dot.minX, bar.minX, accuracy: 0.001)
+            XCTAssertEqual(dot.width, bar.width, accuracy: 0.001)
+            XCTAssertEqual(dot.maxY, bounds.maxY, accuracy: 0.001)
+            XCTAssertLessThanOrEqual(dot.height, 2)
+        }
+        XCTAssertTrue(SpectrumBars.restingDots(in: .zero, count: 16).isEmpty)
+
+        let lowOpacities = SpectrumBars.verticalOpacities(baseOpacity: 0.9, level: 0.1)
+        let highOpacities = SpectrumBars.verticalOpacities(baseOpacity: 0.9, level: 1.0)
+        XCTAssertEqual(lowOpacities.top, 0.9, accuracy: 0.000_1)
+        XCTAssertGreaterThan(lowOpacities.top, lowOpacities.bottom)
+        XCTAssertGreaterThan(highOpacities.bottom, lowOpacities.bottom)
+    }
+
     private func assertInside(_ bars: [CGRect], bounds: CGRect, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertFalse(bars.isEmpty, file: file, line: line)
         for bar in bars {

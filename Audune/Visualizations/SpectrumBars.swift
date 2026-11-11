@@ -167,6 +167,30 @@ nonisolated enum SpectrumBars {
         return CGRect(x: bounds.minX, y: bounds.maxY - thickness, width: bounds.width, height: thickness)
     }
 
+    /// Pill-shaped resting dots aligned with bar positions so silence settles into the same rhythm as active bars.
+    static func restingDots(
+        in bounds: CGRect,
+        count: Int = AudioSnapshot.bandCount,
+        gap requestedGap: CGFloat? = nil
+    ) -> [CGRect] {
+        guard count > 0, isDrawable(bounds) else { return [] }
+        let dotHeight = min(2, bounds.height)
+        let zeros = Array(repeating: Float(0), count: count)
+        let baseBars = bars(spectrum: zeros, in: bounds, count: count, gap: requestedGap, amplitude: 1)
+        return baseBars.compactMap { bar in
+            let rect = CGRect(x: bar.minX, y: bounds.maxY - dotHeight, width: bar.width, height: dotHeight)
+            return isDrawable(rect) && bounds.contains(rect) ? rect : nil
+        }
+    }
+
+    /// Top and bottom opacity for vertical bar shading so tall bars have an airy base and crisp tip.
+    static func verticalOpacities(baseOpacity: Double, level: Float) -> (top: Double, bottom: Double) {
+        let base = baseOpacity.isFinite ? min(max(baseOpacity, 0), 1) : 1
+        let safeLevel = level.isFinite ? min(max(Double(level), 0), 1) : 0
+        let bottom = min(max(base * (0.48 + 0.24 * safeLevel), 0), base)
+        return (top: base, bottom: bottom)
+    }
+
     private static func isDrawable(_ rect: CGRect) -> Bool {
         rect.width > 0 && rect.height > 0 && rect.origin.x.isFinite && rect.origin.y.isFinite
             && rect.width.isFinite && rect.height.isFinite
@@ -209,6 +233,7 @@ struct SpectrumCanvas: View {
                     amplitude: CGFloat(amplitude)
                 )
                 let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
+                let backing = GraphicsContext.Shading.color(Color.black.opacity(opacity * 0.22))
                 for (index, rect) in bars.enumerated() {
                     let level = index < spectrum.count ? spectrum[index] : 0
                     let mapped = SpectrumColorMap.fill(
@@ -218,11 +243,24 @@ struct SpectrumCanvas: View {
                         count: bars.count,
                         level: level
                     )
-                    let fill = colorMode == .solid
-                        ? solid
-                        : GraphicsContext.Shading.color(mapped.swiftUI.opacity(opacity))
+                    let baseSwiftUI = colorMode == .solid ? color : mapped.swiftUI
+                    let opacities = SpectrumBars.verticalOpacities(baseOpacity: opacity, level: level)
+                    let fill: GraphicsContext.Shading
+                    if rect.height > 2 {
+                        fill = .linearGradient(
+                            Gradient(colors: [
+                                baseSwiftUI.opacity(opacities.top),
+                                baseSwiftUI.opacity(opacities.bottom)
+                            ]),
+                            startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                            endPoint: CGPoint(x: rect.midX, y: rect.maxY)
+                        )
+                    } else {
+                        fill = .color(baseSwiftUI.opacity(opacities.top))
+                    }
                     let radius = min(CGFloat(cornerRadius), rect.width / 2, rect.height / 2)
                     let path = Path(roundedRect: rect, cornerRadius: max(radius, 0))
+                    context.fill(path, with: backing)
                     context.fill(path, with: fill)
                     if drawsStroke {
                         context.stroke(
@@ -243,7 +281,16 @@ struct SpectrumCanvas: View {
             } else {
                 let line = SpectrumBars.baseline(in: canvas)
                 if line.width > 0, line.height > 0 {
-                    context.fill(Path(roundedRect: line, cornerRadius: min(CGFloat(cornerRadius), line.height / 2)), with: solid)
+                    context.fill(
+                        Path(roundedRect: line, cornerRadius: min(CGFloat(cornerRadius), line.height / 2)),
+                        with: .color(color.opacity(opacity * 0.24))
+                    )
+                }
+                let dotCount = max(spectrum.count, AudioSnapshot.bandCount)
+                let dotShading = GraphicsContext.Shading.color(color.opacity(opacity * 0.78))
+                for dot in SpectrumBars.restingDots(in: canvas, count: dotCount, gap: CGFloat(barGap)) {
+                    let radius = min(CGFloat(cornerRadius), dot.width / 2, dot.height / 2)
+                    context.fill(Path(roundedRect: dot, cornerRadius: max(radius, 0)), with: dotShading)
                 }
             }
         }

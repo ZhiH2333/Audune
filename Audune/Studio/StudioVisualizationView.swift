@@ -7,6 +7,7 @@ struct StudioVisualizationView: View {
     var spectrum: [Float]
     var peaks: [Float]
     var waveform: [Float]
+    var echoWaveform: [Float] = []
     var drawsBars: Bool
 
     var body: some View {
@@ -32,6 +33,7 @@ struct StudioVisualizationView: View {
         case .waveform:
             WaveformCanvas(
                 samples: waveform,
+                echoSamples: echoWaveform,
                 color: (prefs.waveform.customColor ?? prefs.appearance.color).swiftUI,
                 opacity: prefs.appearance.opacity,
                 amplitude: prefs.waveform.amplitude,

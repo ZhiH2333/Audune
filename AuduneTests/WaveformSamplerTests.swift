@@ -397,6 +397,22 @@ final class WaveformSamplerTests: XCTestCase {
         }
     }
 
+    func testEchoMixTrailsBehindPrimaryMixAndHorizontalFadeStaysBounded() {
+        let start = Array(repeating: Float(0), count: 8)
+        let target = Array(repeating: Float(1), count: 8)
+        let primary = WaveformPath.mix(current: start, toward: target, smoothing: 0.4, dt: 0.05)
+        let echo = WaveformPath.echoMix(current: start, toward: target, smoothing: 0.4, dt: 0.05)
+
+        XCTAssertEqual(echo.count, 8)
+        XCTAssertGreaterThan(echo[0], 0)
+        XCTAssertLessThan(echo[0], primary[0], "echo trace must lag behind the primary waveform")
+
+        let fade = WaveformPath.horizontalFadeOpacities(baseOpacity: 0.8)
+        XCTAssertEqual(fade.center, 0.8, accuracy: 0.000_1)
+        XCTAssertLessThan(fade.edge, fade.center * 0.3)
+        XCTAssertGreaterThan(fade.edge, 0)
+    }
+
     private func inside(_ point: CGPoint, _ bounds: CGRect) -> Bool {
         point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
     }
