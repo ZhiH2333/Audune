@@ -400,8 +400,22 @@ final class StudioPreferencesTests: XCTestCase {
         XCTAssertEqual(appearance.color, StudioAccent.amber.color)
         XCTAssertEqual(appearance.strokeColor, StudioAccent.amber.strokeColor)
         XCTAssertEqual(StudioAccent.matching(color: appearance.color, strokeColor: appearance.strokeColor), .amber)
-        appearance.color = StudioColor(red: 0, green: 0, blue: 0)
+
+        let picked = StudioColor(red: 0.3, green: 0.6, blue: 0.9)
+        appearance.setFillColor(picked)
+        XCTAssertEqual(appearance.color, picked)
+        XCTAssertEqual(appearance.strokeColor, picked.blended(towardWhite: 0.35))
+
+        let customStroke = StudioColor(red: 0.8, green: 0.2, blue: 0.2)
+        appearance.strokeColor = customStroke
+        appearance.setFillColor(StudioColor(red: 0, green: 0, blue: 0))
+        XCTAssertEqual(appearance.strokeColor, customStroke)
         XCTAssertNil(StudioAccent.matching(color: appearance.color, strokeColor: appearance.strokeColor))
+
+        var orbit = OrbitPreferences.standard
+        XCTAssertEqual(orbit.effectiveStrokeColor(fallback: StudioAccent.amber.strokeColor), StudioAccent.amber.strokeColor)
+        orbit.customColor = picked
+        XCTAssertEqual(orbit.effectiveStrokeColor(fallback: StudioAccent.amber.strokeColor), picked.blended(towardWhite: 0.35))
     }
 
     func testSectionResetRestoresOnlyThatSection() {

@@ -337,24 +337,20 @@ struct WaveformCanvas: View {
             let line = Self.curve(points, in: safe, from: first)
             let fill = fillStrength.isFinite ? min(max(fillStrength, 0), 1) : 0.32
             let mainStroke = StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
-            let backingStroke = StrokeStyle(lineWidth: CGFloat(lineWidth + 1.0), lineCap: .round, lineJoin: .round)
 
             switch style {
             case .line:
-                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
                 context.stroke(line, with: strokeGradient, style: mainStroke)
             case .softFill:
                 if fill > 0 {
                     Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill)
                 }
-                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
                 context.stroke(line, with: strokeGradient, style: mainStroke)
             case .mirror:
                 let reflected = WaveformPath.mirrored(points, in: safe)
                 if fill > 0 {
                     Self.fillRibbon(context: context, line: line, points: points, in: safe, color: color, opacity: opacity * fill * 0.55)
                 }
-                context.stroke(line, with: .color(Color.black.opacity(opacity * 0.22)), style: backingStroke)
                 context.stroke(line, with: strokeGradient, style: mainStroke)
                 if let mirrorFirst = reflected.first {
                     let mirrorLine = Self.curve(reflected, in: safe, from: mirrorFirst)

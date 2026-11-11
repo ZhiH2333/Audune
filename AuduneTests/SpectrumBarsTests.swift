@@ -212,6 +212,16 @@ final class SpectrumBarsTests: XCTestCase {
         XCTAssertNotEqual(quiet, loud)
         let broken = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: .nan)
         XCTAssertTrue([broken.red, broken.green, broken.blue].allSatisfy { $0.isFinite })
+
+        // Bar stroke follows mapped fill highlight when using default stroke, or keeps explicit custom stroke.
+        let defaultStroke = StudioAccent.amber.strokeColor
+        let mappedOutline = SpectrumColorMap.stroke(mode: .frequency, base: base, strokeColor: defaultStroke, mappedFill: low)
+        XCTAssertEqual(mappedOutline, low.blended(towardWhite: 0.35))
+        let customStroke = StudioColor(red: 0.1, green: 0.2, blue: 0.3)
+        XCTAssertEqual(
+            SpectrumColorMap.stroke(mode: .frequency, base: base, strokeColor: customStroke, mappedFill: low),
+            customStroke
+        )
     }
 
     func testRestingDotsAndVerticalOpacitiesStayBoundedAndAligned() {

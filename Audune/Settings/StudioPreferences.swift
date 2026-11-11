@@ -274,6 +274,19 @@ nonisolated enum SpectrumColorMap {
             return base.scaledLightness(0.72 + 0.36 * safe)
         }
     }
+
+    /// Harmonized bar outline color: follows each bar's mapped fill highlight when `strokeColor` is the default highlight of `base`.
+    static func stroke(
+        mode: SpectrumColorMode,
+        base: StudioColor,
+        strokeColor: StudioColor,
+        mappedFill: StudioColor
+    ) -> StudioColor {
+        guard mode != .solid, strokeColor == base.blended(towardWhite: 0.35) else {
+            return strokeColor
+        }
+        return mappedFill.blended(towardWhite: 0.35)
+    }
 }
 
 /// One-tap color presets. Applying one sets the fill and stroke colors; it is not stored on its own.
@@ -342,6 +355,15 @@ nonisolated struct AppearancePreferences: Equatable {
     mutating func apply(_ preset: StudioAccent) {
         color = preset.color
         strokeColor = preset.strokeColor
+    }
+
+    /// Updates `color` and keeps `strokeColor` in sync when `strokeColor` was still the auto-derived highlight of `color`.
+    mutating func setFillColor(_ newColor: StudioColor) {
+        let wasAutoStroke = strokeColor == color.blended(towardWhite: 0.35)
+        color = newColor
+        if wasAutoStroke {
+            strokeColor = newColor.blended(towardWhite: 0.35)
+        }
     }
 }
 
@@ -535,6 +557,14 @@ nonisolated struct OrbitPreferences: Equatable {
 
     var bandCount: Int {
         OrbitLayout.bandCount(barCount: barCount, mirrored: mirrored)
+    }
+
+    /// Effective stroke color for Orbit: derives a harmonious highlight from `customColor` when set, otherwise uses `appearanceStroke`.
+    func effectiveStrokeColor(fallback appearanceStroke: StudioColor) -> StudioColor {
+        if let customColor {
+            return customColor.blended(towardWhite: 0.35)
+        }
+        return appearanceStroke
     }
 
     var bandLayout: SpectrumBandLayout {

@@ -302,7 +302,6 @@ struct OrbitCanvas: View {
 
             let fill = GraphicsContext.Shading.color(color.opacity(opacity))
             let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
-            let backing = GraphicsContext.Shading.color(Color.black.opacity(opacity * 0.22))
             for (layerIndex, bars) in layers.enumerated() {
                 let layerOpacity = layerMode == .dualBand && layerIndex == 0 ? opacity * 0.72 : opacity
                 let layerFill = layerMode == .dualBand && layerIndex == 0
@@ -310,7 +309,6 @@ struct OrbitCanvas: View {
                     : fill
                 for bar in bars {
                     let shape = OrbitLayout.capsule(for: bar)
-                    context.fill(shape, with: backing)
                     if hypot(bar.end.x - bar.start.x, bar.end.y - bar.start.y) > 2 {
                         let radialFill = GraphicsContext.Shading.linearGradient(
                             Gradient(colors: [

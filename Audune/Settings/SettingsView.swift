@@ -241,7 +241,7 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
         }
         Section("Colors") {
-            ColorPicker("Fill and line", selection: colorBinding(\.appearance.color), supportsOpacity: false)
+            ColorPicker("Fill and line", selection: fillColorBinding, supportsOpacity: false)
             ColorPicker("Stroke", selection: colorBinding(\.appearance.strokeColor), supportsOpacity: false)
             SettingsSlider(title: "Opacity", value: $model.prefs.appearance.opacity, range: StudioPreferences.opacityRange, step: 0.01)
             SettingsSlider(title: "Stroke width", value: $model.prefs.appearance.lineWidth, range: StudioPreferences.lineWidthRange, step: 0.5)
@@ -798,6 +798,13 @@ struct SettingsView: View {
         )
     }
 
+    private var fillColorBinding: Binding<Color> {
+        Binding(
+            get: { model.prefs.appearance.color.swiftUI },
+            set: { model.prefs.appearance.setFillColor(StudioColor($0)) }
+        )
+    }
+
     private func colorBinding(_ keyPath: WritableKeyPath<StudioPreferences, StudioColor>) -> Binding<Color> {
         Binding(
             get: { model.prefs[keyPath: keyPath].swiftUI },
@@ -987,7 +994,7 @@ private struct LayoutPreview: View {
             )
             .blur(radius: energySaving ? 8 : 0)
             .frame(width: inner.width, height: inner.height)
-            .overlay(Rectangle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 1))
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.28), lineWidth: 1))
             .offset(x: inner.minX, y: inner.minY)
             if energySaving {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)

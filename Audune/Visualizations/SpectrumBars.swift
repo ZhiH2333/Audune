@@ -204,6 +204,7 @@ struct SpectrumCanvas: View {
     var color: Color
     var baseColor: StudioColor
     var strokeColor: Color
+    var baseStrokeColor: StudioColor? = nil
     var opacity: Double = 1
     var amplitude: Double = 1
     var lineWidth: Double = 1.5
@@ -217,7 +218,6 @@ struct SpectrumCanvas: View {
         Canvas { context, size in
             let canvas = CGRect(origin: .zero, size: size)
             context.clip(to: Path(canvas))
-            let solid = GraphicsContext.Shading.color(color.opacity(opacity))
             if drawsBars {
                 guard let metrics = SpectrumBars.drawMetrics(
                     in: canvas,
@@ -233,7 +233,7 @@ struct SpectrumCanvas: View {
                     amplitude: CGFloat(amplitude)
                 )
                 let outline = GraphicsContext.Shading.color(strokeColor.opacity(opacity))
-                let backing = GraphicsContext.Shading.color(Color.black.opacity(opacity * 0.22))
+                let resolvedStroke = baseStrokeColor ?? baseColor.blended(towardWhite: 0.35)
                 for (index, rect) in bars.enumerated() {
                     let level = index < spectrum.count ? spectrum[index] : 0
                     let mapped = SpectrumColorMap.fill(
@@ -260,12 +260,20 @@ struct SpectrumCanvas: View {
                     }
                     let radius = min(CGFloat(cornerRadius), rect.width / 2, rect.height / 2)
                     let path = Path(roundedRect: rect, cornerRadius: max(radius, 0))
-                    context.fill(path, with: backing)
                     context.fill(path, with: fill)
                     if drawsStroke {
+                        let barOutlineColor = SpectrumColorMap.stroke(
+                            mode: colorMode,
+                            base: baseColor,
+                            strokeColor: resolvedStroke,
+                            mappedFill: mapped
+                        )
+                        let barOutline = colorMode == .solid
+                            ? outline
+                            : GraphicsContext.Shading.color(barOutlineColor.swiftUI.opacity(opacity))
                         context.stroke(
                             path,
-                            with: outline,
+                            with: barOutline,
                             style: StrokeStyle(lineWidth: CGFloat(lineWidth), lineCap: .round, lineJoin: .round)
                         )
                     }
