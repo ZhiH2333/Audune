@@ -888,4 +888,59 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertTrue(controller.handleKeyDown(keyCode: 37, modifierFlags: [.command]))
         XCTAssertEqual(controller.model.fullScreenScene, .lyrics)
     }
+
+    func testDesiredFrameIntervalUsesSixtyFPSForActiveExpandedAndFullScreenVisualizer() {
+        // Full-screen visualizer with active audio uses 60 FPS
+        XCTAssertEqual(
+            IslandWindowController.desiredFrameInterval(
+                state: .expanded,
+                isFullScreen: true,
+                fullScreenScene: .visualizer,
+                drawsActiveVisuals: true,
+                isTrackPlaying: true,
+                pointerInside: false
+            ),
+            1.0 / 60.0,
+            accuracy: 0.000_1
+        )
+        // Expanded Island with active audio or pointer inside uses 60 FPS
+        XCTAssertEqual(
+            IslandWindowController.desiredFrameInterval(
+                state: .pinned,
+                isFullScreen: false,
+                fullScreenScene: .visualizer,
+                drawsActiveVisuals: true,
+                isTrackPlaying: false,
+                pointerInside: false
+            ),
+            1.0 / 60.0,
+            accuracy: 0.000_1
+        )
+        // Compact Island with active audio uses 30 FPS
+        XCTAssertEqual(
+            IslandWindowController.desiredFrameInterval(
+                state: .compact,
+                isFullScreen: false,
+                fullScreenScene: .visualizer,
+                drawsActiveVisuals: true,
+                isTrackPlaying: false,
+                pointerInside: false
+            ),
+            1.0 / 30.0,
+            accuracy: 0.000_1
+        )
+        // Settled silence without pointer interaction drops to 15 FPS
+        XCTAssertEqual(
+            IslandWindowController.desiredFrameInterval(
+                state: .expanded,
+                isFullScreen: true,
+                fullScreenScene: .visualizer,
+                drawsActiveVisuals: false,
+                isTrackPlaying: false,
+                pointerInside: false
+            ),
+            1.0 / 15.0,
+            accuracy: 0.000_1
+        )
+    }
 }

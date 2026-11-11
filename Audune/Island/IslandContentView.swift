@@ -482,6 +482,7 @@ struct IslandContentView: View {
     }
 
     private func wakeFullScreenChrome() {
+        guard model.fullScreenScene == .lyrics else { return }
         let now = ProcessInfo.processInfo.systemUptime
         if isFullScreenChromeVisible == false {
             isFullScreenChromeVisible = true
@@ -720,28 +721,8 @@ struct IslandContentView: View {
         ZStack {
             softEdgedVisualization(
                 nowPlayingAmbientVisualization
-                    .opacity(0.48)
+                    .opacity(0.52)
             )
-
-            if reduceMotion == false {
-                softEdgedVisualization(
-                    nowPlayingAmbientVisualization
-                        .opacity(0.35)
-                        .blur(radius: 4)
-                )
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .clear, location: 0.5),
-                            .init(color: .black.opacity(0.45), location: 0.8),
-                            .init(color: .black, location: 1)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            }
 
             LinearGradient(
                 stops: [

@@ -1281,18 +1281,53 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    nonisolated static let expandedActiveFrameInterval: TimeInterval = 1.0 / 60.0
+    nonisolated static let compactActiveFrameInterval: TimeInterval = 1.0 / 30.0
+    nonisolated static let idleFrameInterval: TimeInterval = 1.0 / 15.0
+
+    /// Chooses 60 FPS for active Expanded / Full Screen visualizer, 30 FPS for active Compact or Lyrics, and 15 FPS when idle/settled.
+    nonisolated static func desiredFrameInterval(
+        state: IslandPresentationState,
+        isFullScreen: Bool,
+        fullScreenScene: IslandFullScreenScene,
+        drawsActiveVisuals: Bool,
+        isTrackPlaying: Bool,
+        pointerInside: Bool
+    ) -> TimeInterval {
+        guard state != .disabled else { return idleFrameInterval }
+        if isFullScreen && fullScreenScene == .lyrics {
+            return (isTrackPlaying || pointerInside) ? compactActiveFrameInterval : idleFrameInterval
+        }
+        if state.isExpandedOrPinned {
+            return (drawsActiveVisuals || pointerInside) ? expandedActiveFrameInterval : idleFrameInterval
+        }
+        return (drawsActiveVisuals || pointerInside) ? compactActiveFrameInterval : idleFrameInterval
+    }
+
     private var desiredTimerInterval: TimeInterval {
-        1.0 / 30.0
+        Self.desiredFrameInterval(
+            state: stateContext.state,
+            isFullScreen: model.isFullScreen,
+            fullScreenScene: model.fullScreenScene,
+            drawsActiveVisuals: model.drawsActiveVisuals(phase: spike.phase),
+            isTrackPlaying: model.nowPlaying.isPlaying,
+            pointerInside: stateContext.pointerInside
+        )
     }
 
     private func startDisplayTimer() {
+        lastTick = nil
+        tick()
+        scheduleDisplayTimerIfNeeded()
+    }
+
+    private func scheduleDisplayTimerIfNeeded() {
         let interval = desiredTimerInterval
         if let existing = timer {
             guard abs(existing.timeInterval - interval) > 0.000_5 else { return }
             existing.invalidate()
             self.timer = nil
         }
-        tick()
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.tickFromTimer()
         }
@@ -1341,28 +1376,40 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         {
             applyEvent(.pointerExited(at: Date().timeIntervalSinceReferenceDate), animated: true)
         }
+        if timer != nil {
+            scheduleDisplayTimerIfNeeded()
+        }
     }
 
     private func refreshVisuals(dt: Double = 0) {
         let snapshot = model.snapshot
         let silent = snapshot.isSilent
-        let compactCount = model.prefs.compactBarCountPerSide
-        let compactLive = SpectrumBands.levels(
-            binMagnitudes: snapshot.binMagnitudes,
-            sampleRate: snapshot.sampleRate,
-            count: compactCount
-        )
-        let compactTarget = silent ? Array(repeating: Float(0), count: compactCount) : compactLive
-        smoothedCompact = SpectrumBands.displayMix(
-            current: smoothedCompact,
-            toward: compactTarget,
-            count: compactCount,
-            smoothing: 0.25,
-            dt: dt
-        )
-        model.compactLevels = smoothedCompact
+        let isExpandedOnlyTick = dt > 0 && model.state.isExpandedOrPinned && model.showsExpandedChrome
+
+        if isExpandedOnlyTick == false {
+            let compactCount = model.prefs.compactBarCountPerSide
+            let compactLive = SpectrumBands.levels(
+                binMagnitudes: snapshot.binMagnitudes,
+                sampleRate: snapshot.sampleRate,
+                count: compactCount
+            )
+            let compactTarget = silent ? Array(repeating: Float(0), count: compactCount) : compactLive
+            smoothedCompact = SpectrumBands.displayMix(
+                current: smoothedCompact,
+                toward: compactTarget,
+                count: compactCount,
+                smoothing: 0.25,
+                dt: dt
+            )
+            if model.compactLevels != smoothedCompact {
+                model.compactLevels = smoothedCompact
+            }
+        }
 
         guard model.state.isExpandedOrPinned else { return }
+        if dt > 0, model.isFullScreen == false, model.prefs.nowPlayingLayout.showVisualization == false {
+            return
+        }
         switch model.prefs.mode {
         case .spectrum:
             let live = SpectrumBands.levels(
@@ -1378,8 +1425,13 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 dt: dt,
                 settings: model.spectrum.dynamics
             )
-            model.expandedSpectrum = spectrumState.levels
-            model.expandedPeaks = model.spectrum.peakHold ? spectrumState.peaks : []
+            if model.expandedSpectrum != spectrumState.levels {
+                model.expandedSpectrum = spectrumState.levels
+            }
+            let nextPeaks = model.spectrum.peakHold ? spectrumState.peaks : []
+            if model.expandedPeaks != nextPeaks {
+                model.expandedPeaks = nextPeaks
+            }
 
         case .orbit:
             let count = model.orbit.bandCount
@@ -1397,8 +1449,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 settings: model.orbit.dynamics
             )
             smoothedExpanded = orbitState.levels
-            model.expandedSpectrum = smoothedExpanded
-            model.expandedPeaks = []
+            if model.expandedSpectrum != smoothedExpanded {
+                model.expandedSpectrum = smoothedExpanded
+            }
+            if model.expandedPeaks.isEmpty == false {
+                model.expandedPeaks = []
+            }
 
         case .waveform:
             let live = snapshot.waveform
@@ -1409,8 +1465,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 smoothing: Float(model.waveform.smoothing),
                 dt: dt
             )
-            model.expandedWaveform = smoothedWaveform
-            model.expandedPeaks = []
+            if model.expandedWaveform != smoothedWaveform {
+                model.expandedWaveform = smoothedWaveform
+            }
+            if model.expandedPeaks.isEmpty == false {
+                model.expandedPeaks = []
+            }
         }
     }
 }
