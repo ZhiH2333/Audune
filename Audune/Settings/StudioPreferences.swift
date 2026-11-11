@@ -149,6 +149,11 @@ nonisolated struct StudioColor: Equatable, Sendable {
         String(format: "#%02X%02X%02X", Int((red * 255).rounded()), Int((green * 255).rounded()), Int((blue * 255).rounded()))
     }
 
+    /// True RGB chroma (`max(r, g, b) - min(r, g, b)`), unaffected by HSL lightness-cone inflation.
+    var chroma: Double {
+        max(red, green, blue) - min(red, green, blue)
+    }
+
     func blended(towardWhite amount: Double) -> StudioColor {
         let weight = amount.isFinite ? min(max(amount, 0), 1) : 0
         return StudioColor(
@@ -169,12 +174,18 @@ nonisolated struct StudioColor: Equatable, Sendable {
         return StudioColor(red: rgb.0, green: rgb.1, blue: rgb.2)
     }
 
-    /// Scales perceived lightness toward black (factor < 1) or white (factor > 1), clamped.
+    /// Scales perceived lightness toward black (factor < 1) or white (factor > 1), clamped,
+    /// while capping RGB chroma so darkening near-white colors never inflates saturation into muddy tints.
     func scaledLightness(_ factor: Double) -> StudioColor {
         let scale = factor.isFinite ? max(factor, 0) : 1
+        let origChroma = chroma
         var h = 0.0, s = 0.0, l = 0.0
         Self.rgbToHSL(red, green, blue, h: &h, s: &s, l: &l)
         l = min(max(l * scale, 0), 1)
+        let maxSpan = 1 - abs(2 * l - 1)
+        if maxSpan > 0.000_001 {
+            s = min(s, origChroma / maxSpan)
+        }
         let rgb = Self.hslToRGB(h: h, s: s, l: l)
         return StudioColor(red: rgb.0, green: rgb.1, blue: rgb.2)
     }
@@ -240,6 +251,9 @@ nonisolated enum SpectrumColorMode: String, Codable, CaseIterable, Identifiable 
 
 /// Pure fill colors for Spectrum bars. Compact Island keeps Appearance solid color.
 nonisolated enum SpectrumColorMap {
+    /// Maximum analogous hue span in turns (~32° total) so Frequency mode stays in the same color family.
+    static let maxFrequencyHueSpan = 0.09
+
     static func fill(
         mode: SpectrumColorMode,
         base: StudioColor,
@@ -251,11 +265,13 @@ nonisolated enum SpectrumColorMap {
         case .solid:
             return base
         case .frequency:
-            let t = count > 1 ? Double(index) / Double(count - 1) : 0
-            return base.shiftedHue(by: (t - 0.5) * 0.4)
+            let t = count > 1 ? min(max(Double(index) / Double(count - 1), 0), 1) : 0
+            let chromaWeight = min(max((base.chroma - 0.08) / 0.22, 0), 1)
+            let shifted = base.shiftedHue(by: (t - 0.5) * maxFrequencyHueSpan * chromaWeight)
+            return shifted.scaledLightness(0.86 + 0.20 * t)
         case .amplitude:
             let safe = level.isFinite ? min(max(Double(level), 0), 1) : 0
-            return base.scaledLightness(0.55 + 0.55 * safe)
+            return base.scaledLightness(0.72 + 0.36 * safe)
         }
     }
 }

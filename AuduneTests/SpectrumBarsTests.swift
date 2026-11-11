@@ -190,6 +190,22 @@ final class SpectrumBarsTests: XCTestCase {
         let high = SpectrumColorMap.fill(mode: .frequency, base: base, index: 7, count: 8, level: 0.2)
         XCTAssertNotEqual(low, high)
         XCTAssertTrue([low.red, low.green, low.blue, high.red, high.green, high.blue].allSatisfy { $0.isFinite })
+        // Analogous frequency mapping on Amber must stay warm (red > green > blue) rather than spinning into purple/green.
+        XCTAssertGreaterThan(low.red, low.green)
+        XCTAssertGreaterThan(low.green, low.blue)
+        XCTAssertGreaterThan(high.red, high.green)
+        XCTAssertGreaterThan(high.green, high.blue)
+
+        // Low-chroma Warm preset must not inflate RGB chroma into muddy yellow/pink/green under Frequency or Amplitude.
+        let warm = StudioAccent.warm.color
+        for index in 0..<8 {
+            let freqBar = SpectrumColorMap.fill(mode: .frequency, base: warm, index: index, count: 8, level: 0.5)
+            XCTAssertLessThanOrEqual(freqBar.chroma, warm.chroma + 0.015)
+        }
+        let warmQuiet = SpectrumColorMap.fill(mode: .amplitude, base: warm, index: 0, count: 1, level: 0.0)
+        let warmLoud = SpectrumColorMap.fill(mode: .amplitude, base: warm, index: 0, count: 1, level: 1.0)
+        XCTAssertLessThanOrEqual(warmQuiet.chroma, warm.chroma + 0.015)
+        XCTAssertLessThan(warmQuiet.red, warmLoud.red)
 
         let quiet = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: 0.1)
         let loud = SpectrumColorMap.fill(mode: .amplitude, base: base, index: 0, count: 1, level: 1)
