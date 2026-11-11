@@ -26,6 +26,10 @@ nonisolated final class PCMWindowBuffer: @unchecked Sendable {
 
     var allocatedSampleCount: Int { Self.capacity }
 
+    var currentSequence: UInt64 {
+        publishedSequence.load(ordering: .acquiring)
+    }
+
     func write(_ source: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
         var offset = 0
@@ -45,6 +49,16 @@ nonisolated final class PCMWindowBuffer: @unchecked Sendable {
     func copyLatestWindow() -> [Float]? {
         let sequence = publishedSequence.load(ordering: .acquiring)
         guard sequence > 0 else { return nil }
+        let slot = Int((sequence - 1) % UInt64(Self.slotCount))
+        let start = storage.advanced(by: Self.windowLength * (slot + 1))
+        return Array(UnsafeBufferPointer(start: start, count: Self.windowLength))
+    }
+
+    /// Copies the newest full window only when a newer frame has been published since `lastSequence`.
+    func copyLatestWindowIfUpdated(after lastSequence: inout UInt64) -> [Float]? {
+        let sequence = publishedSequence.load(ordering: .acquiring)
+        guard sequence > 0, sequence != lastSequence else { return nil }
+        lastSequence = sequence
         let slot = Int((sequence - 1) % UInt64(Self.slotCount))
         let start = storage.advanced(by: Self.windowLength * (slot + 1))
         return Array(UnsafeBufferPointer(start: start, count: Self.windowLength))

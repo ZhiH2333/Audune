@@ -59,6 +59,8 @@ struct SpikeAliveResult: Sendable {
 @MainActor
 @Observable
 final class ProcessTapSpike {
+    nonisolated static let analysisPollMilliseconds = 16
+
     var phase: SpikePhase = .idle
     var tapAutoStart = true
     var appliedTapAutoStart = false
@@ -275,16 +277,18 @@ final class ProcessTapSpike {
         let snapshots = self.snapshots
         let sampleRate = meter.format.sampleRate
         let silenceGate = self.silenceGate
+        let pollInterval = Duration.milliseconds(Self.analysisPollMilliseconds)
         analysisTask = Task.detached(priority: .userInitiated) {
             let analyzer = SpectrumAnalyzer(sampleRate: sampleRate)
+            var lastWindowSequence: UInt64 = 0
             while Task.isCancelled == false {
                 analyzer.applySilenceSettings(silenceGate.load())
-                if let window = meter.copyLatestWindow() {
+                if let window = meter.copyLatestWindowIfUpdated(after: &lastWindowSequence) {
                     var snapshot = analyzer.process(window)
                     snapshot.waveform = WaveformSampler.downsample(window)
                     snapshots.store(snapshot, generation: generation)
                 }
-                try? await Task.sleep(for: .milliseconds(32))
+                try? await Task.sleep(for: pollInterval)
             }
         }
     }

@@ -91,6 +91,10 @@ nonisolated final class SpikeLevelMeter: @unchecked Sendable {
         window.copyLatestWindow()
     }
 
+    func copyLatestWindowIfUpdated(after lastSequence: inout UInt64) -> [Float]? {
+        window.copyLatestWindowIfUpdated(after: &lastSequence)
+    }
+
     func consume(_ input: UnsafePointer<AudioBufferList>) {
         let buffers = Self.buffers(in: input)
         bufferCount.store(UInt32(buffers.count), ordering: .relaxed)
