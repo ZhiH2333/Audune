@@ -144,6 +144,24 @@ final class OrbitLayoutTests: XCTestCase {
         XCTAssertLessThanOrEqual(pulsed, base * 1.35 + 0.001)
         // Strength above 0.35 clamps; mean energy 0.8 → 1 + 0.35 * 0.8 = 1.28
         XCTAssertEqual(OrbitLayout.pulsedAmplitude(base: base, spectrum: spectrum, strength: 9), base * 1.28, accuracy: 0.001)
+
+        var bassHeavy = Array(repeating: Float(0.1), count: 16)
+        for index in 0..<4 { bassHeavy[index] = 0.9 }
+        var trebleHeavy = Array(repeating: Float(0.1), count: 16)
+        for index in 12..<16 { trebleHeavy[index] = 0.9 }
+        XCTAssertGreaterThan(
+            OrbitLayout.pulsedAmplitude(base: base, spectrum: bassHeavy, strength: 0.3),
+            OrbitLayout.pulsedAmplitude(base: base, spectrum: trebleHeavy, strength: 0.3)
+        )
+    }
+
+    func testOrbitDynamicsAttackFasterThanTheyRelease() {
+        let dynamics = OrbitPreferences.standard.dynamics
+        XCTAssertLessThan(dynamics.attackSeconds, dynamics.releaseSeconds)
+        let rising = SpectrumDynamics.step(state: SpectrumDynamicsState(), target: [1], dt: 0.033, settings: dynamics)
+        let start = SpectrumDynamicsState(levels: [1], peaks: [1], peakAge: [0])
+        let falling = SpectrumDynamics.step(state: start, target: [0], dt: 0.033, settings: dynamics)
+        XCTAssertGreaterThan(rising.levels[0], 1 - falling.levels[0])
     }
 
     private func assertInside(_ point: CGPoint, _ bounds: CGRect, file: StaticString = #filePath, line: UInt = #line) {

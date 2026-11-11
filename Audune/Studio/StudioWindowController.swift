@@ -27,6 +27,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     /// True while copying the live frame into prefs so Settings onChange does not fight the drag.
     private var isWritingSizeFromWindow = false
     private var spectrumState = SpectrumDynamicsState()
+    private var orbitState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private let defaults: UserDefaults
 
@@ -153,7 +154,11 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
     }
 
     func setOrbitBarCount(_ count: Int) {
-        model.prefs.orbit.barCount = StudioPreferences.normalizedBarCount(count)
+        let next = StudioPreferences.normalizedBarCount(count)
+        if next != model.prefs.orbit.barCount {
+            orbitState = SpectrumDynamicsState()
+        }
+        model.prefs.orbit.barCount = next
         savePreferences()
         refreshStudioSpectrum(dt: 0)
     }
@@ -300,6 +305,7 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         smoothedStudio = []
         smoothedWave = []
         spectrumState = SpectrumDynamicsState()
+        orbitState = SpectrumDynamicsState()
         apply(StudioPreferences.standard)
         refreshStudioSpectrum(dt: 0)
     }
@@ -592,16 +598,17 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             let live = SpectrumBands.levels(
                 binMagnitudes: model.snapshot.binMagnitudes,
                 sampleRate: model.snapshot.sampleRate,
-                count: count
+                count: count,
+                layout: prefs.orbit.bandLayout
             )
             let target = silent ? Array(repeating: Float(0), count: count) : live
-            smoothedStudio = SpectrumBands.displayMix(
-                current: smoothedStudio,
-                toward: target,
-                count: count,
-                smoothing: Float(prefs.orbit.smoothing),
-                dt: dt
+            orbitState = SpectrumDynamics.step(
+                state: orbitState,
+                target: target,
+                dt: dt,
+                settings: prefs.orbit.dynamics
             )
+            smoothedStudio = orbitState.levels
             model.studioSpectrum = smoothedStudio
             model.spectrumPeaks = []
         case .waveform:

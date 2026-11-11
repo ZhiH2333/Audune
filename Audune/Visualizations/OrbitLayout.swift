@@ -108,12 +108,31 @@ nonisolated enum OrbitLayout {
         return min(max(sum / Float(spectrum.count), 0), 1)
     }
 
-    /// Scales amplitude by mean energy when `strength` > 0. Strength is capped at 0.35.
+    /// Low-quarter band energy in 0…1 so kicks and bass drive the ring pulse more strongly than hiss.
+    static func lowBandEnergy(_ spectrum: [Float]) -> Float {
+        guard spectrum.isEmpty == false else { return 0 }
+        let lowCount = max(spectrum.count / 4, 1)
+        var sum: Float = 0
+        for sample in spectrum.prefix(lowCount) {
+            sum += sample.isFinite ? abs(sample) : 0
+        }
+        return min(max(sum / Float(lowCount), 0), 1)
+    }
+
+    /// Sub-bass weighted energy (65% low bands + 35% full-spectrum mean). Equal to `meanEnergy` on uniform inputs.
+    static func pulseEnergy(_ spectrum: [Float]) -> Float {
+        guard spectrum.isEmpty == false else { return 0 }
+        let low = lowBandEnergy(spectrum)
+        let mean = meanEnergy(spectrum)
+        return min(max(low * 0.65 + mean * 0.35, 0), 1)
+    }
+
+    /// Scales amplitude by bass-weighted energy when `strength` > 0. Strength is capped at 0.35.
     static func pulsedAmplitude(base: CGFloat, spectrum: [Float], strength: Double) -> CGFloat {
         let gain = base.isFinite ? max(base, 0) : 1
         let pulse = strength.isFinite ? min(max(strength, 0), 0.35) : 0
         guard pulse > 0 else { return gain }
-        return gain * (1 + CGFloat(pulse) * CGFloat(meanEnergy(spectrum)))
+        return gain * (1 + CGFloat(pulse) * CGFloat(pulseEnergy(spectrum)))
     }
 
     /// Dual-band layers: low half of `spectrum` drives the inner ring, high half drives the outer ring.

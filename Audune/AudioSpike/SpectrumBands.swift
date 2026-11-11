@@ -2,13 +2,17 @@ import Foundation
 
 /// How Studio bars cut up the FFT bins. The menu bar's 16 bands are separate and unchanged.
 nonisolated struct SpectrumBandLayout: Equatable {
+    static let perceptualTiltDecibels: Float = 4.5
+
     var scale: SpectrumScale
     var minHz: Double
     var maxHz: Double
     /// Level that maps to an empty bar. Louder than 0 dBFS always maps to a full bar.
     var floorDecibels: Float
+    /// High-frequency perceptual lift across the band span (pink-noise compensation).
+    var tiltDecibels: Float = 0
 
-    static let standard = SpectrumBandLayout(scale: .log, minHz: 40, maxHz: 16_000, floorDecibels: -60)
+    static let standard = SpectrumBandLayout(scale: .log, minHz: 40, maxHz: 16_000, floorDecibels: -60, tiltDecibels: 0)
 }
 
 /// Band levels from linear FFT bin magnitudes.
@@ -57,9 +61,18 @@ nonisolated enum SpectrumBands {
                     nyquistBin: nyquistBin
                 )
             }
-            levels.append(normalized(magnitude, floorDecibels: layout.floorDecibels))
+            let tilt = bandTiltDecibels(band: band, count: count, maxTiltDecibels: layout.tiltDecibels)
+            levels.append(normalized(magnitude, floorDecibels: layout.floorDecibels, tiltDecibels: tilt))
         }
         return levels
+    }
+
+    /// Gentle high-frequency lift across `0..<count` so natural pink-like music spectra look balanced.
+    static func bandTiltDecibels(band: Int, count: Int, maxTiltDecibels: Float) -> Float {
+        guard count > 1, band > 0, maxTiltDecibels.isFinite, maxTiltDecibels > 0 else { return 0 }
+        let clampedIndex = min(max(band, 0), count - 1)
+        let progress = Float(clampedIndex) / Float(count - 1)
+        return progress * maxTiltDecibels
     }
 
     /// FFT bins averaged into one band. Used when the band is at least one bin wide.
@@ -193,10 +206,12 @@ nonisolated enum SpectrumBands {
         }
     }
 
-    private static func normalized(_ magnitude: Float, floorDecibels: Float) -> Float {
+    private static func normalized(_ magnitude: Float, floorDecibels: Float, tiltDecibels: Float = 0) -> Float {
         let safe = magnitude.isFinite && magnitude > 0 ? magnitude : 0
+        guard safe > 0 else { return 0 }
         let floor = floorDecibels.isFinite && floorDecibels < -1 ? floorDecibels : -60
-        let decibels = 20 * log10(safe + 1e-7)
+        let tilt = tiltDecibels.isFinite ? max(tiltDecibels, 0) : 0
+        let decibels = 20 * log10(safe + 1e-7) + tilt
         let value = (decibels - floor) / -floor
         guard value.isFinite else { return 0 }
         return min(max(value, 0), 1)

@@ -165,6 +165,23 @@ final class SpectrumBandsTests: XCTestCase {
         XCTAssertEqual(manySmall[0], fewLarge[0], accuracy: 0.08)
     }
 
+    func testPerceptualTiltLiftsHigherBandsWithoutRaisingSilence() {
+        let flatBins = Array(repeating: Float(0.05), count: AudioSnapshot.binCount)
+        var tiltedLayout = SpectrumBandLayout.standard
+        tiltedLayout.tiltDecibels = SpectrumBandLayout.perceptualTiltDecibels
+
+        let untitled = SpectrumBands.levels(binMagnitudes: flatBins, sampleRate: 48_000, count: 16, layout: .standard)
+        let tilted = SpectrumBands.levels(binMagnitudes: flatBins, sampleRate: 48_000, count: 16, layout: tiltedLayout)
+
+        XCTAssertEqual(tilted.first ?? -1, untitled.first ?? -2, accuracy: 0.000_1)
+        XCTAssertGreaterThan(tilted.last ?? 0, untitled.last ?? 1)
+        XCTAssertGreaterThan(tilted.last ?? 0, tilted.first ?? 1)
+
+        let silentBins = Array(repeating: Float(0), count: AudioSnapshot.binCount)
+        let silentTilted = SpectrumBands.levels(binMagnitudes: silentBins, sampleRate: 48_000, count: 16, layout: tiltedLayout)
+        XCTAssertTrue(silentTilted.allSatisfy { $0 == 0 })
+    }
+
     private func sine(frequency: Double, amplitude: Float) -> [Float] {
         let length = SpectrumAnalyzer.fftLength
         let step = 2 * Float.pi * Float(frequency) / 48_000

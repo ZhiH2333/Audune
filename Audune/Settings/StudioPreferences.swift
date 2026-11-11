@@ -384,7 +384,13 @@ nonisolated struct SpectrumPreferences: Equatable {
     }
 
     var layout: SpectrumBandLayout {
-        SpectrumBandLayout(scale: scale, minHz: minHz, maxHz: maxHz, floorDecibels: Float(floorDecibels))
+        SpectrumBandLayout(
+            scale: scale,
+            minHz: minHz,
+            maxHz: maxHz,
+            floorDecibels: Float(floorDecibels),
+            tiltDecibels: SpectrumBandLayout.perceptualTiltDecibels
+        )
     }
 
     var dynamics: SpectrumDynamicsSettings {
@@ -513,6 +519,24 @@ nonisolated struct OrbitPreferences: Equatable {
 
     var bandCount: Int {
         OrbitLayout.bandCount(barCount: barCount, mirrored: mirrored)
+    }
+
+    var bandLayout: SpectrumBandLayout {
+        var layout = SpectrumBandLayout.standard
+        layout.tiltDecibels = SpectrumBandLayout.perceptualTiltDecibels
+        return layout
+    }
+
+    /// Asymmetric fast-attack / smooth-release dynamics derived from `smoothing` so radial bars punch on transients.
+    var dynamics: SpectrumDynamicsSettings {
+        let amount = smoothing.isFinite ? min(max(smoothing, 0), 1) : 0.35
+        return SpectrumDynamicsSettings(
+            attackSeconds: 0.018 + amount * 0.055,
+            releaseSeconds: 0.14 + amount * 0.38,
+            neighborSmoothing: Float(amount * 0.35),
+            peakHoldSeconds: nil,
+            peakFallPerSecond: SpectrumDynamicsSettings.defaultPeakFallPerSecond
+        )
     }
 }
 

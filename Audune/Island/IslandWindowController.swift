@@ -102,6 +102,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var smoothedExpanded: [Float] = []
     private var smoothedWaveform: [Float] = []
     private var spectrumState = SpectrumDynamicsState()
+    private var orbitState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
     private var didShutdown = false
     private var lyricsRuntimeDemand: UUID?
@@ -240,6 +241,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
         if preferences.orbit.bandCount != model.orbit.bandCount {
             smoothedExpanded = []
+            orbitState = SpectrumDynamicsState()
         }
         model.appearance = preferences.appearance
         model.spectrum = preferences.spectrum
@@ -1384,16 +1386,17 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             let live = SpectrumBands.levels(
                 binMagnitudes: snapshot.binMagnitudes,
                 sampleRate: snapshot.sampleRate,
-                count: count
+                count: count,
+                layout: model.orbit.bandLayout
             )
             let target = silent ? Array(repeating: Float(0), count: count) : live
-            smoothedExpanded = SpectrumBands.displayMix(
-                current: smoothedExpanded,
-                toward: target,
-                count: count,
-                smoothing: Float(model.orbit.smoothing),
-                dt: dt
+            orbitState = SpectrumDynamics.step(
+                state: orbitState,
+                target: target,
+                dt: dt,
+                settings: model.orbit.dynamics
             )
+            smoothedExpanded = orbitState.levels
             model.expandedSpectrum = smoothedExpanded
             model.expandedPeaks = []
 

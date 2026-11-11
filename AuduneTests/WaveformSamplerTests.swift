@@ -372,6 +372,31 @@ final class WaveformSamplerTests: XCTestCase {
         XCTAssertEqual(mirrored, [CGPoint(x: 10, y: 80), CGPoint(x: 20, y: 50)])
     }
 
+    func testZeroCrossingTriggerStabilizesPhaseOffsetSines() {
+        let count = 1_024
+        let frequency: Float = 8
+        let waveA: [Float] = (0..<count).map { i in
+            0.8 * sin(2 * Float.pi * frequency * Float(i) / Float(count) - 0.9)
+        }
+        let waveB: [Float] = (0..<count).map { i in
+            0.8 * sin(2 * Float.pi * frequency * Float(i) / Float(count) - 1.7)
+        }
+        let offsetA = WaveformSampler.risingZeroCrossingOffset(in: waveA, maxSearch: count / 4)
+        let offsetB = WaveformSampler.risingZeroCrossingOffset(in: waveB, maxSearch: count / 4)
+        XCTAssertNotNil(offsetA)
+        XCTAssertNotNil(offsetB)
+        XCTAssertNotEqual(offsetA, offsetB)
+
+        let sampledA = WaveformSampler.downsample(waveA, count: 64)
+        let sampledB = WaveformSampler.downsample(waveB, count: 64)
+        // Both triggered windows begin at a rising zero-crossing so their leading buckets are positive and aligned.
+        XCTAssertGreaterThan(sampledA[1], 0)
+        XCTAssertGreaterThan(sampledB[1], 0)
+        for index in 0..<16 {
+            XCTAssertEqual(sampledA[index], sampledB[index], accuracy: 0.12)
+        }
+    }
+
     private func inside(_ point: CGPoint, _ bounds: CGRect) -> Bool {
         point.x >= bounds.minX && point.x <= bounds.maxX && point.y >= bounds.minY && point.y <= bounds.maxY
     }
