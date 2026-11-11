@@ -94,6 +94,23 @@ nonisolated struct VisualPresetLibrary {
         return .unsaved
     }
 
+    /// Returns the next preset in rotation for `mode` (built-ins followed by custom presets).
+    func nextPreset(in preferences: StudioPreferences, for mode: StudioVisualMode) -> VisualPreset? {
+        let candidates = presets(for: mode)
+        guard candidates.isEmpty == false else { return nil }
+        let currentID: String?
+        switch match(in: preferences, mode: mode) {
+        case .applied(let preset), .modified(let preset):
+            currentID = preset.id
+        case .unsaved:
+            currentID = appliedID(for: mode)
+        }
+        guard let currentID, let index = candidates.firstIndex(where: { $0.id == currentID }) else {
+            return candidates.first
+        }
+        return candidates[(index + 1) % candidates.count]
+    }
+
     @discardableResult
     func save(to defaults: UserDefaults) -> Bool {
         guard canPersist else { return false }

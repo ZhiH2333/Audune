@@ -207,4 +207,36 @@ final class VisualPresetApplyTests: XCTestCase {
         XCTAssertEqual(locked.match(in: dynamic, mode: .spectrum), .applied(VisualPresetCatalog.dynamic))
         XCTAssertEqual(locked.match(in: .standard, mode: .orbit), .unsaved)
     }
+
+    @MainActor
+    func testCycleVisualPresetRotatesThroughBuiltInsAndCustomPresets() throws {
+        let controller = StudioWindowController(spike: ProcessTapSpike(), defaults: defaults)
+        defer { controller.shutdown() }
+        controller.model.prefs.mode = .spectrum
+
+        // Unsaved starts with the first built-in (Clean), then Dense, then Dynamic, then wraps back to Clean.
+        let first = try XCTUnwrap(controller.cycleVisualPreset())
+        XCTAssertEqual(first.id, VisualPresetCatalog.clean.id)
+        XCTAssertEqual(controller.currentPreferences().spectrum, VisualPresetCatalog.clean.spectrum)
+
+        let second = try XCTUnwrap(controller.cycleVisualPreset())
+        XCTAssertEqual(second.id, VisualPresetCatalog.dense.id)
+        XCTAssertEqual(controller.currentPreferences().spectrum, VisualPresetCatalog.dense.spectrum)
+
+        let third = try XCTUnwrap(controller.cycleVisualPreset())
+        XCTAssertEqual(third.id, VisualPresetCatalog.dynamic.id)
+        XCTAssertEqual(controller.currentPreferences().spectrum, VisualPresetCatalog.dynamic.spectrum)
+
+        // Add a custom preset and confirm rotation includes it before wrapping around.
+        controller.model.prefs.spectrum.barCount = 16
+        let custom = try controller.saveCurrentVisualPreset(name: "Sixteen", mode: .spectrum).get()
+        // After saving custom, it is currently applied, so cycling wraps back to Clean.
+        let wrapped = try XCTUnwrap(controller.cycleVisualPreset())
+        XCTAssertEqual(wrapped.id, VisualPresetCatalog.clean.id)
+        _ = controller.cycleVisualPreset() // Dense
+        _ = controller.cycleVisualPreset() // Dynamic
+        let fourth = try XCTUnwrap(controller.cycleVisualPreset())
+        XCTAssertEqual(fourth.id, custom.id)
+        XCTAssertEqual(controller.activePresetButtonTitle(), "Sixteen")
+    }
 }

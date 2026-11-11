@@ -265,6 +265,8 @@ struct StudioInteractionRoot: View {
     @Bindable var spike: ProcessTapSpike
     @Bindable var model: StudioModel
     var savePreferences: () -> Void
+    var cyclePreset: () -> Void = {}
+    var presetTitle: () -> String = { String(localized: "Preset") }
     var openSettings: () -> Void
     var drag: () -> Void
     var summon: () -> Void
@@ -282,6 +284,7 @@ struct StudioInteractionRoot: View {
                 )
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 12, weight: .semibold))
+                    .opacity(model.chromeVisible ? 0.92 : 0.28)
                     .allowsHitTesting(false)
             }
             .frame(width: StudioChrome.gripWidth, height: StudioChrome.gripHeight)
@@ -319,10 +322,19 @@ struct StudioInteractionRoot: View {
                     symbol: mode.symbol,
                     selected: model.prefs.mode == mode
                 ) {
-                    model.prefs.mode = mode
-                    savePreferences()
+                    if model.prefs.mode == mode {
+                        cyclePreset()
+                    } else {
+                        model.prefs.mode = mode
+                        savePreferences()
+                    }
                 }
             }
+            StudioControlButton(
+                title: presetTitle(),
+                symbol: "sparkles",
+                action: cyclePreset
+            )
             StudioControlButton(title: String(localized: "Settings"), symbol: "gearshape", action: openSettings)
         }
     }

@@ -187,6 +187,27 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Cycles to the next available visual preset for `mode` (or the active Studio mode when `nil`).
+    @discardableResult
+    func cycleVisualPreset(for mode: StudioVisualMode? = nil) -> VisualPreset? {
+        let targetMode = mode ?? model.prefs.mode
+        let library = VisualPresetCatalog.restoring(from: defaults)
+        guard let next = library.nextPreset(in: model.prefs, for: targetMode) else { return nil }
+        guard applyVisualPreset(next) else { return nil }
+        return next
+    }
+
+    /// Display label for the currently matched preset in the active Studio mode, or `"Preset"` when unsaved.
+    func activePresetButtonTitle() -> String {
+        let library = VisualPresetCatalog.restoring(from: defaults)
+        switch library.match(in: model.prefs, mode: model.prefs.mode) {
+        case .applied(let preset), .modified(let preset):
+            return preset.displayName
+        case .unsaved:
+            return String(localized: "Preset")
+        }
+    }
+
     func saveCurrentVisualPreset(name: String, mode: StudioVisualMode) -> Result<VisualPreset, VisualPresetEditError> {
         var library = VisualPresetCatalog.restoring(from: defaults)
         let saved: Result<VisualPreset, VisualPresetEditError>
@@ -871,6 +892,8 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
             spike: spike,
             model: model,
             savePreferences: { [weak self] in self?.savePreferences() },
+            cyclePreset: { [weak self] in _ = self?.cycleVisualPreset() },
+            presetTitle: { [weak self] in self?.activePresetButtonTitle() ?? String(localized: "Preset") },
             openSettings: { [weak self] in self?.openSettings?() },
             drag: { [weak self] in self?.dragVisualPanel() },
             summon: { [weak self] in self?.model.pointerInside = true },
