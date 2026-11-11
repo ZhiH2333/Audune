@@ -31,6 +31,11 @@ final class AppCoordinator {
         studio.openSettings = { settings.show() }
         island.openStudio = { studio.show() }
         island.openSettings = { settings.show(category: .island) }
+        island.onCycleVisualPreset = { [weak studio, weak island] mode in
+            guard let studio, let preset = studio.cycleVisualPreset(for: mode) else { return nil }
+            island?.updateSharedVisuals(studio.currentPreferences())
+            return preset
+        }
         self.studio = studio
         self.island = island
         self.settings = settings

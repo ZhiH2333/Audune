@@ -101,6 +101,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var smoothedCompact: [Float] = []
     private var smoothedExpanded: [Float] = []
     private var smoothedWaveform: [Float] = []
+    private var echoWaveform: [Float] = []
     private var spectrumState = SpectrumDynamicsState()
     private var orbitState = SpectrumDynamicsState()
     private var lastTick: ContinuousClock.Instant?
@@ -117,6 +118,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     var openStudio: (() -> Void)?
     var openSettings: (() -> Void)?
+    var onCycleVisualPreset: ((StudioVisualMode) -> VisualPreset?)?
 
     /// True when this surface alone needs the MediaRemote listener.
     var wantsNowPlayingListening: Bool {
@@ -273,6 +275,40 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         model.prefs.mode = mode
         savePreferences()
         refreshVisuals()
+    }
+
+    @discardableResult
+    func cycleVisualPreset() -> VisualPreset? {
+        let mode = model.prefs.mode
+        if let onCycleVisualPreset {
+            return onCycleVisualPreset(mode)
+        }
+        var library = VisualPresetCatalog.restoring(from: defaults)
+        let currentStudio = currentSharedPreferencesSnapshot()
+        guard let next = library.nextPreset(in: currentStudio, for: mode) else { return nil }
+        guard case .success(let updated) = library.apply(next, to: currentStudio, in: defaults) else { return nil }
+        updated.save(to: defaults)
+        updateSharedVisuals(updated)
+        return next
+    }
+
+    func activePresetButtonTitle() -> String {
+        let library = VisualPresetCatalog.restoring(from: defaults)
+        switch library.match(in: currentSharedPreferencesSnapshot(), mode: model.prefs.mode) {
+        case .applied(let preset), .modified(let preset):
+            return preset.displayName
+        case .unsaved:
+            return String(localized: "Preset")
+        }
+    }
+
+    private func currentSharedPreferencesSnapshot() -> StudioPreferences {
+        var prefs = StudioPreferences.load(from: defaults)
+        prefs.appearance = model.appearance
+        prefs.spectrum = model.spectrum
+        prefs.waveform = model.waveform
+        prefs.orbit = model.orbit
+        return prefs
     }
 
     func setCompactBarCountPerSide(_ count: Int) {
@@ -558,6 +594,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         smoothedCompact = []
         smoothedExpanded = []
         smoothedWaveform = []
+        echoWaveform = []
         model.prefs = IslandPreferences.standard
         applyCollectionBehavior()
         evaluateScreensAndApply(animated: false)
@@ -941,6 +978,12 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             },
             selectLyricsRouting: { [weak self] selection in
                 self?.applyLyricsRoutingSelection(selection)
+            },
+            cyclePreset: { [weak self] in
+                _ = self?.cycleVisualPreset()
+            },
+            presetTitle: { [weak self] in
+                self?.activePresetButtonTitle() ?? String(localized: "Preset")
             }
         )
         let host = IslandHostingView(rootView: root)
@@ -1459,14 +1502,24 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         case .waveform:
             let live = snapshot.waveform
             let target = silent ? Array(repeating: Float(0), count: live.count) : live
+            let smoothing = Float(model.waveform.smoothing)
             smoothedWaveform = WaveformPath.mix(
                 current: smoothedWaveform,
                 toward: target,
-                smoothing: Float(model.waveform.smoothing),
+                smoothing: smoothing,
+                dt: dt
+            )
+            echoWaveform = WaveformPath.echoMix(
+                current: echoWaveform,
+                toward: target,
+                smoothing: smoothing,
                 dt: dt
             )
             if model.expandedWaveform != smoothedWaveform {
                 model.expandedWaveform = smoothedWaveform
+            }
+            if model.expandedEchoWaveform != echoWaveform {
+                model.expandedEchoWaveform = echoWaveform
             }
             if model.expandedPeaks.isEmpty == false {
                 model.expandedPeaks = []

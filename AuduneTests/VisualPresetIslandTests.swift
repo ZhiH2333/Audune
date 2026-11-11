@@ -143,4 +143,29 @@ final class VisualPresetIslandTests: XCTestCase {
         XCTAssertEqual(studio.model.spectrumPeaks, peaksBeforeWaveform)
         XCTAssertEqual(studio.currentPreferences().spectrum.barCount, 48)
     }
+
+    func testIslandCycleVisualPresetRotatesActiveModeAndSyncsWithStudio() throws {
+        let spike = ProcessTapSpike()
+        let studio = StudioWindowController(spike: spike, defaults: defaults)
+        defer { studio.shutdown() }
+        let island = IslandWindowController(spike: spike, defaults: defaults, allowsOrderFront: false)
+        defer { island.shutdown() }
+        island.onCycleVisualPreset = { [weak studio, weak island] mode in
+            guard let studio, let preset = studio.cycleVisualPreset(for: mode) else { return nil }
+            island?.updateSharedVisuals(studio.currentPreferences())
+            return preset
+        }
+
+        island.selectMode(.orbit)
+        let first = try XCTUnwrap(island.cycleVisualPreset())
+        XCTAssertEqual(first.id, VisualPresetCatalog.compact.id)
+        XCTAssertEqual(island.model.orbit, VisualPresetCatalog.compact.orbit)
+        XCTAssertEqual(studio.currentPreferences().orbit, VisualPresetCatalog.compact.orbit)
+        XCTAssertEqual(island.activePresetButtonTitle(), VisualPresetCatalog.compact.displayName)
+
+        let second = try XCTUnwrap(island.cycleVisualPreset())
+        XCTAssertEqual(second.id, VisualPresetCatalog.halo.id)
+        XCTAssertEqual(island.model.orbit, VisualPresetCatalog.halo.orbit)
+        XCTAssertEqual(studio.currentPreferences().orbit, VisualPresetCatalog.halo.orbit)
+    }
 }

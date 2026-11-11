@@ -69,6 +69,7 @@ final class IslandModel {
     var expandedSpectrum: [Float] = []
     var expandedPeaks: [Float] = []
     var expandedWaveform = AudioSnapshot.zero.waveform
+    var expandedEchoWaveform = AudioSnapshot.zero.waveform
     var pointerInside = false
     var pointerDown = false
     /// Compact-only anticipation. The window frame stays on the compact geometry while this is true.
@@ -146,7 +147,7 @@ final class IslandModel {
             case .orbit:
                 return SpectrumDynamics.isSettled(levels: expandedSpectrum) == false
             case .waveform:
-                return SpectrumDynamics.isSettled(levels: expandedWaveform) == false
+                return SpectrumDynamics.isSettled(levels: expandedWaveform, peaks: expandedEchoWaveform) == false
             }
         }
         return SpectrumDynamics.isSettled(levels: compactLevels) == false
@@ -242,6 +243,8 @@ struct IslandContentView: View {
     var deleteLyrics: (UUID) -> Void = { _ in }
     var retryLyrics: () -> Void = {}
     var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
+    var cyclePreset: () -> Void = {}
+    var presetTitle: () -> String = { String(localized: "Preset") }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFullScreenChromeVisible = true
     @State private var chromeAutoHideTask: Task<Void, Never>?
@@ -384,6 +387,12 @@ struct IslandContentView: View {
                     fullScreenScenePicker
                     if model.fullScreenScene == .visualizer {
                         modeIconRow
+                        IslandIconButton(
+                            symbol: "sparkles",
+                            label: presetTitle(),
+                            selected: false,
+                            action: cyclePreset
+                        )
                     }
                     Spacer()
                     IslandIconButton(
@@ -790,6 +799,7 @@ struct IslandContentView: View {
         case .waveform:
             WaveformCanvas(
                 samples: model.expandedWaveform,
+                echoSamples: model.expandedEchoWaveform,
                 color: (model.waveform.customColor ?? model.appearance.color).swiftUI,
                 opacity: opacity,
                 amplitude: model.waveform.amplitude,
