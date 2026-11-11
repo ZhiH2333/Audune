@@ -502,27 +502,40 @@ struct IslandFullscreenLyricsView: View {
                 }
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .frame(width: 20, height: 20)
+                    .background(Circle().fill(Color.white.opacity(0.10)))
                 Text(routingMenuTitle)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.90))
                     .lineLimit(1)
                 if let latency = currentLatencyLabel {
                     Text(latency)
-                        .font(.system(size: 10, weight: .regular).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.42))
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.40))
                 }
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.35))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.40))
             }
-            .foregroundStyle(.white.opacity(0.72))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(0.08), in: Capsule())
+            .padding(.leading, 5)
+            .padding(.trailing, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.12))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+            )
+            .contentShape(Capsule())
         }
         .menuStyle(.borderlessButton)
+        .fixedSize()
         .help(String(localized: "Choose lyrics source"))
         .accessibilityLabel(String(localized: "Lyrics source selector"))
     }
@@ -732,7 +745,7 @@ struct IslandFullscreenLyricsView: View {
             statusState(
                 symbol: "globe",
                 title: String(localized: "Searching for lyrics"),
-                message: String(localized: "Looking for the current song on LRCLIB."),
+                message: nil,
                 showsRetry: false,
                 isLoading: true,
                 metrics: metrics
@@ -1025,7 +1038,7 @@ struct IslandFullscreenLyricsView: View {
     private func statusState(
         symbol: String,
         title: String,
-        message: String,
+        message: String?,
         showsRetry: Bool,
         isLoading: Bool = false,
         metrics: LyricsSceneMetrics
@@ -1056,14 +1069,16 @@ struct IslandFullscreenLyricsView: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(message)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(.white.opacity(0.54))
-                .multilineTextAlignment(.leading)
-                .lineSpacing(3)
-                .frame(maxWidth: 480, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 9)
+            if let message, message.isEmpty == false {
+                Text(message)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .multilineTextAlignment(.leading)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 480, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 9)
+            }
 
             if (showsRetry && canSearchLyrics) || canImportLyrics {
                 HStack(spacing: 12) {
