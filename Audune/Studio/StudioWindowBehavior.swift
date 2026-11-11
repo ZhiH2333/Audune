@@ -14,6 +14,24 @@ let studioDragLog = Logger(subsystem: "Audune", category: "StudioDrag")
 nonisolated enum StudioWindowBehavior {
     static let resizeMargin: CGFloat = 6
     static let controlSlop: CGFloat = 1
+    static let activeFrameInterval: TimeInterval = 1.0 / 60.0
+    static let idleFrameInterval: TimeInterval = 1.0 / 15.0
+
+    /// Chooses 60 FPS while audio is actively moving bars/waves or pointer is interacting, and 15 FPS once settled in silence.
+    static func desiredFrameInterval(
+        isCapturingAndActive: Bool,
+        isSettled: Bool,
+        pointerInside: Bool,
+        pointerDown: Bool
+    ) -> TimeInterval {
+        if pointerInside || pointerDown {
+            return activeFrameInterval
+        }
+        if isCapturingAndActive && isSettled == false {
+            return activeFrameInterval
+        }
+        return idleFrameInterval
+    }
 
     static func level(for mode: StudioWindowMode) -> NSWindow.Level {
         switch mode {
@@ -111,6 +129,9 @@ final class StudioHitMap {
 }
 
 enum StudioWindowDrag {
+    static let defaultSnapThreshold: CGFloat = 8
+    static let defaultEdgeInset: CGFloat = 16
+
     static func origin(startOrigin: CGPoint, startMouse: CGPoint, currentMouse: CGPoint) -> CGPoint {
         let values = [startOrigin.x, startOrigin.y, startMouse.x, startMouse.y, currentMouse.x, currentMouse.y]
         guard values.allSatisfy(\.isFinite) else { return startOrigin }
@@ -120,9 +141,79 @@ enum StudioWindowDrag {
         )
     }
 
+    /// Snaps a proposed window origin to the visible screen's center axes, edges, or margin guides within `threshold`.
+    static func snappedOrigin(
+        _ proposed: CGPoint,
+        windowSize: CGSize,
+        visibleFrame: CGRect,
+        threshold: CGFloat = defaultSnapThreshold,
+        edgeInset: CGFloat = defaultEdgeInset
+    ) -> CGPoint {
+        let values = [
+            proposed.x, proposed.y,
+            windowSize.width, windowSize.height,
+            visibleFrame.origin.x, visibleFrame.origin.y, visibleFrame.width, visibleFrame.height,
+            threshold, edgeInset
+        ]
+        guard values.allSatisfy(\.isFinite),
+              windowSize.width > 0, windowSize.height > 0,
+              visibleFrame.width >= windowSize.width,
+              visibleFrame.height >= windowSize.height,
+              threshold > 0
+        else {
+            return proposed
+        }
+
+        let inset = max(edgeInset, 0)
+        let xGuides = [
+            visibleFrame.midX - windowSize.width / 2,
+            visibleFrame.minX + inset,
+            visibleFrame.maxX - inset - windowSize.width,
+            visibleFrame.minX,
+            visibleFrame.maxX - windowSize.width
+        ]
+        let yGuides = [
+            visibleFrame.midY - windowSize.height / 2,
+            visibleFrame.minY + inset,
+            visibleFrame.maxY - inset - windowSize.height,
+            visibleFrame.minY,
+            visibleFrame.maxY - windowSize.height
+        ]
+
+        let snappedX = nearestGuide(to: proposed.x, candidates: xGuides, threshold: threshold)
+        let snappedY = nearestGuide(to: proposed.y, candidates: yGuides, threshold: threshold)
+        return CGPoint(x: snappedX, y: snappedY)
+    }
+
+    private static func nearestGuide(to value: CGFloat, candidates: [CGFloat], threshold: CGFloat) -> CGFloat {
+        var best = value
+        var bestDistance = threshold + 0.001
+        for candidate in candidates where candidate.isFinite {
+            let distance = abs(candidate - value)
+            if distance <= threshold && distance < bestDistance {
+                best = candidate
+                bestDistance = distance
+            }
+        }
+        return best
+    }
+
     @MainActor
-    static func apply(to window: NSWindow, startOrigin: CGPoint, startMouse: CGPoint, currentMouse: CGPoint) {
-        window.setFrameOrigin(origin(startOrigin: startOrigin, startMouse: startMouse, currentMouse: currentMouse))
+    static func apply(
+        to window: NSWindow,
+        startOrigin: CGPoint,
+        startMouse: CGPoint,
+        currentMouse: CGPoint,
+        snapFrame: CGRect? = nil
+    ) {
+        let raw = origin(startOrigin: startOrigin, startMouse: startMouse, currentMouse: currentMouse)
+        let next: CGPoint
+        if let snapFrame {
+            next = snappedOrigin(raw, windowSize: window.frame.size, visibleFrame: snapFrame)
+        } else {
+            next = raw
+        }
+        window.setFrameOrigin(next)
     }
 
     /// Moves a borderless panel from screen coordinates.
@@ -142,7 +233,13 @@ enum StudioWindowDrag {
         let mask: NSEvent.EventTypeMask = [.leftMouseDragged, .leftMouseUp]
         let monitor = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
             if event.type != .leftMouseUp, event.window === window || event.window == nil {
-                apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+                apply(
+                    to: window,
+                    startOrigin: startOrigin,
+                    startMouse: startMouse,
+                    currentMouse: NSEvent.mouseLocation,
+                    snapFrame: (window.screen ?? NSScreen.main)?.visibleFrame
+                )
                 onMove?()
             }
             return event
@@ -165,7 +262,13 @@ enum StudioWindowDrag {
             if NSEvent.pressedMouseButtons & 1 == 0 {
                 return
             }
-            apply(to: window, startOrigin: startOrigin, startMouse: startMouse, currentMouse: NSEvent.mouseLocation)
+            apply(
+                to: window,
+                startOrigin: startOrigin,
+                startMouse: startMouse,
+                currentMouse: NSEvent.mouseLocation,
+                snapFrame: (window.screen ?? NSScreen.main)?.visibleFrame
+            )
             onMove?()
         }
     }

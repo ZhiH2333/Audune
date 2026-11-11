@@ -657,11 +657,42 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         syncPassthroughWindows()
     }
 
+    private var isDisplaySettled: Bool {
+        guard spike.phase == .running else { return true }
+        if model.snapshot.isSilent == false { return false }
+        switch model.prefs.mode {
+        case .spectrum:
+            return SpectrumDynamics.isSettled(levels: model.studioSpectrum, peaks: model.spectrumPeaks)
+        case .orbit:
+            return SpectrumDynamics.isSettled(levels: model.studioSpectrum)
+        case .waveform:
+            return SpectrumDynamics.isSettled(levels: model.displayWaveform, peaks: model.echoWaveform)
+        }
+    }
+
+    private var desiredTimerInterval: TimeInterval {
+        StudioWindowBehavior.desiredFrameInterval(
+            isCapturingAndActive: spike.phase == .running,
+            isSettled: isDisplaySettled,
+            pointerInside: model.pointerInside,
+            pointerDown: model.pointerDown
+        )
+    }
+
     private func startDisplayTimer() {
-        guard timer == nil else { return }
         lastTick = nil
         tick()
-        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+        scheduleDisplayTimerIfNeeded()
+    }
+
+    private func scheduleDisplayTimerIfNeeded() {
+        let interval = desiredTimerInterval
+        if let existing = timer {
+            guard abs(existing.timeInterval - interval) > 0.000_5 else { return }
+            existing.invalidate()
+            self.timer = nil
+        }
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.tickFromTimer()
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -687,6 +718,9 @@ final class StudioWindowController: NSObject, NSWindowDelegate {
         refreshPointerInside()
         refreshStudioSpectrum(dt: dt)
         refreshWaveform(dt: dt)
+        if timer != nil {
+            scheduleDisplayTimerIfNeeded()
+        }
     }
 
     #if DEBUG

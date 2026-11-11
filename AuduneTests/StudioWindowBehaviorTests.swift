@@ -454,4 +454,66 @@ final class StudioWindowBehaviorTests: XCTestCase {
         XCTAssertEqual(restored.size.width, target.size.width, accuracy: 1)
         XCTAssertEqual(restored.size.height, target.size.height, accuracy: 1)
     }
+
+    func testAdaptiveFrameIntervalUsesSixtyFPSWhenActiveAndDropsWhenSettled() {
+        XCTAssertEqual(
+            StudioWindowBehavior.desiredFrameInterval(
+                isCapturingAndActive: true,
+                isSettled: false,
+                pointerInside: false,
+                pointerDown: false
+            ),
+            1.0 / 60.0,
+            accuracy: 0.000_1
+        )
+        XCTAssertEqual(
+            StudioWindowBehavior.desiredFrameInterval(
+                isCapturingAndActive: true,
+                isSettled: true,
+                pointerInside: false,
+                pointerDown: false
+            ),
+            1.0 / 15.0,
+            accuracy: 0.000_1
+        )
+        XCTAssertEqual(
+            StudioWindowBehavior.desiredFrameInterval(
+                isCapturingAndActive: false,
+                isSettled: true,
+                pointerInside: true,
+                pointerDown: false
+            ),
+            1.0 / 60.0,
+            accuracy: 0.000_1
+        )
+    }
+
+    func testSnappedOriginAlignsWithCenterAndMarginGuides() {
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = CGSize(width: 640, height: 400)
+        // Exact center is (400, 250). Within 8 pt snaps to center.
+        let nearCenter = StudioWindowDrag.snappedOrigin(
+            CGPoint(x: 405, y: 244),
+            windowSize: size,
+            visibleFrame: screen
+        )
+        XCTAssertEqual(nearCenter.x, 400, accuracy: 0.001)
+        XCTAssertEqual(nearCenter.y, 250, accuracy: 0.001)
+
+        // Near bottom-left 16 pt margin guide (16, 16).
+        let nearMargin = StudioWindowDrag.snappedOrigin(
+            CGPoint(x: 21, y: 12),
+            windowSize: size,
+            visibleFrame: screen
+        )
+        XCTAssertEqual(nearMargin.x, 16, accuracy: 0.001)
+        XCTAssertEqual(nearMargin.y, 16, accuracy: 0.001)
+
+        // Far from any guide stays untouched.
+        let free = CGPoint(x: 120, y: 140)
+        XCTAssertEqual(
+            StudioWindowDrag.snappedOrigin(free, windowSize: size, visibleFrame: screen),
+            free
+        )
+    }
 }

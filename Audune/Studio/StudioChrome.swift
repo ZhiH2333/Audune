@@ -71,6 +71,25 @@ nonisolated enum StudioChrome {
         }
     }
 
+    /// Screen-space proximity target for summoning hidden controls without widening the click-blocking panel.
+    static func summonTargetFrame(
+        visualFrame: CGRect,
+        controlFrame: CGRect,
+        region: StudioSummonRegion,
+        controlsVisible: Bool
+    ) -> CGRect {
+        guard controlsVisible == false, region == .bottomEdge else {
+            return controlFrame
+        }
+        guard visualFrame.width.isFinite, visualFrame.height.isFinite, visualFrame.width > 0, visualFrame.height > 0 else {
+            return controlFrame
+        }
+        let size = hiddenContentSize(region: .bottomEdge, visualWidth: visualFrame.width)
+        let width = min(size.width, max(visualFrame.width - 16, 1))
+        let height = min(size.height, max(visualFrame.height - 16, 1))
+        return CGRect(x: visualFrame.midX - width / 2, y: visualFrame.minY + 8, width: width, height: height)
+    }
+
     static func canvasFrame(in bounds: CGRect) -> CGRect {
         guard bounds.width.isFinite, bounds.height.isFinite, bounds.width > 0, bounds.height > 0 else { return .zero }
         return bounds

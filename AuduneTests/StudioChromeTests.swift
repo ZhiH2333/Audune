@@ -164,6 +164,21 @@ final class StudioChromeTests: XCTestCase {
         XCTAssertGreaterThan(bottom.width, grip.width)
         XCTAssertEqual(grip.width, StudioChrome.gripWidth, accuracy: 0.001)
         XCTAssertLessThan(bottom.height, visual.height / 2)
+
+        let summonBottom = StudioChrome.summonTargetFrame(
+            visualFrame: visual,
+            controlFrame: grip,
+            region: .bottomEdge,
+            controlsVisible: false
+        )
+        let summonGrip = StudioChrome.summonTargetFrame(
+            visualFrame: visual,
+            controlFrame: grip,
+            region: .grip,
+            controlsVisible: false
+        )
+        XCTAssertEqual(summonBottom, bottom)
+        XCTAssertEqual(summonGrip, grip)
     }
 
     private func visible(
