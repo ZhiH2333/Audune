@@ -57,7 +57,7 @@ None. This is the release-blocking technical spike.
 ### Tasks
 - [ ] Inspect and preserve any existing repo structure.
 - [ ] Create/configure a native macOS Xcode project using SwiftUI + AppKit.
-- [ ] Set minimum deployment target to macOS 14.2, subject to AUD-01 verification.
+- [x] Set minimum deployment target to macOS 14.2, subject to AUD-01 verification.
 - [ ] Configure the app as a menu-bar utility (no default Dock icon).
 - [ ] Add `.gitignore`, `LICENSE` (proposed MIT), concise README, and project build instructions.
 - [ ] Add CI for build and hardware-independent tests after the scheme is known.

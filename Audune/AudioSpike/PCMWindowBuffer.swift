@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 /// Fixed 4096-float mono window.
 /// The realtime callback only writes. Analysis copies the newest full 1024-sample frame.
@@ -12,7 +11,7 @@ nonisolated final class PCMWindowBuffer: @unchecked Sendable {
     private let storage: UnsafeMutablePointer<Float>
     /// Audio thread only.
     private var fillCount = 0
-    private let publishedSequence = Atomic<UInt64>(0)
+    private let publishedSequence = RTAtomicUInt64(0)
 
     init() {
         storage = .allocate(capacity: Self.capacity)

@@ -1514,14 +1514,16 @@ private struct LyricsDepthStage: View, Equatable {
                             animated: oldHeight > 0 && newHeight > 0
                         )
                     }
-                    .onScrollPhaseChange { _, phase in
-                        if phase == .tracking || phase == .interacting || phase == .decelerating {
+                    .auduneOnScrollPhaseChange(
+                        onActive: {
                             beginManualBrowsing()
                             scheduleAutoResume(force: true)
-                        } else if phase == .idle, isManualScrolling {
+                        },
+                        onIdleWhileManual: {
+                            guard isManualScrolling else { return }
                             scheduleAutoResume(force: true)
                         }
-                    }
+                    )
 
                     if isManualScrolling {
                         resumeButton(metrics: metrics)
@@ -2717,6 +2719,27 @@ private struct LyricsTokenFlowLayout: Layout {
                 x += item.size.width
             }
             y += rowHeight + lineSpacing
+        }
+    }
+}
+
+private extension View {
+    /// `onScrollPhaseChange` needs macOS 15+. Below that, `LyricsScrollMonitor` still drives browse mode.
+    @ViewBuilder
+    func auduneOnScrollPhaseChange(
+        onActive: @escaping () -> Void,
+        onIdleWhileManual: @escaping () -> Void
+    ) -> some View {
+        if #available(macOS 15.0, *) {
+            onScrollPhaseChange { _, phase in
+                if phase == .tracking || phase == .interacting || phase == .decelerating {
+                    onActive()
+                } else if phase == .idle {
+                    onIdleWhileManual()
+                }
+            }
+        } else {
+            self
         }
     }
 }

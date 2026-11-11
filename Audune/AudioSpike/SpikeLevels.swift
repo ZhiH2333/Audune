@@ -1,5 +1,4 @@
 import CoreAudio
-import Synchronization
 
 /// Stream layout copied on the main thread before IO starts.
 /// The realtime callback only reads this value.
@@ -66,13 +65,13 @@ nonisolated final class SpikeLevelMeter: @unchecked Sendable {
     let format: SpikeStreamFormat
     let window = PCMWindowBuffer()
 
-    private let frames = Atomic<UInt64>(0)
-    private let finiteSamples = Atomic<UInt64>(0)
-    private let nonFiniteSamples = Atomic<UInt64>(0)
-    private let rmsBits = Atomic<UInt32>(0)
-    private let hasRMS = Atomic<UInt8>(0)
-    private let formatMismatch = Atomic<UInt8>(0)
-    private let bufferCount = Atomic<UInt32>(0)
+    private let frames = RTAtomicUInt64(0)
+    private let finiteSamples = RTAtomicUInt64(0)
+    private let nonFiniteSamples = RTAtomicUInt64(0)
+    private let rmsBits = RTAtomicUInt32(0)
+    private let hasRMS = RTAtomicUInt8(0)
+    private let formatMismatch = RTAtomicUInt8(0)
+    private let bufferCount = RTAtomicUInt32(0)
     private let scratch: UnsafeMutablePointer<Float>
     private let scratchCapacity = PCMWindowBuffer.windowLength
 

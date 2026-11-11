@@ -912,7 +912,7 @@ private struct IslandLayoutPreview: View {
                         .font(.callout.weight(.semibold))
                         .multilineTextAlignment(.center)
                     Button("Resume Preview", action: onResume)
-                        .buttonStyle(.glass)
+                        .auduneGlassButtonStyle()
                 }
                 .padding(12)
             } else {
@@ -921,7 +921,7 @@ private struct IslandLayoutPreview: View {
                         .font(.system(size: 9, weight: .bold))
                         .frame(width: 26, height: 26)
                 }
-                .buttonStyle(.glass)
+                .auduneGlassButtonStyle()
                 .buttonBorderShape(.circle)
                 .controlSize(.small)
                 .help("Pause Preview")
@@ -1002,7 +1002,7 @@ private struct LayoutPreview: View {
                         .font(.title3.weight(.semibold))
                         .multilineTextAlignment(.center)
                     Button("Resume Preview", action: onResume)
-                        .buttonStyle(.glass)
+                        .auduneGlassButtonStyle()
                 }
                 .padding(16)
                 .frame(width: shown.width, height: shown.height)
@@ -1012,7 +1012,7 @@ private struct LayoutPreview: View {
                         .font(.system(size: 9, weight: .bold))
                         .frame(width: 26, height: 26)
                 }
-                .buttonStyle(.glass)
+                .auduneGlassButtonStyle()
                 .buttonBorderShape(.circle)
                 .controlSize(.small)
                 .help("Pause Preview")
@@ -1057,6 +1057,18 @@ private struct SettingsSlider: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+private extension View {
+    /// `.glass` is macOS 26+; fall back so Settings still builds for 14.2+.
+    @ViewBuilder
+    func auduneGlassButtonStyle() -> some View {
+        if #available(macOS 26.0, *) {
+            buttonStyle(.glass)
+        } else {
+            buttonStyle(.bordered)
+        }
     }
 }
 #endif

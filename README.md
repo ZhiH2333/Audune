@@ -19,8 +19,8 @@ Island Fullscreen also has a Lyrics scene. Entering it automatically identifies 
 
 ## Requirements
 
-- macOS 27.0 or later (the current deployment target; `docs/PRODUCT_SPEC.md` still lists 14.2 as the goal pending verification).
-- Xcode with the macOS 27 SDK to build.
+- macOS 14.2 or later (matches `docs/PRODUCT_SPEC.md`; still needs AUD-01 verification on a real 14.2+ machine).
+- Xcode with a current macOS SDK to build.
 
 ## Permissions and first run
 
@@ -60,7 +60,7 @@ These need the owner's identity, credentials, or decisions and are intentionally
 - Release App Sandbox entitlements. Release is sandboxed with only the default entitlements. Whether system audio capture works under that sandbox has not been verified and may need entitlements or a different distribution choice (see `docs/PRODUCT_SPEC.md`).
 - App icon. No app icon is configured.
 - `LICENSE`, and copyright text for the About panel.
-- Minimum macOS version decision (27.0 now, 14.2 in the spec).
 - A manual pass of `docs/MANUAL_TESTS.md` on a Release build, including the Simplified Chinese interface.
+- AUD-01 verification of system audio tap on the minimum macOS 14.2 baseline (raise the floor only if that pass fails).
 
 See `CONTRIBUTING.md` for the branch and commit rules.

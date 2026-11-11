@@ -443,8 +443,8 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 
 ### 最低系统版本
 
-- 初始 target：**macOS 14.2+**。Apple 的 Core Audio Tap 示例明确要求 macOS 14.2 或更高版本并配置 `NSAudioCaptureUsageDescription`。
-- 首次打包前必须在最低支持版本上真实验证 tap、授权、退出清理、睡眠/唤醒和输出设备切换。
+- 当前 Xcode / README target：**macOS 14.2+**（与 Core Audio Process Tap 公开 API 地板一致）。Apple 的 Core Audio Tap 示例明确要求 macOS 14.2 或更高版本并配置 `NSAudioCaptureUsageDescription`。
+- 首次打包前必须在最低支持版本上真实验证 tap、授权、退出清理、睡眠/唤醒和输出设备切换（AUD-01）。
 - 如果验证发现最低版本不稳定，可以在首发前提升最低版本；更新 `PRODUCT_SPEC`、Xcode deployment target、README 和发行说明，不能文档写一个版本、项目配置写另一个版本。
 - 不以 beta 系统作为唯一测试环境。
 
