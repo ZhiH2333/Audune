@@ -414,23 +414,17 @@ struct IslandFullscreenLyricsView: View {
                 }
             }
             if let document = model.lyricsState.document {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.white.opacity(0.44))
-                        .frame(width: 4, height: 4)
+                Group {
                     if let url = attributionURL(for: document) {
                         Link(sourceLabel(for: document), destination: url)
-                            .font(.system(size: 10, weight: .medium))
-                            .tracking(0.5)
-                            .foregroundStyle(.white.opacity(0.34))
                             .underline(false)
                     } else {
                         Text(sourceLabel(for: document))
-                            .font(.system(size: 10, weight: .medium))
-                            .tracking(0.5)
-                            .foregroundStyle(.white.opacity(0.30))
                     }
                 }
+                .font(.system(size: 10, weight: .medium))
+                .tracking(0.4)
+                .foregroundStyle(.white.opacity(0.28))
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(String(localized: "Lyrics source: \(sourceLabel(for: document))"))
             }
@@ -502,37 +496,17 @@ struct IslandFullscreenLyricsView: View {
                 }
             }
         } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
-                    .frame(width: 20, height: 20)
-                    .background(Circle().fill(Color.white.opacity(0.10)))
+            HStack(spacing: 4) {
                 Text(routingMenuTitle)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.90))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.50))
                     .lineLimit(1)
-                if let latency = currentLatencyLabel {
-                    Text(latency)
-                        .font(.system(size: 10, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.40))
-                }
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.40))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.30))
             }
-            .padding(.leading, 5)
-            .padding(.trailing, 10)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.12))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
-            )
-            .contentShape(Capsule())
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -618,19 +592,6 @@ struct IslandFullscreenLyricsView: View {
             }
             return String(localized: "Manual")
         }
-    }
-
-    private var currentLatencyLabel: String? {
-        let nodeID = routingSelection.nodeID
-            ?? model.lyricsState.document?.source?.nodeID
-        guard let nodeID,
-              let snap = healthSnapshots.first(where: { $0.nodeID == nodeID }),
-              let latency = snap.ewmaLatencySeconds
-        else {
-            return nil
-        }
-        if latency < 1 { return String(format: "%.0fms", latency * 1000) }
-        return String(format: "%.1fs", latency)
     }
 
     private func selectableProviders(
