@@ -151,6 +151,10 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(inspection.level, .statusBar)
         XCTAssertTrue(inspection.isFloatingPanel)
         XCTAssertFalse(inspection.hidesOnDeactivate)
+        XCTAssertEqual(
+            inspection.collectionBehavior,
+            IslandWindowController.collectionBehavior(showsInFullScreen: false, isIslandFullScreen: false)
+        )
         XCTAssertEqual(inspection.collectionBehavior, [.canJoinAllSpaces, .stationary, .ignoresCycle])
         XCTAssertFalse(inspection.isMovable)
         XCTAssertFalse(inspection.isMovableByWindowBackground)
@@ -225,16 +229,51 @@ final class IslandWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.screenFrame)
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
         XCTAssertEqual(spike.phase, .idle)
+        // Fullscreen is Space-local: no canJoinAllSpaces while covering the display.
+        XCTAssertEqual(
+            controller.inspectWindowForTests().collectionBehavior,
+            IslandWindowController.collectionBehavior(showsInFullScreen: false, isIslandFullScreen: true)
+        )
+        XCTAssertFalse(controller.inspectWindowForTests().collectionBehavior.contains(.canJoinAllSpaces))
+
+        // Re-triggering enter while already fullscreen reveals (does not exit).
+        controller.toggleFullScreenView()
+        XCTAssertTrue(controller.inspectWindowForTests().isFullScreen)
 
         controller.simulateEscapePressed()
         XCTAssertFalse(controller.inspectWindowForTests().isFullScreen)
         XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.expandedPlayerFrame())
         XCTAssertEqual(controller.inspectWindowForTests().state, .expanded)
+        XCTAssertTrue(controller.inspectWindowForTests().collectionBehavior.contains(.canJoinAllSpaces))
 
         controller.simulateEscapePressed()
         XCTAssertEqual(controller.inspectWindowForTests().frame, geometry.compactFrame)
         XCTAssertEqual(controller.inspectWindowForTests().state, .compact)
         XCTAssertEqual(spike.phase, .idle)
+    }
+
+    @MainActor
+    func testExitFullScreenButtonRestoresExpandedCollectionBehavior() throws {
+        let screen = notchedScreen()
+        let controller = IslandWindowController(
+            spike: ProcessTapSpike(),
+            defaults: defaults,
+            screenProvider: { [screen] },
+            allowsOrderFront: false
+        )
+        defer { controller.shutdown() }
+
+        controller.expand()
+        controller.toggleFullScreenView()
+        XCTAssertTrue(controller.model.isFullScreen)
+        XCTAssertFalse(controller.inspectWindowForTests().collectionBehavior.contains(.canJoinAllSpaces))
+
+        controller.exitFullScreenView()
+        XCTAssertFalse(controller.model.isFullScreen)
+        XCTAssertEqual(
+            controller.inspectWindowForTests().collectionBehavior,
+            [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        )
     }
 
     @MainActor
@@ -508,7 +547,7 @@ final class IslandWindowControllerTests: XCTestCase {
 
         controller.setFullScreenScene(.lyrics)
         XCTAssertTrue(service.isListening)
-        controller.toggleFullScreenView()
+        controller.exitFullScreenView()
         XCTAssertFalse(service.isListening)
         XCTAssertFalse(controller.model.prefs.nowPlayingEnabled)
         XCTAssertEqual(fake.startCount, 2)

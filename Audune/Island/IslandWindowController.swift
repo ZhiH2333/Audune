@@ -96,6 +96,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     private var saveTask: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
+    private var activationObserver: NSObjectProtocol?
     private var pointerMonitor: Any?
     private var keyMonitor: Any?
     private var smoothedCompact: [Float] = []
@@ -134,7 +135,19 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    nonisolated static func collectionBehavior(showsInFullScreen: Bool) -> NSWindow.CollectionBehavior {
+    /// Compact/Expanded follow the user across Spaces. Island Fullscreen stays on the Space
+    /// where it was entered so switching desktops hides it until the user returns or reveals it.
+    nonisolated static func collectionBehavior(
+        showsInFullScreen: Bool,
+        isIslandFullScreen: Bool
+    ) -> NSWindow.CollectionBehavior {
+        if isIslandFullScreen {
+            var behavior: NSWindow.CollectionBehavior = [.stationary, .ignoresCycle]
+            if showsInFullScreen {
+                behavior.insert(.fullScreenAuxiliary)
+            }
+            return behavior
+        }
         if showsInFullScreen {
             return [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         }
@@ -225,6 +238,10 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
         if let wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
             self.wakeObserver = nil
+        }
+        if let activationObserver {
+            NotificationCenter.default.removeObserver(activationObserver)
+            self.activationObserver = nil
         }
         if let pointerMonitor {
             NSEvent.removeMonitor(pointerMonitor)
@@ -336,26 +353,32 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     func toggleFullScreenView() {
         guard stateContext.state.isExpandedOrPinned, let geometry = model.geometry else { return }
-        model.isFullScreen.toggle()
-        stateContext.exitedAt = nil
+        // Already fullscreen on another Space: reveal that Space instead of exiting.
+        // Exit only via the minimize control or Escape.
         if model.isFullScreen {
-            collapseTask?.cancel()
-            collapseTask = nil
-        } else {
-            model.fullScreenScene = .visualizer
-            lyricsManager?.deactivate()
-            setActiveLyricsLineIndex(nil)
+            revealIslandFullScreenIfNeeded()
+            return
         }
+        enterIslandFullScreen(geometry: geometry, scene: model.fullScreenScene)
+    }
+
+    /// Exits Island Fullscreen back to Expanded/Pinned. Used by the minimize control and Escape.
+    func exitFullScreenView() {
+        guard model.isFullScreen, stateContext.state.isExpandedOrPinned, let geometry = model.geometry else {
+            return
+        }
+        model.isFullScreen = false
+        model.fullScreenScene = .visualizer
+        lyricsManager?.deactivate()
+        setActiveLyricsLineIndex(nil)
+        applyCollectionBehavior()
         syncNowPlayingListening()
-        if model.isFullScreen, model.fullScreenScene == .lyrics {
-            refreshLyricsForCurrentTrack()
-        }
         if timer != nil {
             startDisplayTimer()
         }
         updatePanelFrame(
-            model.isFullScreen ? geometry.screenFrame : geometry.expandedPlayerFrame(),
-            expanding: model.isFullScreen,
+            geometry.expandedPlayerFrame(),
+            expanding: false,
             targetExpandedChrome: true,
             animated: allowsOrderFront,
             hapticPattern: nil,
@@ -368,13 +391,24 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
               let geometry = model.geometry,
               model.prefs.lyricsEnabled
         else { return }
+        if model.isFullScreen, model.fullScreenScene == .lyrics {
+            revealIslandFullScreenIfNeeded()
+            return
+        }
+        enterIslandFullScreen(geometry: geometry, scene: .lyrics)
+    }
+
+    private func enterIslandFullScreen(geometry: IslandNotchGeometry, scene: IslandFullScreenScene) {
         model.isFullScreen = true
-        model.fullScreenScene = .lyrics
+        model.fullScreenScene = scene
         stateContext.exitedAt = nil
         collapseTask?.cancel()
         collapseTask = nil
+        applyCollectionBehavior()
         syncNowPlayingListening()
-        refreshLyricsForCurrentTrack()
+        if scene == .lyrics {
+            refreshLyricsForCurrentTrack()
+        }
         if timer != nil {
             startDisplayTimer()
         }
@@ -386,6 +420,14 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             hapticPattern: nil,
             hapticToken: hapticToken
         )
+        revealIslandFullScreenIfNeeded()
+    }
+
+    /// Orders the Space-bound fullscreen panel front so macOS can switch back to its desktop.
+    private func revealIslandFullScreenIfNeeded() {
+        guard model.isFullScreen, didShutdown == false, allowsOrderFront else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        panel.orderFrontRegardless()
     }
 
     func setFullScreenScene(_ scene: IslandFullScreenScene) {
@@ -533,7 +575,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     private func escapeExpandedPresentation() {
         if model.isFullScreen {
-            toggleFullScreenView()
+            exitFullScreenView()
         } else {
             applyEvent(.escapePressed, animated: true)
         }
@@ -937,6 +979,9 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             toggleFullScreen: { [weak self] in
                 self?.toggleFullScreenView()
             },
+            exitFullScreen: { [weak self] in
+                self?.exitFullScreenView()
+            },
             openStudio: { [weak self] in
                 self?.openStudio?()
             },
@@ -1026,10 +1071,23 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
                 self?.evaluateScreensAndApply(animated: false)
             }
         }
+
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.revealIslandFullScreenIfNeeded()
+            }
+        }
     }
 
     private func applyCollectionBehavior() {
-        panel.collectionBehavior = Self.collectionBehavior(showsInFullScreen: model.prefs.showsInFullScreen)
+        panel.collectionBehavior = Self.collectionBehavior(
+            showsInFullScreen: model.prefs.showsInFullScreen,
+            isIslandFullScreen: model.isFullScreen
+        )
     }
 
     private func handleLivePointerEntered() {
@@ -1065,6 +1123,7 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             lyricsManager?.deactivate()
             setActiveLyricsLineIndex(nil)
             if wasFullScreen {
+                applyCollectionBehavior()
                 // Collapsing the Island tears down the fullscreen surface, so the
                 // Lyrics runtime demand must be released with it.
                 syncNowPlayingListening()

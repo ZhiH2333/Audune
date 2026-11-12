@@ -229,6 +229,7 @@ struct IslandContentView: View {
     var expand: () -> Void
     var collapse: () -> Void
     var toggleFullScreen: () -> Void
+    var exitFullScreen: () -> Void = {}
     var openStudio: () -> Void
     var openSettings: () -> Void
     var toggleNowPlaying: () -> Void = {}
@@ -399,7 +400,7 @@ struct IslandContentView: View {
                         symbol: "arrow.down.right.and.arrow.up.left",
                         label: String(localized: "Exit full screen"),
                         selected: false,
-                        action: toggleFullScreen
+                        action: exitFullScreen
                     )
                 }
                 .padding(.horizontal, 32)
