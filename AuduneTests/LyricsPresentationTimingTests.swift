@@ -9,7 +9,7 @@ final class LyricsPresentationTimingTests: XCTestCase {
         )
         XCTAssertEqual(
             LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false),
-            0.30
+            0.52
         )
     }
 
@@ -102,12 +102,12 @@ final class LyricsPresentationTimingTests: XCTestCase {
         // Focused active line is crisp and bright; interlude waiting dims slightly.
         XCTAssertEqual(
             LyricsPresentationTiming.rowOpacity(distance: 0, hasActiveLine: true, isPast: false),
-            0.98,
+            1.0,
             accuracy: 0.0001
         )
         XCTAssertEqual(
             LyricsPresentationTiming.rowOpacity(distance: 0, hasActiveLine: true, isPast: false, isWaiting: true),
-            0.58,
+            0.82,
             accuracy: 0.0001
         )
         XCTAssertEqual(
@@ -115,17 +115,20 @@ final class LyricsPresentationTimingTests: XCTestCase {
             0
         )
 
-        // Upcoming lines stay visible across a deep viewport wall (distances 1...7) and blur progressively.
+        // Upcoming lines stay clearly readable across a deep viewport wall (distances 1...7)
+        // and blur progressively without washing out mid-distance text.
         let upcoming1 = LyricsPresentationTiming.rowOpacity(distance: 1, hasActiveLine: true, isPast: false)
         let upcoming3 = LyricsPresentationTiming.rowOpacity(distance: 3, hasActiveLine: true, isPast: false)
         let upcoming6 = LyricsPresentationTiming.rowOpacity(distance: 6, hasActiveLine: true, isPast: false)
         XCTAssertGreaterThan(upcoming1, upcoming3)
-        XCTAssertGreaterThan(upcoming3, 0.20)
-        XCTAssertGreaterThan(upcoming6, 0.08)
+        XCTAssertGreaterThan(upcoming3, 0.40)
+        XCTAssertGreaterThan(upcoming6, 0.15)
+        XCTAssertGreaterThanOrEqual(upcoming1, 0.60)
 
         let blur1 = LyricsPresentationTiming.rowBlurRadius(distance: 1, hasActiveLine: true, isPast: false)
         let blur3 = LyricsPresentationTiming.rowBlurRadius(distance: 3, hasActiveLine: true, isPast: false)
-        XCTAssertGreaterThan(blur1, 1.4)
+        XCTAssertGreaterThan(blur1, 0.8)
+        XCTAssertLessThan(blur1, 2.2)
         XCTAssertGreaterThan(blur3, blur1)
 
         // Past lines fade faster and blur slightly more than upcoming lines at the same distance.

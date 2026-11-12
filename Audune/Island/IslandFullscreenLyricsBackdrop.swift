@@ -15,6 +15,8 @@ struct LyricsArtworkBackdrop: View {
     @State private var current: BackdropLayer?
     @State private var previous: BackdropLayer?
     @State private var phaseAnchor = Date()
+    /// Frozen mesh phase while paused so play/pause never snaps the colour field back to t=0.
+    @State private var frozenElapsed: TimeInterval = 0
 
     var body: some View {
         GeometryReader { proxy in
@@ -31,7 +33,9 @@ struct LyricsArtworkBackdrop: View {
                 )
 
                 TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: animateFluid == false)) { timeline in
-                    let elapsed = animateFluid ? timeline.date.timeIntervalSince(phaseAnchor) : 0
+                    let elapsed = animateFluid
+                        ? timeline.date.timeIntervalSince(phaseAnchor)
+                        : frozenElapsed
                     ZStack {
                         if let previous, previous.id != current?.id {
                             fluidMesh(previous, size: proxy.size, elapsed: elapsed)
@@ -45,15 +49,15 @@ struct LyricsArtworkBackdrop: View {
                     }
                 }
 
-                // Subtle luminance and edge control so white lyrics stay effortless to read
-                // without crushing the artwork palette into muddy gray.
-                Color.black.opacity(0.24)
+                // Stronger luminance wash so white lyrics stay readable on saturated art
+                // without crushing the palette into muddy gray.
+                Color.black.opacity(0.40)
 
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.18), location: 0),
-                        .init(color: .black.opacity(0.05), location: 0.38),
-                        .init(color: .black.opacity(0.12), location: 1)
+                        .init(color: .black.opacity(0.22), location: 0),
+                        .init(color: .black.opacity(0.08), location: 0.38),
+                        .init(color: .black.opacity(0.16), location: 1)
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -61,16 +65,16 @@ struct LyricsArtworkBackdrop: View {
 
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.10), location: 0),
+                        .init(color: .black.opacity(0.14), location: 0),
                         .init(color: .clear, location: 0.35),
-                        .init(color: .black.opacity(0.26), location: 1)
+                        .init(color: .black.opacity(0.32), location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
 
                 RadialGradient(
-                    colors: [.clear, .black.opacity(0.28)],
+                    colors: [.clear, .black.opacity(0.34)],
                     center: .center,
                     startRadius: min(proxy.size.width, proxy.size.height) * 0.28,
                     endRadius: max(proxy.size.width, proxy.size.height) * 0.85
@@ -88,9 +92,25 @@ struct LyricsArtworkBackdrop: View {
         )
         .onAppear {
             phaseAnchor = Date()
+            frozenElapsed = 0
             scheduleLoad()
         }
         .onChange(of: loadID) { _, _ in scheduleLoad() }
+        .onChange(of: isPlaying) { _, playing in
+            if playing {
+                // Resume the fluid clock from the frozen phase instead of restarting at 0.
+                phaseAnchor = Date().addingTimeInterval(-frozenElapsed)
+            } else {
+                frozenElapsed = max(0, Date().timeIntervalSince(phaseAnchor))
+            }
+        }
+        .onChange(of: reduceMotion) { _, reduced in
+            if reduced {
+                frozenElapsed = max(0, Date().timeIntervalSince(phaseAnchor))
+            } else if isPlaying {
+                phaseAnchor = Date().addingTimeInterval(-frozenElapsed)
+            }
+        }
         .onDisappear {
             guard let shown = current, shown.id == loadID else { return }
             current = nil

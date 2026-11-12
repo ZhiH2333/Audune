@@ -152,7 +152,7 @@ nonisolated struct LyricsPlaybackClock {
 
 nonisolated enum LyricsPresentationTiming {
     static func manualBrowsingOpacity(isFocused: Bool) -> Double {
-        isFocused ? 1 : 0.30
+        isFocused ? 1 : 0.52
     }
 
     static func translationOpacity(sinceLineFocus: TimeInterval) -> Double {
@@ -240,8 +240,8 @@ nonisolated enum LyricsPresentationTiming {
     }
 
     /// Apple Music depth-of-field row opacity curve.
-    /// Keeps a full wall of upcoming lines softly legible while past lines recede faster,
-    /// relying on progressive Gaussian blur and viewport edge masks rather than abrupt fade-out.
+    /// Keeps a full wall of upcoming lines clearly legible on saturated artwork backdrops
+    /// while past lines recede faster; blur and viewport masks handle the rest of the depth cue.
     static func rowOpacity(
         distance: Int,
         hasActiveLine: Bool,
@@ -256,33 +256,34 @@ nonisolated enum LyricsPresentationTiming {
         if manualMode {
             rawOpacity = manualBrowsingOpacity(isFocused: isFocused)
         } else if isFocused {
-            rawOpacity = isWaiting ? 0.58 : 0.98
+            rawOpacity = isWaiting ? 0.82 : 1.0
         } else if isPast {
             switch safeDistance {
-            case 1: rawOpacity = 0.26
-            case 2: rawOpacity = 0.17
-            case 3: rawOpacity = 0.10
-            case 4: rawOpacity = 0.05
+            case 1: rawOpacity = 0.48
+            case 2: rawOpacity = 0.34
+            case 3: rawOpacity = 0.22
+            case 4: rawOpacity = 0.12
             default: rawOpacity = 0.0
             }
         } else {
             switch safeDistance {
-            case 0: rawOpacity = 0.56
-            case 1: rawOpacity = 0.36
-            case 2: rawOpacity = 0.28
-            case 3: rawOpacity = 0.22
-            case 4: rawOpacity = 0.17
-            case 5: rawOpacity = 0.13
-            case 6: rawOpacity = 0.09
-            case 7: rawOpacity = 0.06
+            case 0: rawOpacity = 0.72
+            case 1: rawOpacity = 0.64
+            case 2: rawOpacity = 0.54
+            case 3: rawOpacity = 0.44
+            case 4: rawOpacity = 0.34
+            case 5: rawOpacity = 0.26
+            case 6: rawOpacity = 0.18
+            case 7: rawOpacity = 0.12
             default: rawOpacity = 0.0
             }
         }
-        return isHovered ? max(rawOpacity, 0.88) : rawOpacity
+        return isHovered ? max(rawOpacity, 0.92) : rawOpacity
     }
 
     /// Progressive depth-of-field Gaussian blur radius (in points) for non-focused lyric rows.
     /// Returns zero for invisible rows so off-screen rows never trigger an offscreen pass.
+    /// Kept gentler than a heavy DoF wash so mid-distance lines stay readable on bright art.
     static func rowBlurRadius(
         distance: Int,
         hasActiveLine: Bool,
@@ -307,8 +308,8 @@ nonisolated enum LyricsPresentationTiming {
             return 0
         }
         let effectiveDistance = hasActiveLine ? max(1, safeDistance) : min(6, safeDistance + 1)
-        let radius = 0.85 + Double(effectiveDistance) * 0.78 + (isPast ? 0.40 : 0.0)
-        return min(radius, 5.2)
+        let radius = 0.45 + Double(effectiveDistance) * 0.48 + (isPast ? 0.25 : 0.0)
+        return min(radius, 3.2)
     }
 
     /// Leading-anchored visual scale for a lyric row.

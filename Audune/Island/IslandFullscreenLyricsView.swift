@@ -1249,6 +1249,7 @@ private struct LyricsProgressSection: View {
             let canSeek = model.nowPlaying.seekSupported && validDuration
             let isExpandedTrack = canSeek && (isHoveringProgress || scrubbedFraction != nil)
             let trackHeight: CGFloat = isExpandedTrack ? 7 : 4
+            let knobSize: CGFloat = isExpandedTrack ? 12 : 0
 
             TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: model.nowPlaying.isPlaying == false || scrubbedFraction != nil)) { _ in
                 let livePos = model.nowPlaying.isPlaying
@@ -1265,42 +1266,63 @@ private struct LyricsProgressSection: View {
                     duration: model.nowPlaying.durationSeconds
                 ) ?? 0
                 let fraction = min(max(scrubbedFraction ?? actual, 0), 1)
+                let fillWidth = max(0, width * fraction)
 
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.white.opacity(isExpandedTrack ? 0.24 : 0.17))
+                        .fill(Color.white.opacity(isExpandedTrack ? 0.28 : 0.20))
                         .frame(height: trackHeight)
+                        .animation(
+                            shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
+                            value: isExpandedTrack
+                        )
 
                     Capsule()
-                        .fill(Color.white.opacity(isExpandedTrack ? 1.0 : (canSeek ? 0.90 : 0.72)))
-                        .frame(width: max(0, width * fraction), height: trackHeight)
+                        .fill(Color.white.opacity(isExpandedTrack ? 1.0 : (canSeek ? 0.92 : 0.72)))
+                        .frame(width: fillWidth, height: trackHeight)
                         .shadow(
                             color: .white.opacity(isExpandedTrack ? 0.30 : 0),
                             radius: isExpandedTrack ? 6 : 0
                         )
+                        .animation(
+                            shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
+                            value: isExpandedTrack
+                        )
+
+                    if canSeek, knobSize > 0 {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: knobSize, height: knobSize)
+                            .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                            .offset(x: max(fillWidth - knobSize * 0.5, 0))
+                            .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                    }
                 }
-                .frame(height: 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
+            // Tall invisible hit target so scrubbing does not require aiming at a 4 pt capsule.
             .contentShape(Rectangle())
             .onHover { isHoveringProgress = $0 }
-            .gesture(
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard canSeek else { return }
-                        scrubbedFraction = min(max(value.location.x / width, 0), 1)
+                        let fraction = min(max(value.location.x / width, 0), 1)
+                        if scrubbedFraction != fraction {
+                            scrubbedFraction = fraction
+                        }
                     }
                     .onEnded { value in
-                        guard canSeek, let fraction = scrubbedFraction else { return }
+                        guard canSeek else {
+                            scrubbedFraction = nil
+                            return
+                        }
+                        let fraction = scrubbedFraction
+                            ?? min(max(value.location.x / width, 0), 1)
                         seek(fraction * model.nowPlaying.durationSeconds)
                         scrubbedFraction = nil
-                        _ = value
                     }
             )
-            .animation(
-                shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.76),
-                value: isExpandedTrack
-            )
-            .animation(.easeOut(duration: 0.16), value: scrubbedFraction == nil)
             .accessibilityElement()
             .accessibilityLabel(String(localized: "Playback progress"))
             .accessibilityValue(playbackAccessibilityValue())
@@ -1310,7 +1332,7 @@ private struct LyricsProgressSection: View {
                 seek(min(max(model.lyricsPositionSeconds + delta, 0), model.nowPlaying.durationSeconds))
             }
         }
-        .frame(height: 18)
+        .frame(height: 22)
     }
 
     private func playbackAccessibilityValue() -> String {
@@ -1395,23 +1417,24 @@ private struct LyricsDepthStage: View, Equatable {
                                     to: line,
                                     isSeekSupported: isSeekSupported
                                 ) && onSeekLine != nil
-                                Button {
+                                lyricRow(
+                                    line: line,
+                                    index: index,
+                                    focus: focus,
+                                    isInterlude: interlude && index == focus,
+                                    manualMode: isManualScrolling,
+                                    isHovered: hoveredLineIndex == index,
+                                    contentWidth: contentWidth,
+                                    pillHInset: pillHInset,
+                                    pillVInset: pillVInset
+                                )
+                                // Prefer tap over Button inside the native ScrollView so AppKit
+                                // does not treat the press as a scroll-drag cancellation.
+                                .onTapGesture {
+                                    guard canSeekLine else { return }
                                     seekToLine(index: index)
-                                } label: {
-                                    lyricRow(
-                                        line: line,
-                                        index: index,
-                                        focus: focus,
-                                        isInterlude: interlude && index == focus,
-                                        manualMode: isManualScrolling,
-                                        isHovered: hoveredLineIndex == index,
-                                        contentWidth: contentWidth,
-                                        pillHInset: pillHInset,
-                                        pillVInset: pillVInset
-                                    )
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(canSeekLine == false)
+                                .allowsHitTesting(true)
                                 .onHover { hovering in
                                     let now = ProcessInfo.processInfo.systemUptime
                                     // Suppress hover churn while rows are actively moving under a stationary cursor.
@@ -1437,7 +1460,11 @@ private struct LyricsDepthStage: View, Equatable {
                                     }
                                     rowHeights[index] = height
                                 }
-                                .accessibilityLabel(accessibilityLabel(for: line))
+                                .accessibilityAddTraits(canSeekLine ? .isButton : [])
+                                .accessibilityAction(.default) {
+                                    guard canSeekLine else { return }
+                                    seekToLine(index: index)
+                                }
                             }
 
                             Color.clear
@@ -1908,7 +1935,8 @@ private struct LyricsDepthStage: View, Equatable {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .contentShape(pillShape)
+        // Full row hit target so click-to-seek does not require aiming at the glyph bounds.
+        .contentShape(Rectangle())
         .blur(radius: blurRadius)
         .scaleEffect(rowScale, anchor: scaleAnchor)
         .offset(y: waveOffsetY)

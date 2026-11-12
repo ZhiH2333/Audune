@@ -142,8 +142,8 @@ final class NowPlayingServiceTests: XCTestCase {
         XCTAssertEqual(fake.seekCalls, [80])
         XCTAssertEqual(service.snapshot.elapsedSeconds, 80, accuracy: 0.001)
 
-        // Pending seek is evaluated only after 0.45s.
-        try await Task.sleep(for: .milliseconds(500))
+        // First ignored seek after settle window is only a strike — scrubbing stays enabled.
+        try await Task.sleep(for: .milliseconds(Int(NowPlayingService.seekSettleSeconds * 1000) + 100))
         fake.emit(
             NowPlayingTrackPayload(
                 title: "Track",
@@ -158,11 +158,30 @@ final class NowPlayingServiceTests: XCTestCase {
                 timestamp: Date()
             )
         )
+        XCTAssertTrue(service.snapshot.seekSupported)
+
+        service.seek(to: 120)
+        XCTAssertEqual(fake.seekCalls, [80, 120])
+        try await Task.sleep(for: .milliseconds(Int(NowPlayingService.seekSettleSeconds * 1000) + 100))
+        fake.emit(
+            NowPlayingTrackPayload(
+                title: "Track",
+                artist: "A",
+                album: "",
+                isPlaying: true,
+                elapsedSeconds: 10.8,
+                durationSeconds: 200,
+                playbackRate: 1,
+                bundleIdentifier: "com.spotify.client",
+                artwork: nil,
+                timestamp: Date()
+            )
+        )
 
         XCTAssertFalse(service.snapshot.seekSupported)
 
-        service.seek(to: 120)
-        XCTAssertEqual(fake.seekCalls, [80], "Further seeks must not call MediaRemote once unsupported")
+        service.seek(to: 150)
+        XCTAssertEqual(fake.seekCalls, [80, 120], "Further seeks must not call MediaRemote once unsupported")
     }
 
     func testSeekPreservesPausedPlaybackState() {

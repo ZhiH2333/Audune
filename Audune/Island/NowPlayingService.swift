@@ -11,6 +11,8 @@ final class NowPlayingService {
 
     private var controller: (any NowPlayingControlling)?
     private var seekUnsupportedBundles: Set<String> = []
+    /// Consecutive ignored-seek strikes per bundle before the scrubber becomes display-only.
+    private var seekIgnoreStrikes: [String: Int] = [:]
     private var pendingSeek: (bundleID: String, expectedElapsed: Double, issuedAt: Date)?
     private let makeController: () -> any NowPlayingControlling
     private var preferenceRequestsListening = false
@@ -18,6 +20,10 @@ final class NowPlayingService {
 
     /// Ignore MediaRemote elapsed corrections smaller than this (seconds) to stop scrubber twitch.
     static let elapsedSmoothingTolerance: TimeInterval = 1.75
+    /// MediaRemote often lags real seeks; wait before treating a mismatch as "unsupported".
+    static let seekSettleSeconds: TimeInterval = 1.6
+    /// Require repeated ignored seeks so a single slow Spotify/Music update does not brick scrubbing.
+    static let seekIgnoreStrikesBeforeUnsupported = 2
 
     init(controllerFactory: (@MainActor () -> any NowPlayingControlling)? = nil) {
         self.makeController = controllerFactory ?? { MediaRemoteNowPlayingController() }
@@ -140,6 +146,7 @@ final class NowPlayingService {
     private func handleTerminated() {
         isListening = false
         pendingSeek = nil
+        seekIgnoreStrikes.removeAll()
         snapshot = NowPlayingSnapshot(
             availability: .unavailable,
             title: "",
@@ -160,6 +167,7 @@ final class NowPlayingService {
         guard isListening else { return }
         guard let payload else {
             pendingSeek = nil
+            seekIgnoreStrikes.removeAll()
             snapshot = NowPlayingSnapshot(
                 availability: .empty,
                 title: "",
@@ -285,13 +293,19 @@ final class NowPlayingService {
     /// If MediaRemote ignores seek, the reported elapsed stays far from the requested value.
     private func evaluatePendingSeek(against payload: NowPlayingTrackPayload) {
         guard let pending = pendingSeek else { return }
-        guard Date().timeIntervalSince(pending.issuedAt) >= 0.45 else { return }
+        guard Date().timeIntervalSince(pending.issuedAt) >= Self.seekSettleSeconds else { return }
         defer { pendingSeek = nil }
         guard pending.bundleID.isEmpty == false,
               pending.bundleID == payload.bundleIdentifier
         else { return }
         let remoteNow = payload.displayElapsed(at: Date())
-        if abs(remoteNow - pending.expectedElapsed) > 2.5 {
+        if abs(remoteNow - pending.expectedElapsed) <= 2.5 {
+            seekIgnoreStrikes[pending.bundleID] = 0
+            return
+        }
+        let strikes = (seekIgnoreStrikes[pending.bundleID] ?? 0) + 1
+        seekIgnoreStrikes[pending.bundleID] = strikes
+        if strikes >= Self.seekIgnoreStrikesBeforeUnsupported {
             seekUnsupportedBundles.insert(pending.bundleID)
         }
     }
