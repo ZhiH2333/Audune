@@ -256,14 +256,16 @@ nonisolated enum LRCParser {
             return $0.time < $1.time
         }
 
-        var grouped: [(time: TimeInterval, texts: [String], words: [WordTiming]?)] = []
+        var rawGrouped: [(time: TimeInterval, texts: [String], words: [WordTiming]?)] = []
         for entry in entries {
-            if grouped.last?.time == entry.time {
-                grouped[grouped.count - 1].texts.append(entry.text)
+            if rawGrouped.last?.time == entry.time {
+                rawGrouped[rawGrouped.count - 1].texts.append(entry.text)
             } else {
-                grouped.append((entry.time, [entry.text], entry.words))
+                rawGrouped.append((entry.time, [entry.text], entry.words))
             }
         }
+
+        let grouped = coalesceTypewriterRuns(rawGrouped, offsetSeconds: offsetSeconds)
 
         let parsedLines = grouped.enumerated().map { index, group -> LyricsLine in
             let lineEnd = grouped.indices.contains(index + 1) ? grouped[index + 1].time : nil
@@ -429,6 +431,171 @@ nonisolated enum LRCParser {
             ))
         }
         return words
+    }
+
+    /// Folds rapid typewriter-style LRC progressions (e.g. `[00:32.44]Fun`, `[00:32.61]Funding`,
+    /// `[00:32.78]Funding for`, `[00:32.95]Funding for this`) into a single word-timed line so
+    /// high-frequency syllable/character builds animate in-place instead of re-scrolling the list.
+    private static func coalesceTypewriterRuns(
+        _ groups: [(time: TimeInterval, texts: [String], words: [WordTiming]?)],
+        offsetSeconds: TimeInterval
+    ) -> [(time: TimeInterval, texts: [String], words: [WordTiming]?)] {
+        guard groups.count >= 2 else { return groups }
+        var result: [(time: TimeInterval, texts: [String], words: [WordTiming]?)] = []
+        var index = 0
+
+        while index < groups.count {
+            let startGroup = groups[index]
+            guard startGroup.texts.count == 1, startGroup.words == nil else {
+                result.append(startGroup)
+                index += 1
+                continue
+            }
+
+            var run = [startGroup]
+            var nextIndex = index + 1
+            while nextIndex < groups.count {
+                let previous = run[run.count - 1]
+                let candidate = groups[nextIndex]
+                guard candidate.texts.count == 1,
+                      candidate.words == nil,
+                      isTypewriterStep(from: previous, to: candidate)
+                else {
+                    break
+                }
+                run.append(candidate)
+                nextIndex += 1
+            }
+
+            if run.count >= 2,
+               let coalesced = buildTypewriterGroup(from: run, offsetSeconds: offsetSeconds)
+            {
+                result.append(coalesced)
+            } else {
+                result.append(contentsOf: run)
+            }
+            index = nextIndex
+        }
+
+        return result
+    }
+
+    private static func isTypewriterStep(
+        from previous: (time: TimeInterval, texts: [String], words: [WordTiming]?),
+        to candidate: (time: TimeInterval, texts: [String], words: [WordTiming]?)
+    ) -> Bool {
+        let delta = candidate.time - previous.time
+        guard delta > 0, delta <= 0.45 else { return false }
+        let prevText = previous.texts[0]
+        let nextText = candidate.texts[0]
+        guard prevText.isEmpty == false, nextText.isEmpty == false else { return false }
+
+        if nextText.hasPrefix(prevText), nextText.count > prevText.count {
+            return true
+        }
+        let prevBase = stripRepeatCounterSuffix(prevText)
+        let nextBase = stripRepeatCounterSuffix(nextText)
+        guard prevBase.isEmpty == false else { return false }
+        if prevBase == nextBase, prevText != nextText {
+            return true
+        }
+        if nextBase.hasPrefix(prevBase), nextBase.count > prevBase.count {
+            return true
+        }
+        return false
+    }
+
+    private static func buildTypewriterGroup(
+        from run: [(time: TimeInterval, texts: [String], words: [WordTiming]?)],
+        offsetSeconds: TimeInterval
+    ) -> (time: TimeInterval, texts: [String], words: [WordTiming]?)? {
+        guard let first = run.first, let last = run.last else { return nil }
+        let finalText = last.texts[0]
+        guard finalText.isEmpty == false else { return nil }
+
+        var matchedCount = 0
+        var wordTimings: [WordTiming] = []
+        var pendingSuffixTime: TimeInterval?
+
+        for step in run {
+            let text = step.texts[0]
+            let base = stripRepeatCounterSuffix(text)
+            let rawTime = step.time - offsetSeconds
+
+            if finalText.hasPrefix(text), text.count > matchedCount {
+                let segment = slice(finalText, from: matchedCount, to: text.count)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if segment.isEmpty == false {
+                    wordTimings.append(WordTiming(startSeconds: rawTime, text: segment))
+                }
+                matchedCount = text.count
+                pendingSuffixTime = nil
+            } else if base.isEmpty == false, finalText.hasPrefix(base), base.count > matchedCount {
+                let segment = slice(finalText, from: matchedCount, to: base.count)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if segment.isEmpty == false {
+                    wordTimings.append(WordTiming(startSeconds: rawTime, text: segment))
+                }
+                matchedCount = base.count
+                if text.count > base.count, pendingSuffixTime == nil {
+                    pendingSuffixTime = rawTime
+                }
+            } else if base.isEmpty == false,
+                      finalText.hasPrefix(base),
+                      base.count == matchedCount,
+                      text.count > base.count,
+                      pendingSuffixTime == nil
+            {
+                pendingSuffixTime = rawTime
+            }
+        }
+
+        if matchedCount < finalText.count {
+            let segment = slice(finalText, from: matchedCount, to: finalText.count)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if segment.isEmpty == false {
+                let rawTime = pendingSuffixTime ?? (last.time - offsetSeconds)
+                wordTimings.append(WordTiming(startSeconds: rawTime, text: segment))
+            }
+        }
+
+        return (
+            time: first.time,
+            texts: [finalText],
+            words: wordTimings.count >= 2 ? wordTimings : nil
+        )
+    }
+
+    private static func stripRepeatCounterSuffix(_ text: String) -> String {
+        guard text.hasSuffix(")"),
+              let openParen = text.lastIndex(of: "(")
+        else {
+            return text
+        }
+        let inner = text[text.index(after: openParen)..<text.index(before: text.endIndex)]
+        guard inner.first == "x" || inner.first == "X" else { return text }
+        let digits = inner.dropFirst()
+        guard digits.isEmpty == false, digits.allSatisfy(\.isNumber) else { return text }
+
+        var prefixEnd = openParen
+        while prefixEnd > text.startIndex {
+            let prev = text.index(before: prefixEnd)
+            let char = text[prev]
+            if char.isWhitespace || char == "↓" || char == "↑" {
+                prefixEnd = prev
+            } else {
+                break
+            }
+        }
+        return String(text[..<prefixEnd])
+    }
+
+    private static func slice(_ text: String, from startOffset: Int, to endOffset: Int) -> String {
+        let clampedStart = min(max(0, startOffset), text.count)
+        let clampedEnd = min(max(clampedStart, endOffset), text.count)
+        let start = text.index(text.startIndex, offsetBy: clampedStart)
+        let end = text.index(text.startIndex, offsetBy: clampedEnd)
+        return String(text[start..<end])
     }
 
     private static func takeAngleTimestamp(

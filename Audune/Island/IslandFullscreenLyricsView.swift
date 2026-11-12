@@ -1372,6 +1372,9 @@ private struct LyricsDepthStage: View, Equatable {
     @State private var hasUserScrolled = false
     @State private var autoResumeTask: Task<Void, Never>?
     @State private var lastResumeScheduleUptime: TimeInterval = 0
+    @State private var lastFocusChangeUptime: TimeInterval = 0
+    @State private var isRapidFocusCadence = false
+    @State private var lastWheelScrollUptime: TimeInterval = 0
 
     private var focusIndex: Int {
         min(max(activeIndex ?? 0, 0), max(document.lines.count - 1, 0))
@@ -1428,8 +1431,15 @@ private struct LyricsDepthStage: View, Equatable {
                                 .buttonStyle(.plain)
                                 .disabled(canSeekLine == false)
                                 .onHover { hovering in
+                                    let now = ProcessInfo.processInfo.systemUptime
+                                    // Suppress hover churn while rows are actively moving under a stationary cursor.
+                                    if hovering, now - lastWheelScrollUptime < 0.16 {
+                                        return
+                                    }
                                     if hovering {
-                                        hoveredLineIndex = index
+                                        if hoveredLineIndex != index {
+                                            hoveredLineIndex = index
+                                        }
                                     } else if hoveredLineIndex == index {
                                         hoveredLineIndex = nil
                                     }
@@ -1439,7 +1449,10 @@ private struct LyricsDepthStage: View, Equatable {
                                 .onGeometryChange(for: CGFloat.self) { geometry in
                                     geometry.size.height
                                 } action: { height in
-                                    guard height > 0, rowHeights[index] != height else { return }
+                                    guard height > 0 else { return }
+                                    if let existing = rowHeights[index], abs(existing - height) < 0.5 {
+                                        return
+                                    }
                                     rowHeights[index] = height
                                 }
                                 .accessibilityLabel(accessibilityLabel(for: line))
@@ -1472,26 +1485,49 @@ private struct LyricsDepthStage: View, Equatable {
                             scrollToFocus(reader, focus: focusIndex, viewportHeight: proxy.size.height, focusTop: focusTop)
                         }
                     }
-                    .onChange(of: focus) { _, newFocus in
+                    .onChange(of: focus) { oldFocus, newFocus in
+                        let now = ProcessInfo.processInfo.systemUptime
+                        let dt = lastFocusChangeUptime > 0 ? (now - lastFocusChangeUptime) : .infinity
+                        lastFocusChangeUptime = now
+                        let rapid = dt < 0.24
+                        if isRapidFocusCadence != rapid {
+                            isRapidFocusCadence = rapid
+                        }
+                        if rapid {
+                            if focusTranslationReveal != 1 { focusTranslationReveal = 1 }
+                            if cascadeOffset != 0 { cascadeOffset = 0 }
+                        } else {
+                            revealFocusTranslation()
+                            triggerCascadeSpring(from: oldFocus, to: newFocus)
+                        }
                         guard isManualScrolling == false else { return }
-                        scrollToFocus(reader, focus: newFocus, viewportHeight: proxy.size.height, focusTop: focusTop, animated: true)
+                        scrollToFocus(
+                            reader,
+                            focus: newFocus,
+                            viewportHeight: proxy.size.height,
+                            focusTop: focusTop,
+                            animated: true,
+                            rapid: rapid
+                        )
                     }
                     .onChange(of: isManualScrolling) { _, isBrowsing in
                         guard isBrowsing == false else { return }
                         scrollToFocus(reader, focus: focusIndex, viewportHeight: proxy.size.height, focusTop: focusTop, animated: true)
                     }
-                    .onChange(of: rowHeights[focus] ?? 0) { oldHeight, newHeight in
-                        guard isManualScrolling == false else { return }
+                    .onChange(of: isReady) { _, ready in
+                        guard ready, isManualScrolling == false else { return }
                         scrollToFocus(
                             reader,
                             focus: focus,
                             viewportHeight: proxy.size.height,
                             focusTop: focusTop,
-                            animated: oldHeight > 0 && newHeight > 0
+                            animated: false
                         )
                     }
                     .auduneOnScrollPhaseChange(
                         onActive: {
+                            lastWheelScrollUptime = ProcessInfo.processInfo.systemUptime
+                            if hoveredLineIndex != nil { hoveredLineIndex = nil }
                             beginManualBrowsing()
                             scheduleAutoResume(force: true)
                         },
@@ -1510,6 +1546,8 @@ private struct LyricsDepthStage: View, Equatable {
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomTrailing)
                 .overlay {
                     LyricsScrollMonitor {
+                        lastWheelScrollUptime = ProcessInfo.processInfo.systemUptime
+                        if hoveredLineIndex != nil { hoveredLineIndex = nil }
                         beginManualBrowsing()
                         scheduleAutoResume(force: false)
                     }
@@ -1530,10 +1568,6 @@ private struct LyricsDepthStage: View, Equatable {
             }
             #endif
         }
-        .onChange(of: focusIndex) { oldFocus, newFocus in
-            revealFocusTranslation()
-            triggerCascadeSpring(from: oldFocus, to: newFocus)
-        }
         .onChange(of: document.id) {
             autoResumeTask?.cancel()
             autoResumeTask = nil
@@ -1542,6 +1576,8 @@ private struct LyricsDepthStage: View, Equatable {
             hoveredLineIndex = nil
             isManualScrolling = false
             hasUserScrolled = false
+            lastFocusChangeUptime = 0
+            isRapidFocusCadence = false
             revealFocusTranslation()
             onManualModeChange(false)
         }
@@ -1559,7 +1595,6 @@ private struct LyricsDepthStage: View, Equatable {
         lhs.document == rhs.document
             && lhs.activeIndex == rhs.activeIndex
             && lhs.isPlaying == rhs.isPlaying
-            && lhs.clockAnchor == rhs.clockAnchor
             && lhs.playbackRate == rhs.playbackRate
             && lhs.durationSeconds == rhs.durationSeconds
             && lhs.interlude == rhs.interlude
@@ -1578,7 +1613,8 @@ private struct LyricsDepthStage: View, Equatable {
         focus: Int,
         viewportHeight: CGFloat,
         focusTop: CGFloat,
-        animated: Bool = false
+        animated: Bool = false,
+        rapid: Bool = false
     ) {
         guard document.lines.indices.contains(focus) else { return }
         let rowHeight = rowHeights[focus] ?? metrics.activeFontSize * 1.4
@@ -1588,8 +1624,11 @@ private struct LyricsDepthStage: View, Equatable {
             reader.scrollTo(focus, anchor: anchor)
         }
         if animated, reduceMotion == false {
+            let animation: Animation = rapid
+                ? .easeOut(duration: 0.14)
+                : .timingCurve(0.175, 0.885, 0.32, 1.1, duration: 0.6)
             withAnimation(
-                .timingCurve(0.175, 0.885, 0.32, 1.1, duration: 0.6),
+                animation,
                 scroll
             )
         } else {
@@ -1736,15 +1775,16 @@ private struct LyricsDepthStage: View, Equatable {
         let translationOpacity: Double = manualMode
             ? (isFocus ? 0.82 : LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false))
             : (isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal
-        let staggerDelay = (manualMode || visualDistance > 5)
+        let staggerDelay = (manualMode || isRapidFocusCadence || visualDistance > 5)
             ? 0
             : LyricsPresentationTiming.staggeredRowDelay(
                 distance: visualDistance,
                 reduceMotion: reduceMotion
             )
-        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isFocus || visualDistance > 5)
+        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isRapidFocusCadence || isFocus || visualDistance > 5)
             ? 0
             : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
+        let shouldAnimateFocus = reduceMotion == false && (manualMode || visualDistance <= 5)
         let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
         let alignTrailing = line.isSecondaryVocal
         let hAlignment: HorizontalAlignment = alignTrailing ? .trailing : .leading
@@ -1790,7 +1830,7 @@ private struct LyricsDepthStage: View, Equatable {
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
 
-            if let words = line.words, words.count >= 2 {
+            if followsWordClock, let words = line.words, words.count >= 2 {
                 LyricsTimedWordLine(
                     words: words,
                     lineText: line.text,
@@ -1802,7 +1842,7 @@ private struct LyricsDepthStage: View, Equatable {
                     fontSize: rowFontSize,
                     weight: .bold,
                     opacity: opacity,
-                    followsPlayback: followsWordClock,
+                    followsPlayback: true,
                     reduceMotion: reduceMotion,
                     alignment: hAlignment,
                     accessibilityLabel: accessibilityLabel(for: line)
@@ -1820,7 +1860,7 @@ private struct LyricsDepthStage: View, Equatable {
             if let bgText = line.backgroundText, bgText.isEmpty == false {
                 let formattedBg = formattedBackgroundText(bgText)
                 let bgFontSize = max(13, metrics.translationFontSize * 0.96)
-                if let bgWords = line.backgroundWords, bgWords.count >= 2 {
+                if followsWordClock, let bgWords = line.backgroundWords, bgWords.count >= 2 {
                     LyricsTimedWordLine(
                         words: bgWords,
                         lineText: formattedBg,
@@ -1832,7 +1872,7 @@ private struct LyricsDepthStage: View, Equatable {
                         fontSize: bgFontSize,
                         weight: .semibold,
                         opacity: opacity * 0.72,
-                        followsPlayback: followsWordClock,
+                        followsPlayback: true,
                         reduceMotion: reduceMotion,
                         alignment: hAlignment,
                         accessibilityLabel: formattedBg
@@ -1904,17 +1944,23 @@ private struct LyricsDepthStage: View, Equatable {
         .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
         .animation(
-            reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.82).delay(staggerDelay),
+            shouldAnimateFocus
+                ? (isRapidFocusCadence ? .easeOut(duration: 0.12) : .spring(response: 0.48, dampingFraction: 0.82).delay(staggerDelay))
+                : nil,
             value: focus
         )
         .scaleEffect(rowScale, anchor: scaleAnchor)
         .offset(y: rowCascadeY)
         .animation(
-            reduceMotion ? nil : .spring(response: 0.50, dampingFraction: 0.76).delay(staggerDelay),
+            shouldAnimateFocus
+                ? (isRapidFocusCadence ? .easeOut(duration: 0.12) : .spring(response: 0.50, dampingFraction: 0.76).delay(staggerDelay))
+                : nil,
             value: focus
         )
         .animation(
-            reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.78).delay(staggerDelay),
+            shouldAnimateFocus && isRapidFocusCadence == false
+                ? .spring(response: 0.48, dampingFraction: 0.78).delay(staggerDelay)
+                : nil,
             value: cascadeOffset
         )
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)

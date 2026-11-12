@@ -267,4 +267,45 @@ final class LyricsParsingTests: XCTestCase {
         XCTAssertEqual(document.lines[0].translation, "奔向夜晚")
         XCTAssertEqual(document.lines[0].pronunciation, "yoru ni kakeru")
     }
+
+    func testLRCParserCoalescesRapidTypewriterAndRepeatCounterRunsIntoWordTimings() throws {
+        let lrc = """
+        [00:00.010]Credits - Frums
+        [00:32.440]Fun
+        [00:32.610]Funding
+        [00:32.780]Funding for
+        [00:32.950]Funding for this
+        [00:33.120]pro
+        [00:33.280]program
+        [00:33.450]program was
+        [00:33.620]program was made
+        [00:33.780]po
+        [00:33.960]possi
+        [00:34.120]possible
+        [00:34.290]possible by
+        [00:34.460]possible by (x2)
+        [00:34.630]possible by (x3)
+        [00:34.790]possible by (x4)
+        [00:34.960]possible by (x5)
+        """
+
+        let document = try LRCParser.parse(lrc, trackKey: trackKey)
+
+        XCTAssertEqual(document.synchronization, .wordSynced)
+        XCTAssertEqual(
+            document.lines.map(\.text),
+            [
+                "Credits - Frums",
+                "Funding for this",
+                "program was made",
+                "possible by (x5)",
+            ]
+        )
+        XCTAssertEqual(document.lines[1].words?.map(\.text), ["Fun", "ding", "for", "this"])
+        XCTAssertEqual(document.lines[2].words?.map(\.text), ["pro", "gram", "was", "made"])
+        XCTAssertEqual(document.lines[3].words?.map(\.text), ["po", "ssi", "ble", "by", "(x5)"])
+        XCTAssertEqual(try XCTUnwrap(document.lines[1].startSeconds), 32.44, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(document.lines[2].startSeconds), 33.12, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(document.lines[3].startSeconds), 33.78, accuracy: 0.001)
+    }
 }
