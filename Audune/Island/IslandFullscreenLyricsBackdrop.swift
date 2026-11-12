@@ -3,54 +3,57 @@ import AppKit
 import CoreImage
 import SwiftUI
 
-/// Full-window ambient backdrop for Lyrics. The album artwork is downsampled once,
-/// blurred off the main actor, cached by artwork identity, and crossfaded between tracks.
+/// Full-window ambient fluid backdrop for Lyrics. The album artwork is downsampled to a compact
+/// colour field, saturation-boosted and blurred off the main actor, cached by track identity,
+/// and composited as slowly counter-rotating fluid layers that mirror Apple Music.
 struct LyricsArtworkBackdrop: View {
     var artwork: NSImage?
     var trackIdentity: String
+    var isPlaying: Bool = true
     var reduceMotion: Bool
 
     @State private var current: BackdropLayer?
     @State private var previous: BackdropLayer?
+    @State private var phaseAnchor = Date()
 
     var body: some View {
         GeometryReader { proxy in
+            let animateFluid = isPlaying && reduceMotion == false && current != nil
             ZStack {
                 LinearGradient(
                     colors: [
-                        Color(red: 0.105, green: 0.092, blue: 0.085),
-                        Color(red: 0.052, green: 0.047, blue: 0.044),
-                        Color(red: 0.025, green: 0.024, blue: 0.023)
+                        Color(red: 0.13, green: 0.11, blue: 0.15),
+                        Color(red: 0.07, green: 0.06, blue: 0.09),
+                        Color(red: 0.035, green: 0.032, blue: 0.045)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
 
-                if let previous, previous.id != current?.id {
-                    layer(previous)
+                TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: animateFluid == false)) { timeline in
+                    let elapsed = animateFluid ? timeline.date.timeIntervalSince(phaseAnchor) : 0
+                    ZStack {
+                        if let previous, previous.id != current?.id {
+                            fluidMesh(previous, size: proxy.size, elapsed: elapsed)
+                        }
+
+                        if let current {
+                            fluidMesh(current, size: proxy.size, elapsed: elapsed)
+                                .id(current.id)
+                                .transition(.opacity)
+                        }
+                    }
                 }
 
-                if let current {
-                    layer(current)
-                        .id(current.id)
-                        .transition(.opacity)
-                }
-
-                RadialGradient(
-                    colors: [.white.opacity(0.07), .clear],
-                    center: UnitPoint(x: 0.72, y: 0.16),
-                    startRadius: 20,
-                    endRadius: 760
-                )
-
+                // Subtle luminance and edge control so white lyrics stay effortless to read
+                // without crushing the artwork palette into muddy gray.
                 Color.black.opacity(0.24)
 
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.68), location: 0),
-                        .init(color: .black.opacity(0.30), location: 0.10),
-                        .init(color: .black.opacity(0.06), location: 0.46),
-                        .init(color: .black.opacity(0.20), location: 1)
+                        .init(color: .black.opacity(0.18), location: 0),
+                        .init(color: .black.opacity(0.05), location: 0.38),
+                        .init(color: .black.opacity(0.12), location: 1)
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -58,19 +61,19 @@ struct LyricsArtworkBackdrop: View {
 
                 LinearGradient(
                     stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.12), location: 0.55),
-                        .init(color: .black.opacity(0.46), location: 1)
+                        .init(color: .black.opacity(0.10), location: 0),
+                        .init(color: .clear, location: 0.35),
+                        .init(color: .black.opacity(0.26), location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
 
                 RadialGradient(
-                    colors: [.clear, .black.opacity(0.42)],
+                    colors: [.clear, .black.opacity(0.28)],
                     center: .center,
-                    startRadius: 180,
-                    endRadius: 980
+                    startRadius: min(proxy.size.width, proxy.size.height) * 0.28,
+                    endRadius: max(proxy.size.width, proxy.size.height) * 0.85
                 )
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
@@ -80,10 +83,13 @@ struct LyricsArtworkBackdrop: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .animation(
-            reduceMotion ? .easeOut(duration: 0.18) : .easeInOut(duration: 0.72),
+            reduceMotion ? .easeOut(duration: 0.18) : .easeInOut(duration: 0.78),
             value: current?.id
         )
-        .onAppear(perform: scheduleLoad)
+        .onAppear {
+            phaseAnchor = Date()
+            scheduleLoad()
+        }
         .onChange(of: loadID) { _, _ in scheduleLoad() }
         .onDisappear {
             guard let shown = current, shown.id == loadID else { return }
@@ -131,28 +137,42 @@ struct LyricsArtworkBackdrop: View {
         }
     }
 
-    private func layer(_ layer: BackdropLayer) -> some View {
-        ZStack {
-            Image(nsImage: layer.image)
-                .resizable()
-                .scaledToFill()
-                .saturation(1.04)
-                .contrast(1.02)
-                .clipped()
+    private func fluidMesh(_ layer: BackdropLayer, size: CGSize, elapsed: TimeInterval) -> some View {
+        let primaryAngle = (elapsed / 68.0).truncatingRemainder(dividingBy: 1.0) * 360.0
+        let secondaryAngle = -(elapsed / 86.0).truncatingRemainder(dividingBy: 1.0) * 360.0
+        let driftX = CGFloat(sin(elapsed / 9.5)) * size.width * 0.045
+        let driftY = CGFloat(cos(elapsed / 11.5)) * size.height * 0.045
 
-            // A larger, slightly rotated copy doubles the blurred colour field into
-            // the soft two-tone bloom Apple Music uses, without inventing a palette or
-            // recolouring the controls.
+        return ZStack {
+            // Base saturated field covering the entire viewport.
             Image(nsImage: layer.image)
                 .resizable()
                 .scaledToFill()
-                .scaleEffect(1.35)
-                .rotationEffect(.degrees(2))
-                .saturation(1.10)
-                .opacity(0.30)
-                .blendMode(.screen)
-                .clipped()
+                .frame(width: size.width, height: size.height)
+                .scaleEffect(1.28)
+
+            // Primary slow-orbiting colour lobe.
+            Image(nsImage: layer.image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .scaleEffect(1.68)
+                .rotationEffect(.degrees(primaryAngle))
+                .offset(x: driftX, y: driftY)
+                .opacity(0.64)
+
+            // Counter-rotating soft bloom lobe that produces Apple Music's organic mesh shifts.
+            Image(nsImage: layer.image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .scaleEffect(1.86)
+                .rotationEffect(.degrees(secondaryAngle + 32))
+                .offset(x: -driftY * 0.85, y: driftX * 0.85)
+                .opacity(0.26)
+                .blendMode(.plusLighter)
         }
+        .frame(width: size.width, height: size.height)
         .clipped()
     }
 }
@@ -185,13 +205,21 @@ private actor LyricsBackdropRenderer {
         let extent = source.extent
         guard extent.width > 1, extent.height > 1 else { return nil }
 
-        // A ~900px base is plenty for a heavily blurred full-window backdrop and keeps
-        // Core Image work bounded when tracks change quickly.
-        let scale = min(1, 900 / max(extent.width, extent.height))
+        // A 256px base reduces Core Image convolution work by >90% compared to 900px
+        // while producing an even smoother, banding-free colour mesh for full-screen scaling.
+        let scale = min(1, 256 / max(extent.width, extent.height))
         let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let blurred = scaled
+        let enriched = scaled.applyingFilter(
+            "CIColorControls",
+            parameters: [
+                kCIInputSaturationKey: 1.36,
+                kCIInputBrightnessKey: -0.03,
+                kCIInputContrastKey: 1.05
+            ]
+        )
+        let blurred = enriched
             .clampedToExtent()
-            .applyingGaussianBlur(sigma: 46)
+            .applyingGaussianBlur(sigma: 18)
             .cropped(to: scaled.extent)
         guard let output = context.createCGImage(blurred, from: scaled.extent) else { return nil }
 

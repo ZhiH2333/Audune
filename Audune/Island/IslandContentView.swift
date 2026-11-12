@@ -376,6 +376,7 @@ struct IslandContentView: View {
                     LyricsArtworkBackdrop(
                         artwork: model.nowPlaying.artwork,
                         trackIdentity: model.nowPlaying.trackIdentity,
+                        isPlaying: model.nowPlaying.isPlaying,
                         reduceMotion: reduceMotion
                     )
                 } else {
