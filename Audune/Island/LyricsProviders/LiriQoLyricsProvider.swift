@@ -68,6 +68,56 @@ nonisolated struct LiriQoLyricsProvider: OnlineLyricsProviding {
         }
     }
 
+    func searchCandidates(for trackKey: LyricsTrackKey) async -> [LyricsDocument] {
+        let title = trackKey.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artist = trackKey.artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard title.isEmpty == false, artist.isEmpty == false else { return [] }
+        guard Task.isCancelled == false else { return [] }
+        guard let url = Self.requestURL(baseURL: baseURL, trackKey: trackKey, preferFast: preferFast) else {
+            return []
+        }
+
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 20
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+
+            let (data, response) = try await transport.data(for: request)
+            guard Task.isCancelled == false, (200..<300).contains(response.statusCode) else {
+                return []
+            }
+            guard let dictionary = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                return []
+            }
+            let matchScore = dictionary["matchScore"] as? Double
+            var payloads: [[String: Any]] = []
+            if let primary = dictionary["primary"] as? [String: Any] {
+                payloads.append(primary)
+            }
+            if let tracks = dictionary["tracks"] as? [[String: Any]] {
+                payloads.append(contentsOf: tracks)
+            }
+            var documents: [LyricsDocument] = []
+            for payload in payloads {
+                let candidateKey = LyricsTrackKey(
+                    isrc: (payload["isrc"] as? String) ?? trackKey.isrc,
+                    title: (payload["title"] as? String) ?? trackKey.title,
+                    artist: (payload["artist"] as? String) ?? trackKey.artist,
+                    album: (payload["album"] as? String) ?? trackKey.album,
+                    durationSeconds: doubleValue(payload["duration"]) ?? trackKey.durationSeconds
+                )
+                if case .found(let doc) = document(from: payload, for: candidateKey, matchScore: matchScore) {
+                    documents.append(doc)
+                }
+            }
+            return documents
+        } catch {
+            return []
+        }
+    }
+
     static func requestURL(baseURL: URL, trackKey: LyricsTrackKey, preferFast: Bool) -> URL? {
         guard var components = URLComponents(url: baseURL.appendingPathComponent("lyrics"), resolvingAgainstBaseURL: false) else {
             return nil

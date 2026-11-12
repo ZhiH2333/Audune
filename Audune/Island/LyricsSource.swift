@@ -103,6 +103,16 @@ nonisolated enum OnlineLyricsLookup: Equatable, Sendable {
 nonisolated protocol OnlineLyricsProviding: Sendable {
     var descriptor: LyricsProviderDescriptor { get }
     func lookup(for trackKey: LyricsTrackKey) async -> OnlineLyricsLookup
+    func searchCandidates(for trackKey: LyricsTrackKey) async -> [LyricsDocument]
+}
+
+extension OnlineLyricsProviding {
+    func searchCandidates(for trackKey: LyricsTrackKey) async -> [LyricsDocument] {
+        if case .found(let document) = await lookup(for: trackKey) {
+            return [document]
+        }
+        return []
+    }
 }
 
 nonisolated enum LyricsTrackMatch: Equatable {
@@ -701,6 +711,12 @@ nonisolated enum LRCParser {
 struct LocalLyricsStore: Sendable {
     let fileURL: URL
 
+    var bindingsFileURL: URL {
+        fileURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("lyrics-bindings.json")
+    }
+
     static func applicationStore() throws -> LocalLyricsStore {
         guard let supportDirectory = FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -746,6 +762,97 @@ struct LocalLyricsStore: Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         try encoder.encode(documents).write(to: fileURL, options: .atomic)
+    }
+
+    // MARK: - Saved Track Bindings & Cache
+
+    func loadBindings() throws -> [LyricsSavedBinding] {
+        guard FileManager.default.fileExists(atPath: bindingsFileURL.path) else { return [] }
+        let data = try Data(contentsOf: bindingsFileURL)
+        let decoded = try JSONDecoder().decode([LyricsSavedBinding].self, from: data)
+        return decoded.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func saveBinding(_ binding: LyricsSavedBinding) throws {
+        var bindings = (try? loadBindings()) ?? []
+        if let index = bindings.firstIndex(where: { exactStoredVersion($0.trackKey, binding.trackKey) }) {
+            var updated = binding
+            updated.id = bindings[index].id
+            bindings[index] = updated
+        } else {
+            bindings.insert(binding, at: 0)
+        }
+        bindings.sort { $0.updatedAt > $1.updatedAt }
+        try writeBindings(bindings)
+    }
+
+    func resolveBinding(trackKey: LyricsTrackKey) throws -> LyricsSavedBinding? {
+        let bindings = try loadBindings()
+        if let exact = bindings.first(where: { exactStoredVersion($0.trackKey, trackKey) }) {
+            return exact
+        }
+        let currentTitle = LyricsTrackMatcher.normalized(trackKey.title)
+        let currentArtist = LyricsTrackMatcher.normalized(trackKey.artist)
+        guard currentTitle.isEmpty == false, currentArtist.isEmpty == false else {
+            return nil
+        }
+        let looseMatches = bindings.filter {
+            LyricsTrackMatcher.normalized($0.trackKey.title) == currentTitle
+                && LyricsTrackMatcher.normalized($0.trackKey.artist) == currentArtist
+        }
+        return looseMatches.count == 1 ? looseMatches.first : nil
+    }
+
+    func updateBindingOffset(
+        _ offsetSeconds: Double,
+        for trackKey: LyricsTrackKey,
+        fallbackDocument: LyricsDocument?
+    ) throws {
+        var bindings = (try? loadBindings()) ?? []
+        if let index = bindings.firstIndex(where: { exactStoredVersion($0.trackKey, trackKey) }) {
+            bindings[index].lyricsOffsetSeconds = offsetSeconds
+            bindings[index].updatedAt = Date()
+            if let fallbackDocument {
+                bindings[index].document = fallbackDocument
+            }
+            bindings.sort { $0.updatedAt > $1.updatedAt }
+            try writeBindings(bindings)
+        } else if let fallbackDocument {
+            let binding = LyricsSavedBinding(
+                trackKey: trackKey,
+                document: fallbackDocument,
+                lyricsOffsetSeconds: offsetSeconds,
+                updatedAt: Date()
+            )
+            bindings.insert(binding, at: 0)
+            try writeBindings(bindings)
+        }
+    }
+
+    func deleteBinding(id: UUID) throws {
+        var bindings = try loadBindings()
+        bindings.removeAll { $0.id == id }
+        try writeBindings(bindings)
+    }
+
+    func deleteBinding(for trackKey: LyricsTrackKey) throws {
+        var bindings = try loadBindings()
+        bindings.removeAll { exactStoredVersion($0.trackKey, trackKey) }
+        try writeBindings(bindings)
+    }
+
+    func clearAllBindings() throws {
+        if FileManager.default.fileExists(atPath: bindingsFileURL.path) {
+            try FileManager.default.removeItem(at: bindingsFileURL)
+        }
+    }
+
+    private func writeBindings(_ bindings: [LyricsSavedBinding]) throws {
+        let directory = bindingsFileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(bindings).write(to: bindingsFileURL, options: .atomic)
     }
 
     func resolve(trackKey: LyricsTrackKey) throws -> LyricsResolution {

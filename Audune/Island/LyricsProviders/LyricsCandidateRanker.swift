@@ -1,7 +1,8 @@
 import Foundation
 import CryptoKit
 
-nonisolated struct LyricsScoredCandidate: Equatable, Sendable {
+nonisolated struct LyricsScoredCandidate: Equatable, Identifiable, Sendable {
+    var id: UUID { document.id }
     var document: LyricsDocument
     var providerID: String
     var nodeID: String?
@@ -55,6 +56,59 @@ nonisolated enum LyricsCandidateRanker {
             totalScore: total,
             contentFingerprint: fingerprint(document)
         )
+    }
+
+    /// Lenient scoring used by the interactive Lyrics Picker so the listener can inspect and
+    /// preview alternate editions, covers, or translations returned for a custom search query.
+    static func scoreLenient(
+        document: LyricsDocument,
+        expected: LyricsTrackKey,
+        providerID: String,
+        nodeID: String?,
+        latencySeconds: TimeInterval,
+        reliabilityScore: Double
+    ) -> LyricsScoredCandidate? {
+        guard document.lines.isEmpty == false else { return nil }
+        let rawTrackScore = scoreTrackMatch(document.trackKey, expected: expected)
+        let trackScore = max(rawTrackScore, 2.0)
+        let syncScore = scoreSync(document.synchronization)
+        let contentScore = scoreContent(document)
+        let latencyScore = scoreLatency(latencySeconds)
+        let reliability = min(max(reliabilityScore, 0), 1)
+        let total =
+            trackScore * 3.0
+            + syncScore * 2.2
+            + contentScore * 1.4
+            + latencyScore * 0.8
+            + reliability * 1.0
+
+        return LyricsScoredCandidate(
+            document: document,
+            providerID: providerID,
+            nodeID: nodeID,
+            latencySeconds: latencySeconds,
+            trackMatchScore: trackScore,
+            syncScore: syncScore,
+            contentScore: contentScore,
+            reliabilityScore: reliability,
+            totalScore: total,
+            contentFingerprint: fingerprint(document)
+        )
+    }
+
+    static func sorted(_ candidates: [LyricsScoredCandidate]) -> [LyricsScoredCandidate] {
+        deduplicated(candidates).sorted { lhs, rhs in
+            if abs(lhs.totalScore - rhs.totalScore) > 0.01 {
+                return lhs.totalScore > rhs.totalScore
+            }
+            if abs(lhs.syncScore - rhs.syncScore) > 0.01 {
+                return lhs.syncScore > rhs.syncScore
+            }
+            if abs(lhs.trackMatchScore - rhs.trackMatchScore) > 0.01 {
+                return lhs.trackMatchScore > rhs.trackMatchScore
+            }
+            return lhs.latencySeconds < rhs.latencySeconds
+        }
     }
 
     static func best(of candidates: [LyricsScoredCandidate]) -> LyricsScoredCandidate? {

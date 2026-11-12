@@ -261,6 +261,43 @@ final class LyricsManagerTests: XCTestCase {
         }
     }
 
+    func testRememberedCandidatePersistsSnapshotAndPerTrackOffsetAcrossSessions() async throws {
+        let key = makeKey(title: "Remembered Song")
+        let chosen = makeDocument(key: key, text: "Selected lyric line")
+        let provider = ImmediateLyricsProvider(results: [.notFound])
+        let firstManager = LyricsManager(store: store, provider: provider)
+
+        firstManager.activate(trackKey: key)
+        firstManager.selectCandidate(
+            chosen,
+            for: key,
+            rememberSelection: true,
+            lyricsOffsetSeconds: 0.7
+        )
+        XCTAssertEqual(firstManager.activeBindingOffsetSeconds, 0.7)
+        XCTAssertEqual(firstManager.loadSavedBindings().count, 1)
+
+        // Adjusting offset updates the stored per-track binding.
+        firstManager.saveOffsetForActiveTrack(-0.4)
+        XCTAssertEqual(firstManager.loadSavedBindings().first?.lyricsOffsetSeconds, -0.4)
+
+        // A brand-new manager session resolves the remembered snapshot immediately without hitting online.
+        let secondProvider = ImmediateLyricsProvider(results: [.notFound])
+        let secondManager = LyricsManager(store: store, provider: secondProvider)
+        secondManager.activate(trackKey: key)
+
+        XCTAssertEqual(secondManager.activeBindingOffsetSeconds, -0.4)
+        XCTAssertEqual(secondManager.state.document?.lines.first?.text, "Selected lyric line")
+        let onlineCalls = await secondProvider.callCount
+        XCTAssertEqual(onlineCalls, 0)
+
+        // Deleting the binding clears the remembered offset and falls back to online lookup.
+        let bindingID = try XCTUnwrap(secondManager.loadSavedBindings().first?.id)
+        try secondManager.deleteSavedBinding(id: bindingID)
+        XCTAssertTrue(secondManager.loadSavedBindings().isEmpty)
+        await waitUntil("notFound after deleting binding") { secondManager.state == .notFound }
+    }
+
     // MARK: - Helpers
 
     private func makeKey(title: String) -> LyricsTrackKey {

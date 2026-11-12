@@ -51,6 +51,83 @@ nonisolated struct LyricsRouter: OnlineLyricsProviding {
         }
     }
 
+    func searchCandidates(for trackKey: LyricsTrackKey) async -> [LyricsDocument] {
+        let scored = await searchScoredCandidates(for: trackKey, providerFilter: nil)
+        return scored.map(\.document)
+    }
+
+    func searchScoredCandidates(
+        for trackKey: LyricsTrackKey,
+        providerFilter: String? = nil
+    ) async -> [LyricsScoredCandidate] {
+        guard Task.isCancelled == false else { return [] }
+        let title = trackKey.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artist = trackKey.artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard title.isEmpty == false || artist.isEmpty == false else { return [] }
+
+        var plan: [PlanItem] = []
+        if let providerFilter,
+           let capability = LyricsProviderRegistry.capability(id: providerFilter),
+           let item = await planItem(for: capability)
+        {
+            plan = [item]
+        } else if selection.mode == .manual,
+                  let providerID = selection.providerID,
+                  let capability = LyricsProviderRegistry.capability(id: providerID)
+        {
+            let nodeID = selection.nodeID
+                ?? capability.defaultNodes.first(where: \.enabled)?.id
+            plan = [PlanItem(providerID: providerID, nodeID: nodeID)]
+        } else {
+            plan = await autoPlan()
+        }
+        guard plan.isEmpty == false else { return [] }
+
+        var collected: [LyricsScoredCandidate] = []
+        await withTaskGroup(of: (PlanItem, TimeInterval, [LyricsDocument]).self) { group in
+            for item in plan {
+                group.addTask {
+                    guard Task.isCancelled == false,
+                          let provider = self.factory(item.providerID, item.nodeID)
+                    else {
+                        return (item, 0, [])
+                    }
+                    let started = Date()
+                    let docs = await provider.searchCandidates(for: trackKey)
+                    let latency = Date().timeIntervalSince(started)
+                    return (item, latency, docs)
+                }
+            }
+            for await (item, latency, docs) in group {
+                guard Task.isCancelled == false else { break }
+                if docs.isEmpty == false {
+                    await healthStore.recordSuccess(
+                        providerID: item.providerID,
+                        nodeID: item.nodeID ?? item.providerID,
+                        latencySeconds: latency
+                    )
+                }
+                let reliability = await healthStore.reliabilityScore(
+                    nodeID: item.nodeID ?? item.providerID
+                )
+                for doc in docs {
+                    if let scored = LyricsCandidateRanker.scoreLenient(
+                        document: doc,
+                        expected: trackKey,
+                        providerID: item.providerID,
+                        nodeID: item.nodeID,
+                        latencySeconds: latency,
+                        reliabilityScore: reliability
+                    ) {
+                        collected.append(scored)
+                    }
+                }
+            }
+        }
+
+        return LyricsCandidateRanker.sorted(collected)
+    }
+
     // MARK: - Manual
 
     private func lookupManual(_ trackKey: LyricsTrackKey) async -> OnlineLyricsLookup {

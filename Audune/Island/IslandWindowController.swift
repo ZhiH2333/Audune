@@ -554,7 +554,61 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     func setLyricsOffset(_ seconds: Double) {
         model.prefs.lyricsOffsetSeconds = seconds
+        lyricsManager?.saveOffsetForActiveTrack(seconds)
         preferencesDidChange()
+    }
+
+    func searchLyricsCandidates(
+        title: String? = nil,
+        artist: String? = nil,
+        album: String? = nil,
+        providerFilter: String? = nil
+    ) async -> [LyricsScoredCandidate] {
+        let snapshot = nowPlaying.snapshot
+        let rawTitle = (title ?? snapshot.title).trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawArtist = (artist ?? snapshot.artist).trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawAlbum = (album ?? snapshot.album).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard rawTitle.isEmpty == false || rawArtist.isEmpty == false else {
+            return []
+        }
+        let queryKey = LyricsTrackKey(
+            isrc: nil,
+            title: rawTitle,
+            artist: rawArtist,
+            album: rawAlbum.isEmpty ? nil : rawAlbum,
+            durationSeconds: snapshot.durationSeconds > 0 ? snapshot.durationSeconds : nil
+        )
+        guard let manager = try? resolvedLyricsManager() else { return [] }
+        return await manager.searchCandidates(for: queryKey, providerFilter: providerFilter)
+    }
+
+    func applySelectedLyricsCandidate(_ document: LyricsDocument, rememberSelection: Bool) {
+        let trackKey = currentLyricsTrackKey ?? lyricsTrackKey(from: nowPlaying.snapshot) ?? document.trackKey
+        try? resolvedLyricsManager().selectCandidate(
+            document,
+            for: trackKey,
+            rememberSelection: rememberSelection,
+            lyricsOffsetSeconds: model.prefs.lyricsOffsetSeconds
+        )
+        setActiveLyricsLineIndex(nil)
+        updateLyricsLinePosition(forceSyncPosition: true)
+    }
+
+    func loadSavedLyricsBindings() -> [LyricsSavedBinding] {
+        if let manager = try? resolvedLyricsManager() {
+            return manager.loadSavedBindings()
+        }
+        return (try? localLyricsStore().loadBindings()) ?? []
+    }
+
+    func deleteSavedLyricsBinding(id: UUID) {
+        try? resolvedLyricsManager().deleteSavedBinding(id: id)
+        updateLyricsLinePosition(forceSyncPosition: true)
+    }
+
+    func clearAllSavedLyricsBindings() {
+        try? resolvedLyricsManager().clearAllSavedBindings()
+        updateLyricsLinePosition(forceSyncPosition: true)
     }
 
     func setAutomaticOnlineLyricsEnabled(_ enabled: Bool) {
@@ -732,6 +786,11 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
 
     private func applyLyricsManagerState() {
         guard let lyricsManager else { return }
+        if let boundOffset = lyricsManager.activeBindingOffsetSeconds,
+           abs(model.prefs.lyricsOffsetSeconds - boundOffset) >= 0.005
+        {
+            model.prefs.lyricsOffsetSeconds = boundOffset
+        }
         if model.lyricsState != lyricsManager.state {
             model.lyricsState = lyricsManager.state
             setActiveLyricsLineIndex(nil)

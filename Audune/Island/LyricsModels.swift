@@ -407,3 +407,27 @@ nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
         lines.contains { ($0.pronunciation?.isEmpty == false) }
     }
 }
+
+/// User-selected or offset-tuned lyrics snapshot remembered for a specific song metadata key.
+nonisolated struct LyricsSavedBinding: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var trackKey: LyricsTrackKey
+    var document: LyricsDocument
+    var lyricsOffsetSeconds: Double
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        trackKey: LyricsTrackKey,
+        document: LyricsDocument,
+        lyricsOffsetSeconds: Double = 0,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.trackKey = trackKey
+        self.document = document
+        self.lyricsOffsetSeconds = lyricsOffsetSeconds
+        self.updatedAt = updatedAt
+    }
+}
+

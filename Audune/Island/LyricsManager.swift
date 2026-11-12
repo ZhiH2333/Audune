@@ -10,6 +10,7 @@ import Foundation
 final class LyricsManager {
     private(set) var state: LyricsPresentationState = .idle
     private(set) var activeTrackKey: LyricsTrackKey?
+    private(set) var activeBindingOffsetSeconds: Double?
     private(set) var automaticOnlineEnabled: Bool
     let providerDescriptor: LyricsProviderDescriptor
 
@@ -47,6 +48,7 @@ final class LyricsManager {
             lookupTask = nil
             generation &+= 1
             activeTrackKey = nil
+            activeBindingOffsetSeconds = nil
             updateState(.noTrack)
             return
         }
@@ -61,6 +63,7 @@ final class LyricsManager {
         lookupTask = nil
         generation &+= 1
         activeTrackKey = trackKey
+        activeBindingOffsetSeconds = nil
         updateState(.checkingLocal)
         resolveLocal(for: trackKey, generation: generation)
     }
@@ -71,6 +74,7 @@ final class LyricsManager {
         lookupTask?.cancel()
         lookupTask = nil
         activeTrackKey = nil
+        activeBindingOffsetSeconds = nil
         updateState(.idle)
     }
 
@@ -106,12 +110,147 @@ final class LyricsManager {
     }
 
     func selectCandidate(_ document: LyricsDocument) {
+        selectCandidate(
+            document,
+            for: activeTrackKey ?? document.trackKey,
+            rememberSelection: false,
+            lyricsOffsetSeconds: activeBindingOffsetSeconds ?? 0
+        )
+    }
+
+    func selectCandidate(
+        _ document: LyricsDocument,
+        for trackKey: LyricsTrackKey? = nil,
+        rememberSelection: Bool,
+        lyricsOffsetSeconds: Double = 0
+    ) {
         guard isActive else { return }
+        let targetKey = trackKey ?? activeTrackKey ?? document.trackKey
         generation &+= 1
         lookupTask?.cancel()
         lookupTask = nil
-        activeTrackKey = document.trackKey
-        updateState(presentation(for: document))
+        activeTrackKey = targetKey
+        var normalizedDoc = document
+        normalizedDoc.trackKey = targetKey
+        if rememberSelection {
+            var source = normalizedDoc.source ?? LyricsSourceInfo(
+                kind: .online,
+                providerName: providerDescriptor.displayName,
+                providerRecordIdentifier: nil,
+                isPersisted: true
+            )
+            source.isPersisted = true
+            normalizedDoc.source = source
+            let binding = LyricsSavedBinding(
+                trackKey: targetKey,
+                document: normalizedDoc,
+                lyricsOffsetSeconds: lyricsOffsetSeconds,
+                updatedAt: Date()
+            )
+            try? store.saveBinding(binding)
+            activeBindingOffsetSeconds = lyricsOffsetSeconds
+        }
+        sessionCache[targetKey] = normalizedDoc
+        updateState(presentation(for: normalizedDoc))
+    }
+
+    func searchCandidates(
+        for queryKey: LyricsTrackKey,
+        providerFilter: String? = nil
+    ) async -> [LyricsScoredCandidate] {
+        var results: [LyricsScoredCandidate] = []
+        if providerFilter == nil || providerFilter == "local" {
+            let localDocs = (try? store.load()) ?? []
+            for doc in localDocs {
+                if let scored = LyricsCandidateRanker.scoreLenient(
+                    document: doc,
+                    expected: queryKey,
+                    providerID: "local",
+                    nodeID: nil,
+                    latencySeconds: 0,
+                    reliabilityScore: 1.0
+                ) {
+                    results.append(scored)
+                }
+            }
+            let boundDocs = (try? store.loadBindings())?.map(\.document) ?? []
+            for doc in boundDocs {
+                if let scored = LyricsCandidateRanker.scoreLenient(
+                    document: doc,
+                    expected: queryKey,
+                    providerID: doc.source?.resolvedProviderID ?? "saved",
+                    nodeID: doc.source?.nodeID,
+                    latencySeconds: 0,
+                    reliabilityScore: 1.0
+                ) {
+                    results.append(scored)
+                }
+            }
+        }
+        guard providerFilter != "local" else {
+            return LyricsCandidateRanker.sorted(results)
+        }
+        if let router = provider as? LyricsRouter {
+            let online = await router.searchScoredCandidates(for: queryKey, providerFilter: providerFilter)
+            results.append(contentsOf: online)
+        } else {
+            let docs = await provider.searchCandidates(for: queryKey)
+            for doc in docs {
+                if let scored = LyricsCandidateRanker.scoreLenient(
+                    document: doc,
+                    expected: queryKey,
+                    providerID: provider.descriptor.kind.rawValue,
+                    nodeID: nil,
+                    latencySeconds: 0.2,
+                    reliabilityScore: 1.0
+                ) {
+                    results.append(scored)
+                }
+            }
+        }
+        return LyricsCandidateRanker.sorted(results)
+    }
+
+    func saveOffsetForActiveTrack(_ offsetSeconds: Double) {
+        activeBindingOffsetSeconds = offsetSeconds
+        guard let trackKey = activeTrackKey else { return }
+        try? store.updateBindingOffset(
+            offsetSeconds,
+            for: trackKey,
+            fallbackDocument: state.document
+        )
+    }
+
+    func loadSavedBindings() -> [LyricsSavedBinding] {
+        (try? store.loadBindings()) ?? []
+    }
+
+    func deleteSavedBinding(id: UUID) throws {
+        let bindings = (try? store.loadBindings()) ?? []
+        let deleted = bindings.first { $0.id == id }
+        try store.deleteBinding(id: id)
+        if let deleted, let activeTrackKey, deleted.trackKey == activeTrackKey {
+            activeBindingOffsetSeconds = nil
+            sessionCache.removeValue(forKey: activeTrackKey)
+            generation &+= 1
+            lookupTask?.cancel()
+            lookupTask = nil
+            updateState(.checkingLocal)
+            resolveLocal(for: activeTrackKey, generation: generation)
+        }
+    }
+
+    func clearAllSavedBindings() throws {
+        try store.clearAllBindings()
+        activeBindingOffsetSeconds = nil
+        if let activeTrackKey {
+            sessionCache.removeValue(forKey: activeTrackKey)
+            generation &+= 1
+            lookupTask?.cancel()
+            lookupTask = nil
+            updateState(.checkingLocal)
+            resolveLocal(for: activeTrackKey, generation: generation)
+        }
     }
 
     func localDocumentImported(_ document: LyricsDocument) {
@@ -121,12 +260,22 @@ final class LyricsManager {
         isActive = true
         activeTrackKey = document.trackKey
         sessionCache.removeValue(forKey: document.trackKey)
+        try? store.saveBinding(
+            LyricsSavedBinding(
+                trackKey: document.trackKey,
+                document: document,
+                lyricsOffsetSeconds: activeBindingOffsetSeconds ?? 0,
+                updatedAt: Date()
+            )
+        )
         updateState(.local(document))
     }
 
     func deleteLocalDocument(_ documentID: UUID) throws {
         try store.delete(documentID: documentID)
         if let trackKey = activeTrackKey {
+            try? store.deleteBinding(for: trackKey)
+            activeBindingOffsetSeconds = nil
             sessionCache.removeValue(forKey: trackKey)
         }
         guard isActive, let trackKey = activeTrackKey else { return }
@@ -151,6 +300,16 @@ final class LyricsManager {
 
     private func resolveLocal(for trackKey: LyricsTrackKey, generation: UInt64) {
         guard isCurrent(generation) else { return }
+        if let binding = try? store.resolveBinding(trackKey: trackKey),
+           binding.document.lines.isEmpty == false
+        {
+            var boundDoc = binding.document
+            boundDoc.trackKey = trackKey
+            activeBindingOffsetSeconds = binding.lyricsOffsetSeconds
+            updateState(presentation(for: boundDoc))
+            return
+        }
+
         do {
             switch try store.resolve(trackKey: trackKey) {
             case .local(let document):

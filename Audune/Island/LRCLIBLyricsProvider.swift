@@ -128,6 +128,44 @@ nonisolated struct LRCLIBLyricsProvider: OnlineLyricsProviding {
         }
     }
 
+    func searchCandidates(for trackKey: LyricsTrackKey) async -> [LyricsDocument] {
+        let title = trackKey.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let artist = trackKey.artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard title.isEmpty == false || artist.isEmpty == false else { return [] }
+        guard Task.isCancelled == false else { return [] }
+
+        do {
+            if let searchURL = Self.searchURL(for: trackKey),
+               case .found(let data) = try await fetch(searchURL),
+               let records = try? JSONDecoder().decode([LRCLIBRecord].self, from: data),
+               records.isEmpty == false
+            {
+                var results: [LyricsDocument] = []
+                for record in records.prefix(15) {
+                    let recordKey = LyricsTrackKey(
+                        isrc: trackKey.isrc,
+                        title: record.trackName.isEmpty ? trackKey.title : record.trackName,
+                        artist: record.artistName.isEmpty ? trackKey.artist : record.artistName,
+                        album: record.albumName?.isEmpty == false ? record.albumName : trackKey.album,
+                        durationSeconds: record.duration ?? trackKey.durationSeconds
+                    )
+                    if case .found(let doc) = document(from: record, for: recordKey) {
+                        results.append(doc)
+                    }
+                }
+                if results.isEmpty == false {
+                    return results
+                }
+            }
+            if case .found(let single) = await lookup(for: trackKey) {
+                return [single]
+            }
+            return []
+        } catch {
+            return []
+        }
+    }
+
     // MARK: - Requests
 
     private enum FetchResult {
