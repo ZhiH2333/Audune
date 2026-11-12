@@ -4724,7 +4724,134 @@
           }
         }
       }
-    }
+    },
+    "": {},
+    "%@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%lld %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld remembered tracks": {},
+    "Advanced Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高级设置"
+          }
+        }
+      }
+    },
+    "Aggregators": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聚合源"
+          }
+        }
+      }
+    },
+    "All Sources": {},
+    "Artist": {},
+    "Auto Node": {},
+    "China": {},
+    "Choose lyrics source": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择歌词来源"
+          }
+        }
+      }
+    },
+    "Clear All": {},
+    "Close lyrics picker": {},
+    "Done": {},
+    "Filter by song title, artist, or album…": {},
+    "In Use": {},
+    "International": {},
+    "Line": {},
+    "Line-synced": {},
+    "Local & Saved": {},
+    "Lyrics by %@": {},
+    "Lyrics source selector": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歌词来源选择器"
+          }
+        }
+      }
+    },
+    "Lyrics via %@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Lyrics via %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Manual": {},
+    "NOW AT %@": {},
+    "No lyrics found for this filter.": {},
+    "Online": {},
+    "Open advanced lyrics picker": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开高级歌词选择器"
+          }
+        }
+      }
+    },
+    "Plain": {},
+    "Plain text": {},
+    "Refresh": {},
+    "Remove saved lyrics binding for this track": {},
+    "Romaji": {},
+    "Saved": {},
+    "Saved Lyrics & Track Bindings": {},
+    "Search": {},
+    "Search Keyword": {},
+    "Searching lyrics providers…": {},
+    "Searching…": {},
+    "Select a version on the left to preview": {},
+    "Selected lyrics and timing offset are remembered for this song.": {},
+    "Song title": {},
+    "Syllable": {},
+    "Syllable-synced": {},
+    "Syllable-synchronized lyrics": {},
+    "Translation": {},
+    "Use Lyrics": {},
+    "Versions (%lld)": {},
+    "When you choose a lyrics candidate with “Use & Remember” or import a local LRC file, Audune remembers that song’s matched lyrics and timing offset here.": {},
+    "Word": {},
+    "Word-synced": {},
+    "lines": {},
+    "·": {},
+    "· %@": {},
+    "“%@”": {}
   },
   "version": "1.0"
 }
