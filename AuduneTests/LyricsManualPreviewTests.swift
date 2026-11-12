@@ -66,6 +66,125 @@ final class LyricsManualPreviewTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testPickerOverlayPreviewSnapshot() throws {
+        setenv("AUDUNE_LYRICS_PICKER_PREVIEW", "1", 1)
+        defer { unsetenv("AUDUNE_LYRICS_PICKER_PREVIEW") }
+
+        let model = IslandModel()
+        model.nowPlaying = NowPlayingSnapshot(
+            availability: .listening,
+            title: "夜に駆ける",
+            artist: "YOASOBI",
+            album: "THE BOOK",
+            isPlaying: true,
+            elapsedSeconds: 18,
+            durationSeconds: 257,
+            playbackRate: 1,
+            bundleIdentifier: "com.apple.Music",
+            artwork: nil,
+            seekSupported: true,
+            lastUpdated: Date(),
+            playbackClockAnchor: PlaybackClockAnchor(
+                elapsedSeconds: 18,
+                monotonicUptime: ProcessInfo.processInfo.systemUptime,
+                revision: 1
+            )
+        )
+        let currentDoc = Self.document()
+        model.lyricsState = .found(currentDoc)
+        model.lyricsPositionSeconds = 18
+        model.lyricsDisplayPositionSeconds = 18
+        model.activeLyricsLineIndex = 3
+
+        let wordDoc: LyricsDocument = {
+            var doc = Self.document()
+            doc.id = UUID()
+            doc.declaredSynchronization = .syllableSynced
+            doc.lines[3].words = [
+                LyricsWord(id: 0, text: "夜に", startSeconds: 18.0, durationSeconds: 1.0),
+                LyricsWord(id: 1, text: "駆ける", startSeconds: 19.0, durationSeconds: 1.4),
+            ]
+            doc.source = LyricsSourceInfo(
+                kind: .online,
+                providerName: "LiriQo",
+                providerRecordIdentifier: "am-1",
+                isPersisted: false,
+                providerID: LyricsProviderID.liriqo.rawValue,
+                nodeID: "liriqo-public",
+                upstreamProviderID: "Apple Music"
+            )
+            return doc
+        }()
+
+        let lrclibDoc: LyricsDocument = {
+            var doc = Self.document()
+            doc.id = UUID()
+            doc.source = LyricsSourceInfo(
+                kind: .lrclib,
+                providerName: "LRCLIB",
+                providerRecordIdentifier: "9021",
+                isPersisted: false,
+                providerID: LyricsProviderID.lrclib.rawValue
+            )
+            return doc
+        }()
+
+        let candidates: [LyricsScoredCandidate] = [
+            LyricsCandidateRanker.scoreLenient(
+                document: wordDoc,
+                expected: wordDoc.trackKey,
+                providerID: LyricsProviderID.liriqo.rawValue,
+                nodeID: "liriqo-public",
+                latencySeconds: 0.4,
+                reliabilityScore: 1
+            )!,
+            LyricsCandidateRanker.scoreLenient(
+                document: lrclibDoc,
+                expected: lrclibDoc.trackKey,
+                providerID: LyricsProviderID.lrclib.rawValue,
+                nodeID: nil,
+                latencySeconds: 0.5,
+                reliabilityScore: 1
+            )!,
+        ]
+
+        let view = IslandFullscreenLyricsView(
+            model: model,
+            importLyrics: {},
+            chooseCandidate: { _ in },
+            deleteLyrics: { _ in },
+            retryLyrics: {},
+            seek: { _ in },
+            togglePlay: {},
+            previousTrack: {},
+            nextTrack: {},
+            setLyricsOffset: { _ in },
+            searchCandidates: { _, _, _, _ in candidates },
+            applyCandidate: { _, _ in }
+        )
+        .frame(width: 1296, height: 841)
+        .background(
+            LinearGradient(colors: [Color(red: 0.36, green: 0.22, blue: 0.36), Color(red: 0.20, green: 0.28, blue: 0.46)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        .clipped()
+
+        let host = NSHostingView(rootView: view)
+        let window = NSWindow(contentRect: NSRect(x: -4000, y: 0, width: 1296, height: 841), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = host
+        window.orderFront(nil)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+
+        let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let data = rep.representation(using: .png, properties: [:])!
+        let dir = URL(fileURLWithPath: "/tmp/lyrics-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try data.write(to: dir.appendingPathComponent("picker-preview.png"))
+        window.orderOut(nil)
+    }
+
     private static func document() -> LyricsDocument {
         let texts = [
             ("この瞬間を閉じ込めて", "把这一刻封存"),
