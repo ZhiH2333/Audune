@@ -53,39 +53,19 @@ struct IslandFullscreenLyricsView: View {
     }
 
     private func splitBody(metrics: LyricsSceneMetrics) -> some View {
-        HStack(alignment: .top, spacing: metrics.columnGap) {
+        HStack(alignment: .center, spacing: metrics.columnGap) {
             playerColumn(metrics: metrics)
-                .frame(width: metrics.artworkSide, alignment: .topLeading)
-                .padding(.top, max(16, metrics.stageHeight * 0.066))
+                .frame(width: metrics.artworkSide, alignment: .leading)
+                .padding(.top, max(18, metrics.stageHeight * 0.055))
+                .padding(.bottom, max(12, metrics.stageHeight * 0.035))
 
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            stage(metrics: metrics)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .padding(.horizontal, metrics.horizontalInset)
         .padding(.top, metrics.topInset)
         .padding(.bottom, metrics.bottomInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .coordinateSpace(name: "lyricsSplit")
-        .overlayPreferenceValue(LyricsPlayerGeometryPreferenceKey.self) { anchors in
-            GeometryReader { proxy in
-                if let artworkAnchor = anchors.artwork,
-                   let pauseAnchor = anchors.pauseButton {
-                    let artwork = proxy[artworkAnchor]
-                    let pauseButton = proxy[pauseAnchor]
-                    let stageTop = max(0, artwork.minY - 12)
-                    let stageBottom = min(proxy.size.height, pauseButton.maxY + 12)
-                    let stageX = metrics.horizontalInset + metrics.artworkSide + metrics.columnGap
-                    let stageWidth = max(0, proxy.size.width - stageX - metrics.horizontalInset)
-
-                    stage(metrics: metrics)
-                        .frame(width: stageWidth, height: max(0, stageBottom - stageTop))
-                        .position(
-                            x: stageX + stageWidth / 2,
-                            y: stageTop + max(0, stageBottom - stageTop) / 2
-                        )
-                }
-            }
-        }
     }
 
     /// Short or narrow windows use a stacked player header: the Apple Music composition
@@ -202,26 +182,28 @@ struct IslandFullscreenLyricsView: View {
     // MARK: - Player column
 
     private func playerColumn(metrics: LyricsSceneMetrics) -> some View {
-        // Apple Music keeps the song title optically large even with a big cover: the
-        // title block reads as one unit with the artwork instead of a caption under it.
-        let titleSize = min(max(metrics.artworkSide * 0.072, 20), 33)
+        // Apple Music keeps the song title optically balanced with the cover column:
+        // the cover and controls sit centered while the source selector anchors the bottom.
+        let titleSize = min(max(metrics.artworkSide * 0.066, 20), 28)
         return VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 8)
+
             artwork(side: metrics.artworkSide)
 
             songHeader(titleSize: titleSize)
-                .padding(.top, max(16, metrics.artworkSide * 0.060))
+                .padding(.top, max(16, metrics.artworkSide * 0.056))
 
             progressBlock
-                .padding(.top, max(18, metrics.artworkSide * 0.086))
+                .padding(.top, max(16, metrics.artworkSide * 0.068))
 
             transportRow(scale: metrics.artworkSide)
-                .padding(.top, max(18, metrics.artworkSide * 0.075))
+                .padding(.top, max(16, metrics.artworkSide * 0.064))
 
             Spacer(minLength: 16)
 
             sourceFooter
         }
-        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .leading)
     }
 
     private func artwork(side: CGFloat) -> some View {
@@ -264,9 +246,6 @@ struct IslandFullscreenLyricsView: View {
             )
         }
         .frame(width: side, height: side)
-        .anchorPreference(key: LyricsPlayerGeometryPreferenceKey.self, value: .bounds) {
-            .init(artwork: $0)
-        }
         .accessibilityLabel(String(localized: "Album artwork"))
         .id(model.lyricsTrackRevision)
         .transition(.opacity)
@@ -380,9 +359,6 @@ struct IslandFullscreenLyricsView: View {
         .disabled(canControlPlayback == false)
         .help(label)
         .accessibilityLabel(label)
-        .anchorPreference(key: LyricsPlayerGeometryPreferenceKey.self, value: .bounds) {
-            .init(pauseButton: $0)
-        }
     }
 
     private func transportButton(
@@ -1349,21 +1325,6 @@ private struct LyricsProgressSection: View {
     }
 }
 
-private struct LyricsPlayerGeometryPreferenceKey: PreferenceKey {
-    struct Value {
-        var artwork: Anchor<CGRect>?
-        var pauseButton: Anchor<CGRect>?
-    }
-
-    static var defaultValue = Value()
-
-    static func reduce(value: inout Value, nextValue: () -> Value) {
-        let next = nextValue()
-        value.artwork = next.artwork ?? value.artwork
-        value.pauseButton = next.pauseButton ?? value.pauseButton
-    }
-}
-
 // MARK: - Depth stage
 
 /// A single native scroll view keeps every lyric row in a stable layout while focus
@@ -1388,8 +1349,6 @@ private struct LyricsDepthStage: View, Equatable {
     var onSeekLine: ((LyricsLine) -> Bool)? = nil
 
     @State private var rowHeights: [Int: CGFloat] = [:]
-    @State private var focusTranslationReveal: Double = 1
-    @State private var cascadeOffset: CGFloat = 0
     @State private var hoveredLineIndex: Int?
     @State private var isManualScrolling = false
     @State private var hasUserScrolled = false
@@ -1417,10 +1376,10 @@ private struct LyricsDepthStage: View, Equatable {
             // right column, so long lines never turn into full-window banners.
             // Reserve horizontal inset inside the ScrollView so the large rounded hover
             // selection pill and 1.06 visual scale never clip against the scroll view edge.
-            let pillHInset: CGFloat = metrics.isCompact ? 24 : 32
-            let pillVInset: CGFloat = metrics.isCompact ? 16 : 22
-            let contentWidth = min(max(180, proxy.size.width * 0.86 - pillHInset), metrics.isCompact ? 720 : 780)
-            let effectiveRowGap = max(2, metrics.rowGap - pillVInset * 1.35)
+            let pillHInset: CGFloat = metrics.isCompact ? 16 : 22
+            let pillVInset: CGFloat = metrics.isCompact ? 10 : 14
+            let contentWidth = min(max(180, proxy.size.width * 0.88 - pillHInset), metrics.isCompact ? 720 : 820)
+            let effectiveRowGap = max(8, metrics.rowGap - pillVInset)
 
             ScrollViewReader { reader in
                 ZStack(alignment: .bottomTrailing) {
@@ -1495,8 +1454,8 @@ private struct LyricsDepthStage: View, Equatable {
                         LinearGradient(
                             stops: [
                                 .init(color: .clear, location: 0),
-                                .init(color: .white, location: 0.10),
-                                .init(color: .white, location: 0.88),
+                                .init(color: .white, location: 0.13),
+                                .init(color: .white, location: 0.83),
                                 .init(color: .clear, location: 1)
                             ],
                             startPoint: .top,
@@ -1508,20 +1467,13 @@ private struct LyricsDepthStage: View, Equatable {
                             scrollToFocus(reader, focus: focusIndex, viewportHeight: proxy.size.height, focusTop: focusTop)
                         }
                     }
-                    .onChange(of: focus) { oldFocus, newFocus in
+                    .onChange(of: focus) { _, newFocus in
                         let now = ProcessInfo.processInfo.systemUptime
                         let dt = lastFocusChangeUptime > 0 ? (now - lastFocusChangeUptime) : .infinity
                         lastFocusChangeUptime = now
                         let rapid = dt < 0.24
                         if isRapidFocusCadence != rapid {
                             isRapidFocusCadence = rapid
-                        }
-                        if rapid {
-                            if focusTranslationReveal != 1 { focusTranslationReveal = 1 }
-                            if cascadeOffset != 0 { cascadeOffset = 0 }
-                        } else {
-                            revealFocusTranslation()
-                            triggerCascadeSpring(from: oldFocus, to: newFocus)
                         }
                         guard isManualScrolling == false else { return }
                         scrollToFocus(
@@ -1580,7 +1532,6 @@ private struct LyricsDepthStage: View, Equatable {
             }
         }
         .onAppear {
-            revealFocusTranslation()
             #if DEBUG
             if ProcessInfo.processInfo.environment["AUDUNE_LYRICS_MANUAL_PREVIEW"] == "1",
                isManualScrolling == false {
@@ -1595,13 +1546,11 @@ private struct LyricsDepthStage: View, Equatable {
             autoResumeTask?.cancel()
             autoResumeTask = nil
             rowHeights = [:]
-            cascadeOffset = 0
             hoveredLineIndex = nil
             isManualScrolling = false
             hasUserScrolled = false
             lastFocusChangeUptime = 0
             isRapidFocusCadence = false
-            revealFocusTranslation()
             onManualModeChange(false)
         }
         .onDisappear {
@@ -1649,7 +1598,7 @@ private struct LyricsDepthStage: View, Equatable {
         if animated, reduceMotion == false {
             let animation: Animation = rapid
                 ? .easeOut(duration: 0.14)
-                : .timingCurve(0.175, 0.885, 0.32, 1.1, duration: 0.6)
+                : .spring(response: 0.52, dampingFraction: 0.86)
             withAnimation(
                 animation,
                 scroll
@@ -1748,66 +1697,66 @@ private struct LyricsDepthStage: View, Equatable {
         pillHInset: CGFloat,
         pillVInset: CGFloat
     ) -> some View {
-        let distance = abs(index - focus)
+        let signedDistance = index - focus
+        let distance = abs(signedDistance)
         let isFocus = distance == 0 && hasActiveLine
         let isWaiting = isFocus && isInterlude
-        // Before the first timed line starts, keep the upcoming line sharp-ish and fade
-        // the rest by distance instead of flattening every row to the same blur.
-        let visualDistance = hasActiveLine ? distance : min(4, abs(index - focus))
-        // AMLL's active line is fully bright while its neighbours sit at 0.2. Audune's
-        // backdrop can be brighter than AMLL's, so we keep a little more context: the
-        // next line stays readable, then falls away quickly.
-        // Past lines fall away faster than upcoming lines, like Apple Music: the
-        // singer has moved on, so context only needs to hint at what was just sung.
+        let visualDistance = hasActiveLine ? distance : min(6, distance)
         let isPast = hasActiveLine && index < focus
-        let baseOpacity: Double = {
-            if isFocus { return isWaiting ? 0.56 : 1 }
-            switch visualDistance {
-            case 0: return 0.48
-            case 1: return 0.32
-            case 2: return 0.15
-            case 3: return 0.07
-            case 4: return 0.03
-            default: return 0
-            }
-        }()
-        // Manual browsing deliberately flattens the hierarchy: every line gets the
-        // same size and blur, and opacity only distinguishes the line that is
-        // currently playing. This mirrors Apple Music, where the viewport becomes a
-        // readable index of the song while the user is scrolling.
-        let rawOpacity = manualMode
-            ? LyricsPresentationTiming.manualBrowsingOpacity(isFocused: isFocus)
-            : (isPast ? baseOpacity * 0.72 : baseOpacity)
-        let opacity = isHovered ? max(rawOpacity, 0.88) : rawOpacity
-        // The reference animation uses a light 1.5–2 pt blur rather than a heavy
-        // frosted layer, so the next lines stay readable but recede. Hovering a line
-        // sharpens it immediately like Apple Music so the user can read and click it.
-        // Rows with baseOpacity == 0 (visualDistance > 4) are completely invisible, so
-        // skip allocating an offscreen Gaussian blur pass for them.
-        let blurRadius: CGFloat = (manualMode || isHovered || reduceMotion || blurLyrics == false || isFocus || visualDistance > 4)
-            ? 0
-            : min(1.5 + CGFloat(visualDistance) * 0.45 + (isPast ? 0.3 : 0), 3.2)
-        // Scale is a render transform, not layout. Every row keeps the same font
-        // and measure, so focus never re-wraps; it only grows slightly from the
-        // leading edge, exactly like the reference's transform-origin: left center.
-        let rowScale: CGFloat = manualMode ? 1 : (reduceMotion ? 1 : (isFocus ? 1.06 : 0.96))
+
+        let opacity = LyricsPresentationTiming.rowOpacity(
+            distance: visualDistance,
+            hasActiveLine: hasActiveLine,
+            isPast: isPast,
+            isWaiting: isWaiting,
+            manualMode: manualMode,
+            isHovered: isHovered
+        )
+        let blurRadius = CGFloat(
+            LyricsPresentationTiming.rowBlurRadius(
+                distance: visualDistance,
+                hasActiveLine: hasActiveLine,
+                isPast: isPast,
+                manualMode: manualMode,
+                isHovered: isHovered,
+                reduceMotion: reduceMotion,
+                blurEnabled: blurLyrics
+            )
+        )
+        let rowScale = CGFloat(
+            LyricsPresentationTiming.rowScale(
+                isFocused: isFocus,
+                manualMode: manualMode,
+                isHovered: isHovered,
+                reduceMotion: reduceMotion
+            )
+        )
         let rowFontSize = metrics.activeFontSize
-        let translationReveal = manualMode ? 1 : (isFocus ? focusTranslationReveal : 1)
         let lineGap = max(5, metrics.activeFontSize * 0.15)
-        let activeGlow = (manualMode == false && isFocus && isWaiting == false) ? 0.18 : 0.0
         let translationOpacity: Double = manualMode
             ? (isFocus ? 0.82 : LyricsPresentationTiming.manualBrowsingOpacity(isFocused: false))
-            : (isFocus ? (isWaiting ? 0.30 : 0.62) : 0.26) * (0.70 + 0.30 * opacity) * translationReveal
-        let staggerDelay = (manualMode || isRapidFocusCadence || visualDistance > 5)
+            : opacity * (isFocus ? (isWaiting ? 0.56 : 0.72) : 0.68)
+
+        let isNearViewport = manualMode || visualDistance <= 7
+        let staggerDelay = (manualMode || isRapidFocusCadence || visualDistance > 6)
             ? 0
             : LyricsPresentationTiming.staggeredRowDelay(
                 distance: visualDistance,
                 reduceMotion: reduceMotion
             )
-        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isRapidFocusCadence || isFocus || visualDistance > 5)
+        // Signed vertical wave spread: when `focus` advances, each row's target offset
+        // shifts by -4.2pt after its `staggerDelay`, creating Apple Music's accordion
+        // wave across the viewport with zero extra `@State` mutations.
+        let waveOffsetY: CGFloat = (manualMode || reduceMotion || isRapidFocusCadence || visualDistance > 6)
             ? 0
-            : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
-        let shouldAnimateFocus = reduceMotion == false && (manualMode || visualDistance <= 5)
+            : CGFloat(min(max(signedDistance, -4), 6)) * 4.2
+        let shouldAnimateFocus = reduceMotion == false && isNearViewport
+        let focusAnimation: Animation? = shouldAnimateFocus
+            ? (isRapidFocusCadence
+                ? .easeOut(duration: 0.14)
+                : .spring(response: 0.50, dampingFraction: 0.82).delay(staggerDelay))
+            : nil
+
         let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
         let alignTrailing = line.isSecondaryVocal
         let hAlignment: HorizontalAlignment = alignTrailing ? .trailing : .leading
@@ -1815,8 +1764,11 @@ private struct LyricsDepthStage: View, Equatable {
         let textAlignment: TextAlignment = alignTrailing ? .trailing : .leading
         let scaleAnchor: UnitPoint = alignTrailing ? .trailing : .leading
         let followsWordClock = isFocus && manualMode == false
+        // Keep the same token flow layout across nearby rows so entering/leaving focus
+        // never swaps view trees or shifts word wrapping.
+        let usesWordFlowLayout = manualMode == false && visualDistance <= 6
 
-        let pillCornerRadius: CGFloat = metrics.isCompact ? 26 : 34
+        let pillCornerRadius: CGFloat = metrics.isCompact ? 14 : 18
         let pillShape = RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
 
         return VStack(alignment: hAlignment, spacing: lineGap) {
@@ -1846,14 +1798,14 @@ private struct LyricsDepthStage: View, Equatable {
             {
                 Text(pronunciation)
                     .font(.system(size: max(12, metrics.translationFontSize * 0.86), weight: .medium))
-                    .foregroundStyle(.white.opacity(opacity * 0.62))
+                    .foregroundStyle(.white.opacity(opacity * 0.64))
                     .lineSpacing(max(1, metrics.translationFontSize * 0.12))
                     .multilineTextAlignment(textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
 
-            if followsWordClock, let words = line.words, words.count >= 2 {
+            if usesWordFlowLayout, let words = line.words, words.count >= 2 {
                 LyricsTimedWordLine(
                     words: words,
                     lineText: line.text,
@@ -1865,7 +1817,7 @@ private struct LyricsDepthStage: View, Equatable {
                     fontSize: rowFontSize,
                     weight: .bold,
                     opacity: opacity,
-                    followsPlayback: true,
+                    followsPlayback: followsWordClock,
                     reduceMotion: reduceMotion,
                     alignment: hAlignment,
                     accessibilityLabel: accessibilityLabel(for: line)
@@ -1874,7 +1826,7 @@ private struct LyricsDepthStage: View, Equatable {
                 Text(line.text)
                     .font(.system(size: rowFontSize, weight: .bold))
                     .foregroundStyle(.white.opacity(opacity))
-                    .lineSpacing(max(1, rowFontSize * 0.03))
+                    .lineSpacing(max(1, rowFontSize * 0.04))
                     .multilineTextAlignment(textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
@@ -1883,7 +1835,7 @@ private struct LyricsDepthStage: View, Equatable {
             if let bgText = line.backgroundText, bgText.isEmpty == false {
                 let formattedBg = formattedBackgroundText(bgText)
                 let bgFontSize = max(13, metrics.translationFontSize * 0.96)
-                if followsWordClock, let bgWords = line.backgroundWords, bgWords.count >= 2 {
+                if usesWordFlowLayout, let bgWords = line.backgroundWords, bgWords.count >= 2 {
                     LyricsTimedWordLine(
                         words: bgWords,
                         lineText: formattedBg,
@@ -1894,8 +1846,8 @@ private struct LyricsDepthStage: View, Equatable {
                         lyricsOffsetSeconds: lyricsOffsetSeconds,
                         fontSize: bgFontSize,
                         weight: .semibold,
-                        opacity: opacity * 0.72,
-                        followsPlayback: true,
+                        opacity: opacity * 0.74,
+                        followsPlayback: followsWordClock,
                         reduceMotion: reduceMotion,
                         alignment: hAlignment,
                         accessibilityLabel: formattedBg
@@ -1903,7 +1855,7 @@ private struct LyricsDepthStage: View, Equatable {
                 } else {
                     Text(formattedBg)
                         .font(.system(size: bgFontSize, weight: .semibold))
-                        .foregroundStyle(.white.opacity(opacity * 0.68))
+                        .foregroundStyle(.white.opacity(opacity * 0.70))
                         .lineSpacing(max(1, bgFontSize * 0.12))
                         .multilineTextAlignment(textAlignment)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1916,13 +1868,12 @@ private struct LyricsDepthStage: View, Equatable {
                translation.isEmpty == false
             {
                 Text(translation)
-                    .font(.system(size: metrics.translationFontSize, weight: .regular))
+                    .font(.system(size: metrics.translationFontSize, weight: .medium))
                     .foregroundStyle(.white.opacity(translationOpacity))
-                    .lineSpacing(max(2, metrics.translationFontSize * 0.16))
+                    .lineSpacing(max(2, metrics.translationFontSize * 0.15))
                     .multilineTextAlignment(textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
-                    .opacity(translationReveal)
             }
 
             if isWaiting {
@@ -1951,45 +1902,19 @@ private struct LyricsDepthStage: View, Equatable {
         .background {
             if isHovered {
                 pillShape
-                    .fill(Color.white.opacity(manualMode ? 0.16 : 0.12))
-                    .overlay(
-                        pillShape
-                            .strokeBorder(Color.white.opacity(manualMode ? 0.24 : 0.16), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.24), radius: 16, y: 4)
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .fill(Color.white.opacity(manualMode ? 0.10 : 0.075))
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
         .contentShape(pillShape)
-        .scaleEffect(isHovered && reduceMotion == false ? 1.015 : 1.0, anchor: scaleAnchor)
-        .shadow(color: .black.opacity(activeGlow), radius: 16, y: 2)
         .blur(radius: blurRadius)
-        .animation(
-            shouldAnimateFocus
-                ? (isRapidFocusCadence ? .easeOut(duration: 0.12) : .spring(response: 0.48, dampingFraction: 0.82).delay(staggerDelay))
-                : nil,
-            value: focus
-        )
         .scaleEffect(rowScale, anchor: scaleAnchor)
-        .offset(y: rowCascadeY)
-        .animation(
-            shouldAnimateFocus
-                ? (isRapidFocusCadence ? .easeOut(duration: 0.12) : .spring(response: 0.50, dampingFraction: 0.76).delay(staggerDelay))
-                : nil,
-            value: focus
-        )
-        .animation(
-            shouldAnimateFocus && isRapidFocusCadence == false
-                ? .spring(response: 0.48, dampingFraction: 0.78).delay(staggerDelay)
-                : nil,
-            value: cascadeOffset
-        )
+        .offset(y: waveOffsetY)
+        .animation(focusAnimation, value: focus)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)
-        .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.82), value: isHovered)
-        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: isWaiting)
-        .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.78), value: showsIntroDots)
+        .animation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.84), value: isHovered)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
@@ -2003,28 +1928,6 @@ private struct LyricsDepthStage: View, Equatable {
             return trimmed
         }
         return "(\(trimmed))"
-    }
-
-    private func triggerCascadeSpring(from oldFocus: Int, to newFocus: Int) {
-        guard reduceMotion == false, isManualScrolling == false, oldFocus != newFocus else {
-            return
-        }
-        let direction: CGFloat = newFocus > oldFocus ? 1 : -1
-        cascadeOffset = direction * 14
-        withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
-            cascadeOffset = 0
-        }
-    }
-
-    private func revealFocusTranslation() {
-        guard reduceMotion == false, isPlaying else {
-            focusTranslationReveal = 1
-            return
-        }
-        focusTranslationReveal = 0
-        withAnimation(.easeOut(duration: 0.14)) {
-            focusTranslationReveal = 1
-        }
     }
 
     private func accessibilityLabel(for line: LyricsLine) -> String {
@@ -2238,20 +2141,20 @@ private struct LyricsSceneMetrics: Equatable {
             stageHeight = max(120, size.height - topInset - bottomInset)
 
             let availableWidth = max(320, size.width - horizontalInset * 2)
-            let gap = min(max(size.width * 0.095, 46), 190)
-            let widthDriven = availableWidth * 0.375
-            let heightDriven = stageHeight * 0.52
-            let maximumStageShare = max(250, availableWidth - gap - 300)
-            artworkSide = max(96, min(widthDriven, heightDriven, 620, maximumStageShare))
+            let gap = min(max(size.width * 0.068, 44), 112)
+            let widthDriven = availableWidth * 0.35
+            let heightDriven = stageHeight * 0.48
+            let maximumStageShare = max(240, availableWidth - gap - 340)
+            artworkSide = max(96, min(widthDriven, heightDriven, 460, maximumStageShare))
             columnGap = gap
 
-            let stageWidth = max(220, availableWidth - artworkSide - gap)
-            activeFontSize = min(max(stageWidth * 0.085, 28), 70)
-            translationFontSize = min(max(activeFontSize * 0.42, 14), 30)
-            unsyncedFontSize = min(max(activeFontSize * 0.62, 18), 38)
-            statusTitleSize = min(max(stageWidth * 0.050, 22), 32)
-            rowGap = max(14, activeFontSize * 0.50)
-            focusFraction = 0.205
+            let stageWidth = max(260, availableWidth - artworkSide - gap)
+            activeFontSize = min(max(stageWidth * 0.056, 28), 46)
+            translationFontSize = min(max(activeFontSize * 0.52, 15), 24)
+            unsyncedFontSize = min(max(activeFontSize * 0.68, 18), 34)
+            statusTitleSize = min(max(stageWidth * 0.046, 22), 30)
+            rowGap = max(18, activeFontSize * 0.56)
+            focusFraction = 0.25
         }
     }
 }
@@ -2643,20 +2546,19 @@ private struct LyricsWordFill: View {
 
     var body: some View {
         Group {
-            if progress >= 1 {
+            if progress >= 0.999 {
                 sungText
-            } else if progress <= 0 {
+            } else if progress <= 0.001 {
                 unsungText
             } else {
+                // Single-pass feathered mask without a dynamic offscreen shadow blur inside
+                // the mask, keeping 120Hz ProMotion word sweeps completely free of GPU stalls.
                 unsungText.overlay(alignment: .leading) {
                     sungText
+                        .brightness(glowOpacity * 0.18)
                         .mask(alignment: .leading) {
                             LyricsWordFillMask(progress: progress)
                         }
-                        .shadow(
-                            color: .white.opacity(glowOpacity),
-                            radius: durationSeconds >= 0.75 ? 12 : 9
-                        )
                 }
             }
         }
@@ -2674,7 +2576,7 @@ private struct LyricsWordFill: View {
     private var unsungText: some View {
         Text(text)
             .font(font)
-            .foregroundStyle(.white.opacity(opacity * 0.36))
+            .foregroundStyle(.white.opacity(opacity * 0.34))
             .fixedSize()
     }
 }
