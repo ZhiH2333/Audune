@@ -165,6 +165,8 @@ final class LyricsManualPreviewTests: XCTestCase {
                 playbackRate: model.nowPlaying.playbackRate,
                 lyricsOffsetSeconds: 0,
                 canImport: true,
+                routingSelection: .standard,
+                onSelectRouting: { _ in },
                 searchCandidates: { _, _, _, _ in candidates },
                 onSelect: { _, _ in },
                 onImportLocal: {},

@@ -2800,6 +2800,8 @@ struct LyricsCandidatePickerOverlay: View {
     var playbackRate: Double
     var lyricsOffsetSeconds: Double
     var canImport: Bool
+    var routingSelection: LyricsRoutingSelection
+    var onSelectRouting: (LyricsRoutingSelection) -> Void
     var searchCandidates: (String?, String?, String?, String?) async -> [LyricsScoredCandidate]
     var onSelect: (LyricsDocument, Bool) -> Void
     var onImportLocal: () -> Void
@@ -2807,7 +2809,8 @@ struct LyricsCandidatePickerOverlay: View {
 
     @State private var queryTitle: String = ""
     @State private var queryArtist: String = ""
-    @State private var isEditingQuery = false
+    @State private var resultFilter: String = ""
+    @State private var localRoutingSelection: LyricsRoutingSelection = .standard
     @State private var hasSearched = false
     @State private var candidates: [LyricsScoredCandidate] = []
     @State private var selectedCandidateID: UUID?
@@ -2816,11 +2819,21 @@ struct LyricsCandidatePickerOverlay: View {
 
     private var selectedCandidate: LyricsScoredCandidate? {
         if let selectedCandidateID,
-           let match = candidates.first(where: { $0.id == selectedCandidateID })
+           let match = visibleCandidates.first(where: { $0.id == selectedCandidateID })
+               ?? candidates.first(where: { $0.id == selectedCandidateID })
         {
             return match
         }
-        return candidates.first
+        return visibleCandidates.first
+    }
+
+    private var visibleCandidates: [LyricsScoredCandidate] {
+        let needle = resultFilter.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard needle.isEmpty == false else { return candidates }
+        let folded = needle.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+        return candidates.filter { candidate in
+            candidateMatchesFilter(candidate, foldedNeedle: folded)
+        }
     }
 
     private var currentLivePosition: TimeInterval {
@@ -2836,11 +2849,30 @@ struct LyricsCandidatePickerOverlay: View {
         )
     }
 
+    private var routingMenuTitle: String {
+        switch localRoutingSelection.mode {
+        case .autoFastestReliable, .autoBestMatch:
+            return localRoutingSelection.mode.displayName
+        case .manual:
+            if let id = localRoutingSelection.providerID,
+               let provider = LyricsProviderRegistry.capability(id: id)
+            {
+                if let nodeID = localRoutingSelection.nodeID,
+                   let node = provider.defaultNodes.first(where: { $0.id == nodeID })
+                {
+                    return "\(provider.displayName) · \(node.displayName)"
+                }
+                return provider.displayName
+            }
+            return String(localized: "Manual")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerSection
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.top, 14)
                 .padding(.bottom, 12)
 
             Divider()
@@ -2877,9 +2909,14 @@ struct LyricsCandidatePickerOverlay: View {
         .shadow(color: .black.opacity(0.42), radius: 28, y: 12)
         .preferredColorScheme(.dark)
         .onAppear {
+            localRoutingSelection = routingSelection
             queryTitle = initialTitle
             queryArtist = initialArtist
             seedCurrentDocumentOnly()
+            triggerSearch()
+        }
+        .onChange(of: routingSelection) { _, newValue in
+            localRoutingSelection = newValue
         }
         .onDisappear {
             searchTask?.cancel()
@@ -2891,49 +2928,22 @@ struct LyricsCandidatePickerOverlay: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(initialTitle.isEmpty ? String(localized: "Lyrics") : initialTitle)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                        .lineLimit(1)
-                    if initialArtist.isEmpty == false {
-                        Text(initialArtist)
-                            .font(.system(size: 12.5, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.48))
-                            .lineLimit(1)
-                    }
-                }
+            HStack(alignment: .center, spacing: 10) {
+                pickerRoutingMenu
 
                 Spacer(minLength: 8)
 
-                headerTextButton(
-                    title: String(localized: "Search other sources"),
-                    symbol: "magnifyingglass",
-                    emphasized: isSearching
-                ) {
-                    triggerSearch()
-                }
-                .disabled(isSearching)
-
-                Button {
-                    withAnimation(.easeOut(duration: 0.14)) {
-                        isEditingQuery.toggle()
-                    }
-                } label: {
-                    Text(String(localized: "Edit keywords"))
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(isEditingQuery ? 0.92 : 0.52))
-                }
-                .buttonStyle(.plain)
-
                 if canImport {
-                    headerTextButton(
-                        title: String(localized: "Import LRC"),
-                        symbol: "square.and.arrow.down",
-                        emphasized: false,
-                        action: onImportLocal
-                    )
+                    Button(action: onImportLocal) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.system(size: 10.5, weight: .semibold))
+                            Text(String(localized: "Import LRC"))
+                                .font(.system(size: 11.5, weight: .medium))
+                        }
+                        .foregroundStyle(.white.opacity(0.58))
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Button(action: onDismiss) {
@@ -2947,41 +2957,149 @@ struct LyricsCandidatePickerOverlay: View {
                 .accessibilityLabel(String(localized: "Close lyrics picker"))
             }
 
-            if isEditingQuery {
-                HStack(spacing: 8) {
-                    searchField(placeholder: String(localized: "Song title"), text: $queryTitle)
-                    searchField(placeholder: String(localized: "Artist"), text: $queryArtist)
-                    Button {
-                        triggerSearch()
-                    } label: {
-                        Text(String(localized: "Search"))
-                            .font(.system(size: 11.5, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.90))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isSearching)
+            HStack(spacing: 8) {
+                searchField(placeholder: String(localized: "Song title"), text: $queryTitle)
+                searchField(placeholder: String(localized: "Artist"), text: $queryArtist)
+                Button {
+                    triggerSearch()
+                } label: {
+                    Text(isSearching ? String(localized: "Searching…") : String(localized: "Search"))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.white.opacity(isSearching ? 0.40 : 0.90))
                 }
-                .transition(.opacity)
+                .buttonStyle(.plain)
+                .disabled(isSearching)
             }
         }
     }
 
-    private func headerTextButton(
-        title: String,
-        symbol: String,
-        emphasized: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: symbol)
-                    .font(.system(size: 10.5, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 11.5, weight: .medium))
+    private var pickerRoutingMenu: some View {
+        Menu {
+            Button {
+                applyPickerRouting(.init(mode: .autoFastestReliable, providerID: nil, nodeID: nil))
+            } label: {
+                pickerSelectionLabel(
+                    LyricsRoutingMode.autoFastestReliable.displayName,
+                    selected: localRoutingSelection.mode == .autoFastestReliable
+                )
             }
-            .foregroundStyle(.white.opacity(emphasized ? 0.92 : 0.58))
+            Button {
+                applyPickerRouting(.init(mode: .autoBestMatch, providerID: nil, nodeID: nil))
+            } label: {
+                pickerSelectionLabel(
+                    LyricsRoutingMode.autoBestMatch.displayName,
+                    selected: localRoutingSelection.mode == .autoBestMatch
+                )
+            }
+
+            Divider()
+
+            Section(String(localized: "Aggregators")) {
+                ForEach(pickerSelectableProviders(type: .aggregator)) { provider in
+                    pickerProviderMenu(provider)
+                }
+            }
+            Section(String(localized: "International")) {
+                ForEach(pickerSelectableProviders(region: .international, excludingAggregators: true)) { provider in
+                    pickerProviderMenu(provider)
+                }
+            }
+            Section(String(localized: "China")) {
+                ForEach(pickerSelectableProviders(region: .china, excludingAggregators: true)) { provider in
+                    pickerProviderMenu(provider)
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(routingMenuTitle)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.40))
+            }
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help(String(localized: "Choose lyrics source"))
+        .accessibilityLabel(String(localized: "Lyrics source selector"))
+    }
+
+    @ViewBuilder
+    private func pickerProviderMenu(_ provider: LyricsProviderCapability) -> some View {
+        let nodes = provider.defaultNodes.filter(\.enabled)
+        if nodes.count > 1 {
+            Menu(provider.displayName) {
+                Button {
+                    applyPickerRouting(.init(mode: .manual, providerID: provider.id, nodeID: nil))
+                } label: {
+                    pickerSelectionLabel(
+                        String(localized: "Auto Node"),
+                        selected: localRoutingSelection.mode == .manual
+                            && localRoutingSelection.providerID == provider.id
+                            && localRoutingSelection.nodeID == nil
+                    )
+                }
+                ForEach(nodes) { node in
+                    Button {
+                        applyPickerRouting(.init(mode: .manual, providerID: provider.id, nodeID: node.id))
+                    } label: {
+                        pickerSelectionLabel(
+                            node.displayName,
+                            selected: localRoutingSelection.mode == .manual
+                                && localRoutingSelection.providerID == provider.id
+                                && localRoutingSelection.nodeID == node.id
+                        )
+                    }
+                }
+            }
+        } else {
+            Button {
+                applyPickerRouting(
+                    .init(
+                        mode: .manual,
+                        providerID: provider.id,
+                        nodeID: nodes.first?.id
+                    )
+                )
+            } label: {
+                pickerSelectionLabel(
+                    provider.displayName,
+                    selected: localRoutingSelection.mode == .manual
+                        && localRoutingSelection.providerID == provider.id
+                )
+            }
+        }
+    }
+
+    private func pickerSelectionLabel(_ title: String, selected: Bool) -> some View {
+        HStack {
+            Text(title)
+            if selected {
+                Image(systemName: "checkmark")
+            }
+        }
+    }
+
+    private func pickerSelectableProviders(
+        type: LyricsProviderType? = nil,
+        region: LyricsProviderRegionHint? = nil,
+        excludingAggregators: Bool = false
+    ) -> [LyricsProviderCapability] {
+        LyricsProviderRegistry.selectableProviders.filter { provider in
+            if let type, provider.providerType != type { return false }
+            if excludingAggregators, provider.providerType == .aggregator { return false }
+            if let region, provider.region != region, provider.region != .global { return false }
+            return true
+        }
+    }
+
+    private func applyPickerRouting(_ selection: LyricsRoutingSelection) {
+        localRoutingSelection = selection
+        onSelectRouting(selection)
+        triggerSearch()
     }
 
     private func searchField(placeholder: String, text: Binding<String>) -> some View {
@@ -3000,29 +3118,35 @@ struct LyricsCandidatePickerOverlay: View {
 
     private var candidateListColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(
-                    hasSearched
-                        ? String(localized: "Versions (\(candidates.count))")
-                        : String(localized: "Current")
-                )
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.42))
+            HStack(spacing: 8) {
+                Text(resultsHeaderTitle)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.42))
                 Spacer()
                 if isSearching {
-                    HStack(spacing: 5) {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text(String(localized: "Searching…"))
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(.white.opacity(0.44))
-                    }
+                    ProgressView()
+                        .controlSize(.mini)
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.top, 9)
+            .padding(.bottom, 6)
 
-            if candidates.isEmpty {
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.34))
+                TextField(String(localized: "Filter results"), text: $resultFilter)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11.5))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
+
+            if visibleCandidates.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: isSearching ? "waveform.badge.magnifyingglass" : "music.note.list")
                         .font(.system(size: 20, weight: .light))
@@ -3032,20 +3156,12 @@ struct LyricsCandidatePickerOverlay: View {
                         .foregroundStyle(.white.opacity(0.46))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
-                    if hasSearched == false, isSearching == false {
-                        Button(String(localized: "Search other sources")) {
-                            triggerSearch()
-                        }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.72))
-                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(candidates) { candidate in
+                        ForEach(visibleCandidates) { candidate in
                             candidateCard(candidate)
                         }
                     }
@@ -3056,14 +3172,39 @@ struct LyricsCandidatePickerOverlay: View {
         }
     }
 
+    private var resultsHeaderTitle: String {
+        let count = visibleCandidates.count
+        return String(localized: "Results (\(count))")
+    }
+
     private var emptyListMessage: String {
         if isSearching {
             return String(localized: "Searching lyrics providers…")
+        }
+        if resultFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            return String(localized: "No results match this filter.")
         }
         if hasSearched {
             return String(localized: "No lyrics found for this search.")
         }
         return String(localized: "No lyrics loaded for this song yet.")
+    }
+
+    private func candidateMatchesFilter(
+        _ candidate: LyricsScoredCandidate,
+        foldedNeedle: String
+    ) -> Bool {
+        let haystacks: [String] = [
+            candidateSourceName(candidate),
+            candidate.document.trackKey.title,
+            candidate.document.trackKey.artist,
+            candidate.document.trackKey.album ?? "",
+            previewSnippet(for: candidate.document),
+        ]
+        return haystacks.contains { text in
+            text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+                .contains(foldedNeedle)
+        }
     }
 
     private func candidateCard(_ candidate: LyricsScoredCandidate) -> some View {

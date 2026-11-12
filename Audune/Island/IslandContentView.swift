@@ -484,6 +484,10 @@ struct IslandContentView: View {
                         playbackRate: model.nowPlaying.playbackRate,
                         lyricsOffsetSeconds: model.prefs.lyricsOffsetSeconds,
                         canImport: canImportLyricsForPicker,
+                        routingSelection: LyricsRoutingController.shared.selection,
+                        onSelectRouting: { selection in
+                            selectLyricsRouting(selection)
+                        },
                         searchCandidates: searchLyricsCandidates,
                         onSelect: { document, remember in
                             applyLyricsCandidate(document, remember)
