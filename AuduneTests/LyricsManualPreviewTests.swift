@@ -39,7 +39,9 @@ final class LyricsManualPreviewTests: XCTestCase {
             togglePlay: {},
             previousTrack: {},
             nextTrack: {},
-            setLyricsOffset: { _ in }
+            setLyricsOffset: { _ in },
+            searchCandidates: { _, _, _, _ in [] },
+            applyCandidate: { _, _ in }
         )
         .frame(width: 1296, height: 841)
         .background(

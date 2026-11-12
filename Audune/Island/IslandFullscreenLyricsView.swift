@@ -449,40 +449,36 @@ struct IslandFullscreenLyricsView: View {
 
     @ViewBuilder
     private var sourceFooter: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                lyricsSourceSelector
-                if let document = model.lyricsState.document {
-                    if document.hasTranslations {
-                        tierTogglePill(
-                            symbol: "character.bubble",
-                            isOn: model.prefs.showsLyricsTranslation,
-                            action: { model.prefs.showsLyricsTranslation.toggle() }
-                        )
-                    }
-                    if document.hasPronunciations {
-                        tierTogglePill(
-                            symbol: "a.magnify",
-                            isOn: model.prefs.showsLyricsPronunciation,
-                            action: { model.prefs.showsLyricsPronunciation.toggle() }
-                        )
-                    }
-                }
-            }
+        HStack(spacing: 6) {
+            lyricsSourceSelector
+
             if let document = model.lyricsState.document {
-                Group {
-                    if let url = attributionURL(for: document) {
-                        Link(sourceLabel(for: document), destination: url)
-                            .underline(false)
-                    } else {
-                        Text(sourceLabel(for: document))
+                if let url = attributionURL(for: document) {
+                    Link(destination: url) {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.26))
+                            .frame(width: 18, height: 18)
+                            .contentShape(Rectangle())
                     }
+                    .help(sourceLabel(for: document))
+                    .accessibilityLabel(String(localized: "Lyrics source: \(sourceLabel(for: document))"))
                 }
-                .font(.system(size: 10, weight: .medium))
-                .tracking(0.4)
-                .foregroundStyle(.white.opacity(0.28))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(String(localized: "Lyrics source: \(sourceLabel(for: document))"))
+
+                if document.hasTranslations {
+                    tierTogglePill(
+                        symbol: "character.bubble",
+                        isOn: model.prefs.showsLyricsTranslation,
+                        action: { model.prefs.showsLyricsTranslation.toggle() }
+                    )
+                }
+                if document.hasPronunciations {
+                    tierTogglePill(
+                        symbol: "a.magnify",
+                        isOn: model.prefs.showsLyricsPronunciation,
+                        action: { model.prefs.showsLyricsPronunciation.toggle() }
+                    )
+                }
             }
         }
         .task {
@@ -499,24 +495,40 @@ struct IslandFullscreenLyricsView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(isOn ? 0.92 : 0.42))
-                .frame(width: 26, height: 24)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(isOn ? 0.86 : 0.36))
+                .frame(width: 24, height: 22)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(isOn ? 0.16 : 0.06))
+                        .fill(Color.white.opacity(isOn ? 0.14 : 0.05))
                 )
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(isOn ? 0.18 : 0.06), lineWidth: 0.5)
+                        .stroke(Color.white.opacity(isOn ? 0.16 : 0.05), lineWidth: 0.5)
                 )
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
 
+    private var sourceButtonTitle: String {
+        if let document = model.lyricsState.document {
+            return sourceLabel(for: document)
+        }
+        return routingMenuTitle
+    }
+
     private var lyricsSourceSelector: some View {
-        Menu {
+        LyricsSourceFooterButton(
+            title: sourceButtonTitle,
+            isEnabled: canImportLyrics,
+            action: {
+                withAnimation(shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86)) {
+                    isLyricsPickerPresented = true
+                }
+            }
+        )
+        .contextMenu {
             Button {
                 applyRouting(.init(mode: .autoFastestReliable, providerID: nil, nodeID: nil))
             } label: {
@@ -551,21 +563,7 @@ struct IslandFullscreenLyricsView: View {
                     providerMenu(provider)
                 }
             }
-        } label: {
-            HStack(spacing: 4) {
-                Text(routingMenuTitle)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.50))
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.30))
-            }
-            .padding(.vertical, 2)
-            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
         .help(String(localized: "Choose lyrics source"))
         .accessibilityLabel(String(localized: "Lyrics source selector"))
     }
@@ -695,84 +693,16 @@ struct IslandFullscreenLyricsView: View {
     // MARK: - Lyrics stage
 
     private func stage(metrics: LyricsSceneMetrics) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            lyricsContent(metrics: metrics)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .animation(
-                    shouldReduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsTrackSeconds),
-                    value: model.lyricsTrackRevision
-                )
-                .animation(
-                    shouldReduceMotion ? nil : .easeInOut(duration: 0.28),
-                    value: model.lyricsState
-                )
-
-            if canImportLyrics {
-                lyricsPickerTriggerButton(metrics: metrics)
-                    .padding(.trailing, metrics.isCompact ? 12 : 20)
-                    .padding(.bottom, isManualBrowsing ? (metrics.isCompact ? 50 : 62) : (metrics.isCompact ? 12 : 20))
-                    .animation(shouldReduceMotion ? nil : .easeOut(duration: 0.18), value: isManualBrowsing)
-            }
-        }
-    }
-
-    private func lyricsPickerTriggerButton(metrics: LyricsSceneMetrics) -> some View {
-        let currentDoc = model.lyricsState.document
-        let badge = currentDoc.map { shortSourceBadge(for: $0) }
-        return Button {
-            withAnimation(shouldReduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.84)) {
-                isLyricsPickerPresented = true
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "text.magnifyingglass")
-                    .font(.system(size: metrics.isCompact ? 10 : 11, weight: .semibold))
-                Text(String(localized: "Choose Lyrics"))
-                    .font(.system(size: metrics.isCompact ? 11 : 12, weight: .semibold))
-                if let badge, badge.isEmpty == false {
-                    Text(badge)
-                        .font(.system(size: metrics.isCompact ? 9.5 : 10.5, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.62))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.white.opacity(0.12), in: Capsule())
-                }
-            }
-            .foregroundStyle(.white.opacity(0.92))
-            .padding(.horizontal, metrics.isCompact ? 11 : 14)
-            .padding(.vertical, metrics.isCompact ? 7 : 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
-            }
-            .shadow(color: .black.opacity(0.28), radius: 12, y: 4)
-        }
-        .buttonStyle(.plain)
-        .help(String(localized: "Search, preview, and choose lyrics"))
-        .accessibilityLabel(String(localized: "Choose Lyrics"))
-    }
-
-    private func shortSourceBadge(for document: LyricsDocument) -> String {
-        let syncLabel: String
-        switch document.synchronization {
-        case .syllableSynced: syncLabel = String(localized: "Syllable")
-        case .wordSynced: syncLabel = String(localized: "Word")
-        case .lineSynced: syncLabel = String(localized: "LRC")
-        case .unsynced: syncLabel = String(localized: "Text")
-        }
-        switch document.source?.kind {
-        case .localImport:
-            return "\(String(localized: "Local")) · \(syncLabel)"
-        case .lrclib:
-            return "LRCLIB · \(syncLabel)"
-        case .online:
-            let provider = document.source?.providerName
-                ?? document.source?.resolvedProviderID
-                ?? String(localized: "Online")
-            return "\(provider) · \(syncLabel)"
-        case nil:
-            return syncLabel
-        }
+        lyricsContent(metrics: metrics)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .animation(
+                shouldReduceMotion ? nil : .easeInOut(duration: IslandMotion.lyricsTrackSeconds),
+                value: model.lyricsTrackRevision
+            )
+            .animation(
+                shouldReduceMotion ? nil : .easeInOut(duration: 0.28),
+                value: model.lyricsState
+            )
     }
 
     @ViewBuilder
@@ -2358,6 +2288,38 @@ private struct LyricsSceneMetrics: Equatable {
 }
 
 // MARK: - Player accessories
+
+private struct LyricsSourceFooterButton: View {
+    var title: String
+    var isEnabled: Bool
+    var action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(hovering ? 0.76 : 0.36))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(.white.opacity(hovering ? 0.50 : 0.24))
+            }
+            .padding(.horizontal, hovering ? 7 : 2)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(hovering ? 0.08 : 0))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isEnabled == false)
+        .onHover { hovering = $0 }
+    }
+}
 
 private struct LyricsMoreButton: View {
     var canImport: Bool
