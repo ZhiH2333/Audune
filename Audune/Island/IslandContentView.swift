@@ -244,6 +244,8 @@ struct IslandContentView: View {
     var deleteLyrics: (UUID) -> Void = { _ in }
     var retryLyrics: () -> Void = {}
     var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
+    var searchLyricsCandidates: (String?, String?, String?, String?) async -> [LyricsScoredCandidate] = { _, _, _, _ in [] }
+    var applyLyricsCandidate: (LyricsDocument, Bool) -> Void = { _, _ in }
     var cyclePreset: () -> Void = {}
     var presetTitle: () -> String = { String(localized: "Preset") }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -432,7 +434,9 @@ struct IslandContentView: View {
                                 previousTrack: previousTrack,
                                 nextTrack: nextTrack,
                                 setLyricsOffset: setLyricsOffset,
-                                selectLyricsRouting: selectLyricsRouting
+                                selectLyricsRouting: selectLyricsRouting,
+                                searchCandidates: searchLyricsCandidates,
+                                applyCandidate: applyLyricsCandidate
                             )
                             .transition(.opacity)
                         }

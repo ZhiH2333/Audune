@@ -1083,6 +1083,18 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
             selectLyricsRouting: { [weak self] selection in
                 self?.applyLyricsRoutingSelection(selection)
             },
+            searchLyricsCandidates: { [weak self] title, artist, album, providerFilter in
+                guard let self else { return [] }
+                return await self.searchLyricsCandidates(
+                    title: title,
+                    artist: artist,
+                    album: album,
+                    providerFilter: providerFilter
+                )
+            },
+            applyLyricsCandidate: { [weak self] document, remember in
+                self?.applySelectedLyricsCandidate(document, rememberSelection: remember)
+            },
             cyclePreset: { [weak self] in
                 _ = self?.cycleVisualPreset()
             },

@@ -43,6 +43,9 @@ struct SettingsView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var layoutPreviewEnergy = LayoutPreviewEnergyState()
     @State private var islandPreviewEnergy = IslandLayoutPreviewEnergyState()
+    @State private var savedLyricsBindings: [LyricsSavedBinding] = []
+    @State private var lyricsCacheFilterText: String = ""
+    @State private var previewedBinding: LyricsSavedBinding?
 
     init(
         studio: StudioWindowController,
@@ -660,6 +663,9 @@ struct SettingsView: View {
                 }
             }
         }
+        if islandModel.prefs.lyricsEnabled {
+            lyricsSavedCacheSection
+        }
         Section("Interaction & Motion") {
             Toggle("Expand on pointer hover", isOn: $islandModel.prefs.hoverToExpand)
             SettingsSlider(
@@ -707,6 +713,132 @@ struct SettingsView: View {
             Button("Reset Notch Island Settings") {
                 island.resetPreferences()
             }
+        }
+        .onAppear {
+            reloadSavedLyricsBindings()
+        }
+        .onChange(of: islandModel.lyricsState) { _, _ in
+            reloadSavedLyricsBindings()
+        }
+        .sheet(item: $previewedBinding) { binding in
+            LyricsBindingPreviewSheet(binding: binding)
+        }
+    }
+
+    @ViewBuilder
+    private var lyricsSavedCacheSection: some View {
+        Section("Saved Lyrics & Track Bindings") {
+            HStack {
+                Text(String(localized: "\(savedLyricsBindings.count) remembered tracks"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Refresh") {
+                    reloadSavedLyricsBindings()
+                }
+                if savedLyricsBindings.isEmpty == false {
+                    Button("Clear All", role: .destructive) {
+                        island.clearAllSavedLyricsBindings()
+                        reloadSavedLyricsBindings()
+                    }
+                }
+            }
+
+            if savedLyricsBindings.isEmpty {
+                Text("When you choose a lyrics candidate with “Use & Remember” or import a local LRC file, Audune remembers that song’s matched lyrics and timing offset here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                TextField("Filter by song title, artist, or album…", text: $lyricsCacheFilterText)
+                    .textFieldStyle(.roundedBorder)
+
+                ForEach(filteredLyricsBindings) { binding in
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(binding.trackKey.title)
+                                .font(.body.weight(.medium))
+                                .lineLimit(1)
+                            Text(
+                                [binding.trackKey.artist, binding.trackKey.album]
+                                    .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                                    .filter { $0.isEmpty == false }
+                                    .joined(separator: " · ")
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            HStack(spacing: 8) {
+                                Text(bindingSourceSummary(binding))
+                                Text("·")
+                                Text(bindingSyncSummary(binding.document.synchronization))
+                                if abs(binding.lyricsOffsetSeconds) >= 0.05 {
+                                    Text("·")
+                                    Text(String(format: "Offset %+.1fs", binding.lyricsOffsetSeconds))
+                                        .monospacedDigit()
+                                }
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        }
+
+                        Spacer()
+
+                        Button("Preview") {
+                            previewedBinding = binding
+                        }
+                        .controlSize(.small)
+
+                        Button(role: .destructive) {
+                            island.deleteSavedLyricsBinding(id: binding.id)
+                            reloadSavedLyricsBindings()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Remove saved lyrics binding for this track")
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+        }
+    }
+
+    private var filteredLyricsBindings: [LyricsSavedBinding] {
+        let query = lyricsCacheFilterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard query.isEmpty == false else { return savedLyricsBindings }
+        return savedLyricsBindings.filter { binding in
+            binding.trackKey.title.lowercased().contains(query)
+                || binding.trackKey.artist.lowercased().contains(query)
+                || (binding.trackKey.album?.lowercased().contains(query) ?? false)
+        }
+    }
+
+    private func reloadSavedLyricsBindings() {
+        savedLyricsBindings = island.loadSavedLyricsBindings()
+    }
+
+    private func bindingSourceSummary(_ binding: LyricsSavedBinding) -> String {
+        switch binding.document.source?.kind {
+        case .localImport:
+            return String(localized: "Imported LRC")
+        case .lrclib:
+            return "LRCLIB"
+        case .online:
+            return binding.document.source?.providerName
+                ?? binding.document.source?.resolvedProviderID
+                ?? String(localized: "Online")
+        case nil:
+            return String(localized: "Saved")
+        }
+    }
+
+    private func bindingSyncSummary(_ sync: LyricsSynchronization) -> String {
+        switch sync {
+        case .syllableSynced: return String(localized: "Syllable-synced")
+        case .wordSynced: return String(localized: "Word-synced")
+        case .lineSynced: return String(localized: "Line-synced")
+        case .unsynced: return String(localized: "Plain text")
         }
     }
 
@@ -1076,6 +1208,74 @@ private extension View {
         } else {
             buttonStyle(.bordered)
         }
+    }
+}
+
+private struct LyricsBindingPreviewSheet: View {
+    let binding: LyricsSavedBinding
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(binding.trackKey.title)
+                        .font(.headline)
+                    Text(
+                        [binding.trackKey.artist, binding.trackKey.album]
+                            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                            .filter { $0.isEmpty == false }
+                            .joined(separator: " · ")
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if abs(binding.lyricsOffsetSeconds) >= 0.05 {
+                    Text(String(format: "Offset %+.1fs", binding.lyricsOffsetSeconds))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Button("Done") {
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+
+            Divider()
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(binding.document.lines.enumerated()), id: \.offset) { _, line in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(line.startSeconds.map(formatTimestamp) ?? "--:--")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 48, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(line.text)
+                                    .font(.body)
+                                if let translation = line.translation, translation.isEmpty == false {
+                                    Text(translation)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(minWidth: 480, idealWidth: 540, minHeight: 380, idealHeight: 460)
+    }
+
+    private func formatTimestamp(_ seconds: Double) -> String {
+        guard seconds.isFinite, seconds >= 0 else { return "--:--" }
+        let mins = Int(seconds) / 60
+        let secs = seconds.truncatingRemainder(dividingBy: 60)
+        return String(format: "%02d:%04.1f", mins, secs)
     }
 }
 #endif
