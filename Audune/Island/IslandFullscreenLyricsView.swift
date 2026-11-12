@@ -62,10 +62,6 @@ struct IslandFullscreenLyricsView: View {
                         playbackRate: model.nowPlaying.playbackRate,
                         lyricsOffsetSeconds: model.prefs.lyricsOffsetSeconds,
                         canImport: canImportLyrics,
-                        routingSelection: routingSelection,
-                        onSelectRouting: { selection in
-                            applyRouting(selection)
-                        },
                         searchCandidates: searchCandidates,
                         onSelect: { document, remember in
                             applyCandidate(document, remember)
@@ -524,24 +520,8 @@ struct IslandFullscreenLyricsView: View {
         .buttonStyle(.plain)
     }
 
-    private var sourceButtonTitle: String {
-        if let document = model.lyricsState.document {
-            return sourceLabel(for: document)
-        }
-        return routingMenuTitle
-    }
-
     private var lyricsSourceSelector: some View {
-        LyricsSourceFooterButton(
-            title: sourceButtonTitle,
-            isEnabled: canImportLyrics,
-            action: {
-                withAnimation(shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86)) {
-                    isLyricsPickerPresented = true
-                }
-            }
-        )
-        .contextMenu {
+        Menu {
             Button {
                 applyRouting(.init(mode: .autoFastestReliable, providerID: nil, nodeID: nil))
             } label: {
@@ -576,7 +556,33 @@ struct IslandFullscreenLyricsView: View {
                     providerMenu(provider)
                 }
             }
+
+            Divider()
+
+            Button {
+                withAnimation(shouldReduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86)) {
+                    isLyricsPickerPresented = true
+                }
+            } label: {
+                Label(String(localized: "Advanced Settings"), systemImage: "slider.horizontal.3")
+            }
+            .help(String(localized: "Open advanced lyrics picker"))
+            .accessibilityLabel(String(localized: "Open advanced lyrics picker"))
+        } label: {
+            HStack(spacing: 4) {
+                Text(routingMenuTitle)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.30))
+            }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
         .help(String(localized: "Choose lyrics source"))
         .accessibilityLabel(String(localized: "Lyrics source selector"))
     }
@@ -2302,38 +2308,6 @@ private struct LyricsSceneMetrics: Equatable {
 
 // MARK: - Player accessories
 
-private struct LyricsSourceFooterButton: View {
-    var title: String
-    var isEnabled: Bool
-    var action: () -> Void
-
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(hovering ? 0.76 : 0.36))
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-                    .foregroundStyle(.white.opacity(hovering ? 0.50 : 0.24))
-            }
-            .padding(.horizontal, hovering ? 7 : 2)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(hovering ? 0.08 : 0))
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(isEnabled == false)
-        .onHover { hovering = $0 }
-    }
-}
-
 private struct LyricsMoreButton: View {
     var canImport: Bool
     var canSearch: Bool
@@ -2878,8 +2852,6 @@ private struct LyricsCandidatePickerOverlay: View {
     var playbackRate: Double
     var lyricsOffsetSeconds: Double
     var canImport: Bool
-    var routingSelection: LyricsRoutingSelection
-    var onSelectRouting: (LyricsRoutingSelection) -> Void
     var searchCandidates: (String?, String?, String?, String?) async -> [LyricsScoredCandidate]
     var onSelect: (LyricsDocument, Bool) -> Void
     var onImportLocal: () -> Void
@@ -3087,11 +3059,6 @@ private struct LyricsCandidatePickerOverlay: View {
         return Button {
             guard selectedProviderFilter != id else { return }
             selectedProviderFilter = id
-            if id == "all" {
-                onSelectRouting(.init(mode: routingSelection.mode == .manual ? .autoFastestReliable : routingSelection.mode, providerID: nil, nodeID: nil))
-            } else if id != "local" {
-                onSelectRouting(.init(mode: .manual, providerID: id, nodeID: nil))
-            }
             triggerSearch()
         } label: {
             Text(title)
