@@ -822,6 +822,8 @@ struct SettingsView: View {
         switch binding.document.source?.kind {
         case .localImport:
             return String(localized: "Imported LRC")
+        case .custom:
+            return String(localized: "Custom")
         case .lrclib:
             return "LRCLIB"
         case .online:

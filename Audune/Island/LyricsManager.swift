@@ -133,14 +133,8 @@ final class LyricsManager {
         var normalizedDoc = document
         normalizedDoc.trackKey = targetKey
         if rememberSelection {
-            var source = normalizedDoc.source ?? LyricsSourceInfo(
-                kind: .online,
-                providerName: providerDescriptor.displayName,
-                providerRecordIdentifier: nil,
-                isPersisted: true
-            )
-            source.isPersisted = true
-            normalizedDoc.source = source
+            // Custom is an independent user choice — never rewrite Auto/provider match results.
+            normalizedDoc.source = LyricsSourceInfo.customSelection(preserving: normalizedDoc.source)
             let binding = LyricsSavedBinding(
                 trackKey: targetKey,
                 document: normalizedDoc,
@@ -174,12 +168,17 @@ final class LyricsManager {
                 }
             }
             let boundDocs = (try? store.loadBindings())?.map(\.document) ?? []
-            for doc in boundDocs {
+            for rawDoc in boundDocs {
+                // Present remembered picks as Custom so they never masquerade as a provider hit.
+                var doc = rawDoc
+                if doc.source?.kind != .localImport {
+                    doc.source = LyricsSourceInfo.customSelection(preserving: doc.source)
+                }
                 if let scored = LyricsCandidateRanker.scoreLenient(
                     document: doc,
                     expected: queryKey,
-                    providerID: doc.source?.resolvedProviderID ?? "saved",
-                    nodeID: doc.source?.nodeID,
+                    providerID: LyricsSourceInfo.customProviderID,
+                    nodeID: nil,
                     latencySeconds: 0,
                     reliabilityScore: 1.0
                 ) {
@@ -305,6 +304,11 @@ final class LyricsManager {
         {
             var boundDoc = binding.document
             boundDoc.trackKey = trackKey
+            if boundDoc.source?.kind != .localImport,
+               boundDoc.source?.isCustomSelection != true
+            {
+                boundDoc.source = LyricsSourceInfo.customSelection(preserving: boundDoc.source)
+            }
             activeBindingOffsetSeconds = binding.lyricsOffsetSeconds
             updateState(presentation(for: boundDoc))
             return

@@ -1178,6 +1178,8 @@ struct IslandFullscreenLyricsView: View {
         switch document.source?.kind {
         case .localImport:
             return String(localized: "Imported LRC")
+        case .custom:
+            return String(localized: "Custom")
         case .lrclib:
             let name = document.source?.providerName ?? String(localized: "LRCLIB")
             return String(localized: "Lyrics by \(name)")
@@ -2811,6 +2813,7 @@ struct LyricsCandidatePickerOverlay: View {
     @State private var queryArtist: String = ""
     @State private var resultFilter: String = ""
     @State private var localRoutingSelection: LyricsRoutingSelection = .standard
+    @State private var isShowingCustomOnly = false
     @State private var hasSearched = false
     @State private var candidates: [LyricsScoredCandidate] = []
     @State private var selectedCandidateID: UUID?
@@ -2973,14 +2976,41 @@ struct LyricsCandidatePickerOverlay: View {
         }
     }
 
+    private var pickerMenuTitle: String {
+        if isShowingCustomOnly {
+            return String(localized: "Custom")
+        }
+        return routingMenuTitle
+    }
+
+    private var hasCustomSelection: Bool {
+        if let currentDocument, currentDocument.source?.isCustomSelection == true {
+            return true
+        }
+        return currentDocument?.source?.kind == .localImport
+    }
+
     private var pickerRoutingMenu: some View {
         Menu {
+            if hasCustomSelection {
+                Button {
+                    showCustomSelectionOnly()
+                } label: {
+                    pickerSelectionLabel(
+                        String(localized: "Custom"),
+                        selected: isShowingCustomOnly
+                    )
+                }
+                Divider()
+            }
+
             Button {
                 applyPickerRouting(.init(mode: .autoFastestReliable, providerID: nil, nodeID: nil))
             } label: {
                 pickerSelectionLabel(
                     LyricsRoutingMode.autoFastestReliable.displayName,
-                    selected: localRoutingSelection.mode == .autoFastestReliable
+                    selected: isShowingCustomOnly == false
+                        && localRoutingSelection.mode == .autoFastestReliable
                 )
             }
             Button {
@@ -2988,7 +3018,8 @@ struct LyricsCandidatePickerOverlay: View {
             } label: {
                 pickerSelectionLabel(
                     LyricsRoutingMode.autoBestMatch.displayName,
-                    selected: localRoutingSelection.mode == .autoBestMatch
+                    selected: isShowingCustomOnly == false
+                        && localRoutingSelection.mode == .autoBestMatch
                 )
             }
 
@@ -3011,7 +3042,7 @@ struct LyricsCandidatePickerOverlay: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Text(routingMenuTitle)
+                Text(pickerMenuTitle)
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.92))
                     .lineLimit(1)
@@ -3037,9 +3068,10 @@ struct LyricsCandidatePickerOverlay: View {
                 } label: {
                     pickerSelectionLabel(
                         String(localized: "Auto Node"),
-                        selected: localRoutingSelection.mode == .manual
-                            && localRoutingSelection.providerID == provider.id
-                            && localRoutingSelection.nodeID == nil
+                        selected: isShowingCustomOnly == false
+                        && localRoutingSelection.mode == .manual
+                        && localRoutingSelection.providerID == provider.id
+                        && localRoutingSelection.nodeID == nil
                     )
                 }
                 ForEach(nodes) { node in
@@ -3048,7 +3080,8 @@ struct LyricsCandidatePickerOverlay: View {
                     } label: {
                         pickerSelectionLabel(
                             node.displayName,
-                            selected: localRoutingSelection.mode == .manual
+                            selected: isShowingCustomOnly == false
+                                && localRoutingSelection.mode == .manual
                                 && localRoutingSelection.providerID == provider.id
                                 && localRoutingSelection.nodeID == node.id
                         )
@@ -3067,7 +3100,8 @@ struct LyricsCandidatePickerOverlay: View {
             } label: {
                 pickerSelectionLabel(
                     provider.displayName,
-                    selected: localRoutingSelection.mode == .manual
+                    selected: isShowingCustomOnly == false
+                        && localRoutingSelection.mode == .manual
                         && localRoutingSelection.providerID == provider.id
                 )
             }
@@ -3097,9 +3131,40 @@ struct LyricsCandidatePickerOverlay: View {
     }
 
     private func applyPickerRouting(_ selection: LyricsRoutingSelection) {
+        isShowingCustomOnly = false
         localRoutingSelection = selection
         onSelectRouting(selection)
         triggerSearch()
+    }
+
+    private func showCustomSelectionOnly() {
+        searchTask?.cancel()
+        searchTask = nil
+        isSearching = false
+        isShowingCustomOnly = true
+        hasSearched = true
+        resultFilter = ""
+        // Do not touch Auto/provider routing — Custom is an independent remembered choice.
+        seedCurrentDocumentOnly()
+        if let currentDocument,
+           currentDocument.source?.kind != .localImport,
+           currentDocument.source?.isCustomSelection != true
+        {
+            // Promote the in-use snapshot into a Custom-labeled row without rewriting provider hits.
+            var customDoc = currentDocument
+            customDoc.source = LyricsSourceInfo.customSelection(preserving: currentDocument.source)
+            if let scored = LyricsCandidateRanker.scoreLenient(
+                document: customDoc,
+                expected: customDoc.trackKey,
+                providerID: LyricsSourceInfo.customProviderID,
+                nodeID: nil,
+                latencySeconds: 0,
+                reliabilityScore: 1
+            ) {
+                candidates = [scored]
+                selectedCandidateID = scored.id
+            }
+        }
     }
 
     private func searchField(placeholder: String, text: Binding<String>) -> some View {
@@ -3510,8 +3575,11 @@ struct LyricsCandidatePickerOverlay: View {
     }
 
     private func shouldRetainInResults(_ document: LyricsDocument) -> Bool {
-        if document.source?.kind == .localImport {
+        if document.source?.kind == .localImport || document.source?.isCustomSelection == true {
             return true
+        }
+        if isShowingCustomOnly {
+            return false
         }
         switch localRoutingSelection.mode {
         case .autoFastestReliable, .autoBestMatch:
@@ -3556,6 +3624,11 @@ struct LyricsCandidatePickerOverlay: View {
     private func candidateSourceName(_ candidate: LyricsScoredCandidate) -> String {
         if candidate.document.source?.kind == .localImport {
             return String(localized: "Imported LRC")
+        }
+        if candidate.document.source?.isCustomSelection == true
+            || candidate.providerID == LyricsSourceInfo.customProviderID
+        {
+            return String(localized: "Custom")
         }
         if let name = candidate.document.source?.providerName, name.isEmpty == false {
             if let upstream = candidate.document.source?.upstreamProviderID, upstream.isEmpty == false {

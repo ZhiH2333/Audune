@@ -337,7 +337,12 @@ nonisolated struct LyricsSourceInfo: Codable, Equatable, Sendable {
         case localImport
         case lrclib
         case online
+        /// User-picked lyrics remembered for a track. Independent from Auto/provider match results.
+        case custom
     }
+
+    /// Stable id for user-custom selections in ranking / filter UIs.
+    static let customProviderID = "custom"
 
     var kind: Kind
     var providerName: String?
@@ -359,12 +364,36 @@ nonisolated struct LyricsSourceInfo: Codable, Equatable, Sendable {
         isPersisted: true
     )
 
+    /// Marks a user-chosen snapshot as Custom while preserving original provider credit.
+    static func customSelection(preserving original: LyricsSourceInfo?) -> LyricsSourceInfo {
+        let upstream = original?.upstreamProviderID
+            ?? original?.providerName
+            ?? original?.resolvedProviderID
+        return LyricsSourceInfo(
+            kind: .custom,
+            providerName: original?.providerName,
+            providerRecordIdentifier: original?.providerRecordIdentifier,
+            isPersisted: true,
+            providerID: customProviderID,
+            nodeID: original?.nodeID,
+            upstreamProviderID: upstream,
+            attributionURL: original?.attributionURL,
+            matchConfidence: original?.matchConfidence,
+            retrievedAt: original?.retrievedAt ?? Date()
+        )
+    }
+
     var resolvedProviderID: String? {
         if let providerID, providerID.isEmpty == false { return providerID }
         switch kind {
         case .lrclib: return LyricsProviderID.lrclib.rawValue
+        case .custom: return Self.customProviderID
         case .localImport, .online: return nil
         }
+    }
+
+    var isCustomSelection: Bool {
+        kind == .custom || providerID == Self.customProviderID
     }
 }
 
@@ -396,7 +425,9 @@ nonisolated struct LyricsDocument: Codable, Equatable, Identifiable, Sendable {
     }
 
     var isPersistedLocally: Bool {
-        source?.kind == .localImport || source == nil
+        source?.kind == .localImport
+            || source?.kind == .custom
+            || source == nil
     }
 
     var hasTranslations: Bool {

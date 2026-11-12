@@ -276,6 +276,11 @@ final class LyricsManagerTests: XCTestCase {
         )
         XCTAssertEqual(firstManager.activeBindingOffsetSeconds, 0.7)
         XCTAssertEqual(firstManager.loadSavedBindings().count, 1)
+        XCTAssertEqual(firstManager.state.document?.source?.kind, .custom)
+        XCTAssertEqual(
+            firstManager.loadSavedBindings().first?.document.source?.kind,
+            .custom
+        )
 
         // Adjusting offset updates the stored per-track binding.
         firstManager.saveOffsetForActiveTrack(-0.4)
