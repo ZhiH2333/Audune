@@ -3476,17 +3476,20 @@ struct LyricsCandidatePickerOverlay: View {
         searchTask?.cancel()
         isSearching = true
         hasSearched = true
+        // Drop stale cross-source rows while the new routing query is in flight.
+        candidates = candidates.filter { shouldRetainInResults($0.document) }
         let title = queryTitle
         let artist = queryArtist
         let album = initialAlbum
 
         searchTask = Task { @MainActor in
-            // nil filter → LyricsRouter uses the footer Menu routing selection.
+            // nil filter → LyricsRouter uses the current Menu routing selection.
             let fetched = await searchCandidates(title, artist, album, nil)
             guard Task.isCancelled == false else { return }
             isSearching = false
             var combined = fetched
             if let currentDocument,
+               shouldRetainInResults(currentDocument),
                combined.contains(where: { $0.document.id == currentDocument.id }) == false,
                let currentScored = LyricsCandidateRanker.scoreLenient(
                    document: currentDocument,
@@ -3503,6 +3506,20 @@ struct LyricsCandidatePickerOverlay: View {
             if selectedCandidateID == nil || combined.contains(where: { $0.id == selectedCandidateID }) == false {
                 selectedCandidateID = combined.first?.id
             }
+        }
+    }
+
+    private func shouldRetainInResults(_ document: LyricsDocument) -> Bool {
+        if document.source?.kind == .localImport {
+            return true
+        }
+        switch localRoutingSelection.mode {
+        case .autoFastestReliable, .autoBestMatch:
+            return true
+        case .manual:
+            let providerID = document.source?.resolvedProviderID
+                ?? document.source?.providerID
+            return providerID == localRoutingSelection.providerID
         }
     }
 

@@ -804,11 +804,17 @@ final class IslandWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Rebuilds the online provider after the user changes Auto/Manual routing.
+    /// Keeps the current track identity so `lyricsTrackRevision` does not bump — otherwise the
+    /// advanced picker would dismiss itself when switching sources from its header menu.
     func applyLyricsRoutingSelection(_ selection: LyricsRoutingSelection) {
         LyricsRoutingController.shared.apply(selection)
         lyricsManager?.deactivate()
         lyricsManager = nil
-        refreshLyricsForCurrentTrack()
+        guard let trackKey = currentLyricsTrackKey ?? lyricsTrackKey(from: nowPlaying.snapshot) else {
+            return
+        }
+        beginLyricsLookup(for: trackKey)
+        updateLyricsLinePosition(forceSyncPosition: true)
     }
 
     private func updateLyricsPresentation(forceSyncPosition: Bool = true) {
