@@ -252,6 +252,7 @@ struct IslandContentView: View {
     @State private var isFullScreenChromeVisible = true
     @State private var chromeAutoHideTask: Task<Void, Never>?
     @State private var lastChromeWakeUptime: TimeInterval = 0
+    @State private var isLyricsPickerPresented = false
 
     var body: some View {
         Group {
@@ -369,99 +370,155 @@ struct IslandContentView: View {
     }
 
     private var fullScreenBody: some View {
-        ZStack {
-            if model.fullScreenScene == .lyrics {
-                LyricsArtworkBackdrop(
-                    artwork: model.nowPlaying.artwork,
-                    trackIdentity: model.nowPlaying.trackIdentity,
-                    reduceMotion: reduceMotion
-                )
-            } else {
-                Color.black
-                RadialGradient(
-                    colors: [Color.white.opacity(0.08), Color.black],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: 720
-                )
-            }
-            VStack(spacing: 0) {
-                HStack {
-                    fullScreenScenePicker
-                    if model.fullScreenScene == .visualizer {
-                        modeIconRow
-                        IslandIconButton(
-                            symbol: "sparkles",
-                            label: presetTitle(),
-                            selected: false,
-                            action: cyclePreset
-                        )
-                    }
-                    Spacer()
-                    IslandIconButton(
-                        symbol: "arrow.down.right.and.arrow.up.left",
-                        label: String(localized: "Exit full screen"),
-                        selected: false,
-                        action: exitFullScreen
+        GeometryReader { proxy in
+            ZStack {
+                if model.fullScreenScene == .lyrics {
+                    LyricsArtworkBackdrop(
+                        artwork: model.nowPlaying.artwork,
+                        trackIdentity: model.nowPlaying.trackIdentity,
+                        reduceMotion: reduceMotion
+                    )
+                } else {
+                    Color.black
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.08), Color.black],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 720
                     )
                 }
-                .padding(.horizontal, 32)
-                .padding(.top, 24)
-                .opacity(model.fullScreenScene == .lyrics && isFullScreenChromeVisible == false ? 0 : 1)
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: isFullScreenChromeVisible ? 0.18 : 0.42),
-                    value: isFullScreenChromeVisible
-                )
-
-                ZStack(alignment: .bottom) {
-                    Group {
+                VStack(spacing: 0) {
+                    HStack {
+                        fullScreenScenePicker
                         if model.fullScreenScene == .visualizer {
-                            expandedVisualization(opacityOverride: nil, orbitBoost: false)
-                                .padding(.horizontal, 72)
-                                .padding(.vertical, 32)
-                                .padding(.bottom, 88)
-                                .allowsHitTesting(false)
-                                .transition(.opacity.combined(with: .offset(y: -8)))
-                        } else {
-                            IslandFullscreenLyricsView(
-                                model: model,
-                                importLyrics: importLyrics,
-                                chooseCandidate: chooseLyricsCandidate,
-                                deleteLyrics: deleteLyrics,
-                                retryLyrics: retryLyrics,
-                                seek: seekNowPlaying,
-                                togglePlay: toggleNowPlaying,
-                                previousTrack: previousTrack,
-                                nextTrack: nextTrack,
-                                setLyricsOffset: setLyricsOffset,
-                                selectLyricsRouting: selectLyricsRouting,
-                                searchCandidates: searchLyricsCandidates,
-                                applyCandidate: applyLyricsCandidate
+                            modeIconRow
+                            IslandIconButton(
+                                symbol: "sparkles",
+                                label: presetTitle(),
+                                selected: false,
+                                action: cyclePreset
                             )
-                            .transition(.opacity)
+                        }
+                        Spacer()
+                        IslandIconButton(
+                            symbol: "arrow.down.right.and.arrow.up.left",
+                            label: String(localized: "Exit full screen"),
+                            selected: false,
+                            action: exitFullScreen
+                        )
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.top, 24)
+                    .opacity(model.fullScreenScene == .lyrics && isFullScreenChromeVisible == false ? 0 : 1)
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: isFullScreenChromeVisible ? 0.18 : 0.42),
+                        value: isFullScreenChromeVisible
+                    )
+
+                    ZStack(alignment: .bottom) {
+                        Group {
+                            if model.fullScreenScene == .visualizer {
+                                expandedVisualization(opacityOverride: nil, orbitBoost: false)
+                                    .padding(.horizontal, 72)
+                                    .padding(.vertical, 32)
+                                    .padding(.bottom, 88)
+                                    .allowsHitTesting(false)
+                                    .transition(.opacity.combined(with: .offset(y: -8)))
+                            } else {
+                                IslandFullscreenLyricsView(
+                                    model: model,
+                                    importLyrics: importLyrics,
+                                    chooseCandidate: chooseLyricsCandidate,
+                                    deleteLyrics: deleteLyrics,
+                                    retryLyrics: retryLyrics,
+                                    seek: seekNowPlaying,
+                                    togglePlay: toggleNowPlaying,
+                                    previousTrack: previousTrack,
+                                    nextTrack: nextTrack,
+                                    setLyricsOffset: setLyricsOffset,
+                                    selectLyricsRouting: selectLyricsRouting,
+                                    searchCandidates: searchLyricsCandidates,
+                                    applyCandidate: applyLyricsCandidate,
+                                    isLyricsPickerPresented: $isLyricsPickerPresented
+                                )
+                                .transition(.opacity)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
+
+                        if model.fullScreenScene == .visualizer {
+                            HStack(alignment: .center, spacing: 18) {
+                                fullScreenNowPlayingMetadata
+                                Spacer()
+                                fullScreenPlaybackButton
+                            }
+                            .padding(.horizontal, 36)
+                            .frame(minHeight: 64)
+                            .padding(.bottom, 24)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .animation(fullScreenSceneAnimation, value: model.fullScreenScene)
-
-                    if model.fullScreenScene == .visualizer {
-                        HStack(alignment: .center, spacing: 18) {
-                            fullScreenNowPlayingMetadata
-                            Spacer()
-                            fullScreenPlaybackButton
-                        }
-                        .padding(.horizontal, 36)
-                        .frame(minHeight: 64)
-                        .padding(.bottom, 24)
-                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if model.fullScreenScene == .lyrics, isLyricsPickerPresented {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                                isLyricsPickerPresented = false
+                            }
+                        }
+                        .transition(.opacity)
+                        .zIndex(30)
+
+                    LyricsCandidatePickerOverlay(
+                        initialTitle: model.nowPlaying.title,
+                        initialArtist: model.nowPlaying.artist,
+                        initialAlbum: model.nowPlaying.album,
+                        trackDurationSeconds: model.nowPlaying.durationSeconds,
+                        currentDocument: model.lyricsState.document,
+                        clockAnchor: model.nowPlaying.playbackClockAnchor,
+                        isPlaying: model.nowPlaying.isPlaying,
+                        playbackRate: model.nowPlaying.playbackRate,
+                        lyricsOffsetSeconds: model.prefs.lyricsOffsetSeconds,
+                        canImport: canImportLyricsForPicker,
+                        searchCandidates: searchLyricsCandidates,
+                        onSelect: { document, remember in
+                            applyLyricsCandidate(document, remember)
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                                isLyricsPickerPresented = false
+                            }
+                        },
+                        onImportLocal: {
+                            importLyrics()
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                                isLyricsPickerPresented = false
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                                isLyricsPickerPresented = false
+                            }
+                        }
+                    )
+                    .frame(
+                        width: min(max(600, proxy.size.width * 0.62), 780),
+                        height: min(max(400, proxy.size.height * 0.64), 520)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 36)
+                    .padding(.bottom, 40)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
+                    .zIndex(31)
+                }
             }
         }
         .overlay(alignment: .top) {
             if model.fullScreenScene == .lyrics {
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(isFullScreenChromeVisible ? 0.16 : 0))
+                    .fill(Color.white.opacity(isFullScreenChromeVisible && isLyricsPickerPresented == false ? 0.16 : 0))
                     .frame(width: 42, height: 5)
                     .padding(.top, 26)
                     .allowsHitTesting(false)
@@ -483,16 +540,27 @@ struct IslandContentView: View {
         .onAppear {
             wakeFullScreenChrome()
         }
-        .onChange(of: model.fullScreenScene) { _, _ in
+        .onChange(of: model.fullScreenScene) { _, scene in
+            if scene != .lyrics {
+                isLyricsPickerPresented = false
+            }
             wakeFullScreenChrome()
+        }
+        .onChange(of: model.lyricsTrackRevision) {
+            isLyricsPickerPresented = false
         }
         .onDisappear {
             chromeAutoHideTask?.cancel()
             chromeAutoHideTask = nil
             isFullScreenChromeVisible = true
+            isLyricsPickerPresented = false
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
+    }
+
+    private var canImportLyricsForPicker: Bool {
+        model.nowPlaying.title.isEmpty == false && model.nowPlaying.artist.isEmpty == false
     }
 
     private func wakeFullScreenChrome() {

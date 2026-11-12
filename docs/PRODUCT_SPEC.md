@@ -157,7 +157,7 @@ Audune 是一款轻量、原生、可高度定制的 macOS 系统音乐可视化
 - 同步类型明确区分 Unsynced / Line Synced / Word Synced / Syllable Synced。仅当来源提供真实对应时间时才启用该级填充；普通 LRC 或纯文本不得伪造字级/音节时间。播放时间以 NowPlayingService 为权威，PlaybackClock 只做连续投影。暂停冻结、恢复继续、Seek 重定位、切歌重置；翻译入场同样由播放位置驱动。
 - 状态包括识别歌曲、检查本地、在线搜索、加载、找到、纯音乐、未找到、离线、Provider 不可用、限流、网络错误、解析失败、导入失败与取消；所有状态都有独立文案和重试/导入入口，不使用统一的「在线不可用」。
 - 进入 Lyrics 只获取临时 Now Playing runtime demand，不改写或锁定 `Show Now Playing when expanded`；退出、Island 折叠/禁用、窗口销毁或服务 shutdown 时释放。Island 的 Experimental Now Playing 产品状态不变，Process Tap 生命周期不受影响。
-- Fullscreen Lyrics 左下角提供紧凑来源选择器（原生 Menu 列表）：Auto · Fastest Reliable、Auto · Best Match，以及已启用 Provider/Node 的手动选择；手动选择持久化，失败时不得静默改源。菜单底部「高级设置」打开多候选预览选择器（关键词搜索、版本预览与选用）；其中的来源 chip 仅筛选本次结果，不改写持久路由偏好。当前展示的署名必须反映实际返回来源（含 Aggregator 上游，若 API 提供）。
+- Fullscreen Lyrics 左下角提供紧凑来源选择器（原生 Menu 列表）：Auto · Fastest Reliable、Auto · Best Match，以及已启用 Provider/Node 的手动选择；手动选择持久化，失败时不得静默改源。菜单底部「高级设置」打开轻量候选面板：默认只展示当前已加载歌词；「搜索其它来源」按当前 Menu 路由检索，结果行自带来源名；「使用此歌词」写入本曲绑定缓存。面板打开时全屏顶栏与舞台一并压暗。当前展示的署名必须反映实际返回来源（含 Aggregator 上游，若 API 提供）。
 - 已知限制：各在线歌词服务的记录授权与正式隐私条款往往无法完全核验；开源服务端许可不覆盖上游歌词内容。Audune 因此不打包、不持久化、不再分发在线歌词，只做会话内展示，并在 `docs/THIRD_PARTY_NOTICES.md` 与审计表记录剩余风险。逐字/音节数据是否可用取决于具体曲目与来源。真实播放器、VoiceOver、Reduce Motion 与多显示器行为仍需按 `docs/MANUAL_TESTS.md` 手动验收。
 
 ### v0.4+ — 其他播放器 / 视觉扩展

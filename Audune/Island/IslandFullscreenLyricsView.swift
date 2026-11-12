@@ -21,76 +21,24 @@ struct IslandFullscreenLyricsView: View {
     var selectLyricsRouting: (LyricsRoutingSelection) -> Void = { _ in }
     var searchCandidates: (String?, String?, String?, String?) async -> [LyricsScoredCandidate] = { _, _, _, _ in [] }
     var applyCandidate: (LyricsDocument, Bool) -> Void = { _, _ in }
+    @Binding var isLyricsPickerPresented: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isManualBrowsing = false
-    @State private var isLyricsPickerPresented = false
     @State private var routingSelection = LyricsRoutingController.shared.selection
     @State private var healthSnapshots: [LyricsNodeHealthSnapshot] = []
 
     var body: some View {
         GeometryReader { proxy in
             let metrics = LyricsSceneMetrics(size: proxy.size)
-            ZStack(alignment: .bottomLeading) {
-                Group {
-                    if metrics.isCompact {
-                        compactBody(metrics: metrics)
-                    } else {
-                        splitBody(metrics: metrics)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                if isLyricsPickerPresented {
-                    Color.black.opacity(0.32)
-                        .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(shouldReduceMotion ? nil : .easeOut(duration: 0.18)) {
-                                isLyricsPickerPresented = false
-                            }
-                        }
-
-                    LyricsCandidatePickerOverlay(
-                        initialTitle: model.nowPlaying.title,
-                        initialArtist: model.nowPlaying.artist,
-                        initialAlbum: model.nowPlaying.album,
-                        trackDurationSeconds: model.nowPlaying.durationSeconds,
-                        currentDocument: model.lyricsState.document,
-                        clockAnchor: model.nowPlaying.playbackClockAnchor,
-                        isPlaying: model.nowPlaying.isPlaying,
-                        playbackRate: model.nowPlaying.playbackRate,
-                        lyricsOffsetSeconds: model.prefs.lyricsOffsetSeconds,
-                        canImport: canImportLyrics,
-                        searchCandidates: searchCandidates,
-                        onSelect: { document, remember in
-                            applyCandidate(document, remember)
-                            withAnimation(shouldReduceMotion ? nil : .easeOut(duration: 0.18)) {
-                                isLyricsPickerPresented = false
-                            }
-                        },
-                        onImportLocal: {
-                            importLyrics()
-                            withAnimation(shouldReduceMotion ? nil : .easeOut(duration: 0.18)) {
-                                isLyricsPickerPresented = false
-                            }
-                        },
-                        onDismiss: {
-                            withAnimation(shouldReduceMotion ? nil : .easeOut(duration: 0.18)) {
-                                isLyricsPickerPresented = false
-                            }
-                        }
-                    )
-                    .frame(
-                        width: min(max(620, proxy.size.width * 0.66), 820),
-                        height: min(max(420, proxy.size.height * 0.68), 540)
-                    )
-                    .padding(.leading, metrics.horizontalInset)
-                    .padding(.bottom, metrics.bottomInset + 34)
-                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottomLeading)))
-                    .zIndex(20)
+            Group {
+                if metrics.isCompact {
+                    compactBody(metrics: metrics)
+                } else {
+                    splitBody(metrics: metrics)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onAppear {
             #if DEBUG
@@ -2841,7 +2789,7 @@ private extension View {
 
 // MARK: - Interactive Lyrics Candidate Picker
 
-private struct LyricsCandidatePickerOverlay: View {
+struct LyricsCandidatePickerOverlay: View {
     var initialTitle: String
     var initialArtist: String
     var initialAlbum: String
@@ -2860,7 +2808,7 @@ private struct LyricsCandidatePickerOverlay: View {
     @State private var queryTitle: String = ""
     @State private var queryArtist: String = ""
     @State private var isEditingQuery = false
-    @State private var selectedProviderFilter: String = "all"
+    @State private var hasSearched = false
     @State private var candidates: [LyricsScoredCandidate] = []
     @State private var selectedCandidateID: UUID?
     @State private var isSearching = false
@@ -2896,14 +2844,14 @@ private struct LyricsCandidatePickerOverlay: View {
                 .padding(.bottom, 12)
 
             Divider()
-                .overlay(Color.white.opacity(0.09))
+                .overlay(Color.white.opacity(0.08))
 
             HStack(spacing: 0) {
                 candidateListColumn
-                    .frame(width: 316)
+                    .frame(width: 300)
 
                 Divider()
-                    .overlay(Color.white.opacity(0.09))
+                    .overlay(Color.white.opacity(0.08))
 
                 previewColumn
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2911,40 +2859,27 @@ private struct LyricsCandidatePickerOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
-                .overlay(Color.white.opacity(0.09))
+                .overlay(Color.white.opacity(0.08))
 
             footerBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
         }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(red: 0.08, green: 0.08, blue: 0.10).opacity(0.82))
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(red: 0.08, green: 0.08, blue: 0.10).opacity(0.78))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.50), radius: 32, y: 14)
+        .shadow(color: .black.opacity(0.42), radius: 28, y: 12)
         .preferredColorScheme(.dark)
         .onAppear {
             queryTitle = initialTitle
             queryArtist = initialArtist
-            if let currentDocument,
-               let currentScored = LyricsCandidateRanker.scoreLenient(
-                   document: currentDocument,
-                   expected: currentDocument.trackKey,
-                   providerID: currentDocument.source?.resolvedProviderID ?? "current",
-                   nodeID: currentDocument.source?.nodeID,
-                   latencySeconds: 0,
-                   reliabilityScore: 1
-               )
-            {
-                candidates = [currentScored]
-                selectedCandidateID = currentScored.id
-            }
-            triggerSearch()
+            seedCurrentDocumentOnly()
         }
         .onDisappear {
             searchTask?.cancel()
@@ -2952,71 +2887,61 @@ private struct LyricsCandidatePickerOverlay: View {
         }
     }
 
-    // MARK: - Header & Source Filter Chips
+    // MARK: - Header
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(initialTitle.isEmpty ? String(localized: "Lyrics") : initialTitle)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.96))
+                    Text(initialTitle.isEmpty ? String(localized: "Lyrics") : initialTitle)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .lineLimit(1)
+                    if initialArtist.isEmpty == false {
+                        Text(initialArtist)
+                            .font(.system(size: 12.5, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.48))
                             .lineLimit(1)
-                        if initialArtist.isEmpty == false {
-                            Text(initialArtist)
-                                .font(.system(size: 13, weight: .regular))
-                                .foregroundStyle(.white.opacity(0.52))
-                                .lineLimit(1)
-                        }
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
+
+                headerTextButton(
+                    title: String(localized: "Search other sources"),
+                    symbol: "magnifyingglass",
+                    emphasized: isSearching
+                ) {
+                    triggerSearch()
+                }
+                .disabled(isSearching)
 
                 Button {
-                    withAnimation(.easeOut(duration: 0.16)) {
+                    withAnimation(.easeOut(duration: 0.14)) {
                         isEditingQuery.toggle()
                     }
                 } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 10.5, weight: .semibold))
-                        Text(String(localized: "Search Keyword"))
-                            .font(.system(size: 11.5, weight: .medium))
-                    }
-                    .foregroundStyle(.white.opacity(isEditingQuery ? 0.96 : 0.72))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(isEditingQuery ? 0.18 : 0.08))
-                    )
+                    Text(String(localized: "Edit keywords"))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(.white.opacity(isEditingQuery ? 0.92 : 0.52))
                 }
                 .buttonStyle(.plain)
 
                 if canImport {
-                    Button(action: onImportLocal) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "square.and.arrow.down")
-                                .font(.system(size: 10.5, weight: .semibold))
-                            Text(String(localized: "Import LRC"))
-                                .font(.system(size: 11.5, weight: .medium))
-                        }
-                        .foregroundStyle(.white.opacity(0.76))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.white.opacity(0.08)))
-                    }
-                    .buttonStyle(.plain)
+                    headerTextButton(
+                        title: String(localized: "Import LRC"),
+                        symbol: "square.and.arrow.down",
+                        emphasized: false,
+                        action: onImportLocal
+                    )
                 }
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.68))
-                        .frame(width: 24, height: 24)
-                        .background(Color.white.opacity(0.09), in: Circle())
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(String(localized: "Close lyrics picker"))
@@ -3031,45 +2956,30 @@ private struct LyricsCandidatePickerOverlay: View {
                     } label: {
                         Text(String(localized: "Search"))
                             .font(.system(size: 11.5, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.88))
-                            .padding(.horizontal, 14)
-                            .frame(height: 27)
-                            .background(Color.white.opacity(0.90), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            .foregroundStyle(.white.opacity(0.90))
                     }
                     .buttonStyle(.plain)
+                    .disabled(isSearching)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    sourceFilterChip(title: String(localized: "All Sources"), id: "all")
-                    sourceFilterChip(title: String(localized: "Local & Saved"), id: "local")
-
-                    ForEach(LyricsProviderRegistry.selectableProviders) { provider in
-                        sourceFilterChip(title: provider.displayName, id: provider.id)
-                    }
-                }
+                .transition(.opacity)
             }
         }
     }
 
-    private func sourceFilterChip(title: String, id: String) -> some View {
-        let selected = selectedProviderFilter == id
-        return Button {
-            guard selectedProviderFilter != id else { return }
-            selectedProviderFilter = id
-            triggerSearch()
-        } label: {
-            Text(title)
-                .font(.system(size: 11, weight: selected ? .semibold : .medium))
-                .foregroundStyle(selected ? Color.black.opacity(0.88) : Color.white.opacity(0.68))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4.5)
-                .background(
-                    Capsule()
-                        .fill(selected ? Color.white.opacity(0.92) : Color.white.opacity(0.07))
-                )
+    private func headerTextButton(
+        title: String,
+        symbol: String,
+        emphasized: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 10.5, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 11.5, weight: .medium))
+            }
+            .foregroundStyle(.white.opacity(emphasized ? 0.92 : 0.58))
         }
         .buttonStyle(.plain)
     }
@@ -3080,11 +2990,7 @@ private struct LyricsCandidatePickerOverlay: View {
             .font(.system(size: 12))
             .padding(.horizontal, 10)
             .frame(height: 27)
-            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-            )
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             .onSubmit {
                 triggerSearch()
             }
@@ -3095,9 +3001,13 @@ private struct LyricsCandidatePickerOverlay: View {
     private var candidateListColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(String(localized: "Versions (\(candidates.count))"))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.46))
+                Text(
+                    hasSearched
+                        ? String(localized: "Versions (\(candidates.count))")
+                        : String(localized: "Current")
+                )
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.42))
                 Spacer()
                 if isSearching {
                     HStack(spacing: 5) {
@@ -3115,22 +3025,26 @@ private struct LyricsCandidatePickerOverlay: View {
             if candidates.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: isSearching ? "waveform.badge.magnifyingglass" : "music.note.list")
-                        .font(.system(size: 22, weight: .light))
-                        .foregroundStyle(.white.opacity(0.36))
-                    Text(
-                        isSearching
-                            ? String(localized: "Searching lyrics providers…")
-                            : String(localized: "No lyrics found for this filter.")
-                    )
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.48))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
+                        .font(.system(size: 20, weight: .light))
+                        .foregroundStyle(.white.opacity(0.32))
+                    Text(emptyListMessage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.46))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                    if hasSearched == false, isSearching == false {
+                        Button(String(localized: "Search other sources")) {
+                            triggerSearch()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.72))
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 7) {
+                    LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(candidates) { candidate in
                             candidateCard(candidate)
                         }
@@ -3140,6 +3054,16 @@ private struct LyricsCandidatePickerOverlay: View {
                 }
             }
         }
+    }
+
+    private var emptyListMessage: String {
+        if isSearching {
+            return String(localized: "Searching lyrics providers…")
+        }
+        if hasSearched {
+            return String(localized: "No lyrics found for this search.")
+        }
+        return String(localized: "No lyrics loaded for this song yet.")
     }
 
     private func candidateCard(_ candidate: LyricsScoredCandidate) -> some View {
@@ -3360,12 +3284,9 @@ private struct LyricsCandidatePickerOverlay: View {
 
     private var footerBar: some View {
         HStack(spacing: 12) {
-            Image(systemName: "pin.fill")
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.42))
-            Text(String(localized: "Selected lyrics and timing offset are remembered for this song."))
+            Text(String(localized: "Remembered for this song."))
                 .font(.system(size: 11.5))
-                .foregroundStyle(.white.opacity(0.48))
+                .foregroundStyle(.white.opacity(0.42))
                 .lineLimit(1)
 
             Spacer()
@@ -3373,8 +3294,7 @@ private struct LyricsCandidatePickerOverlay: View {
             Button(String(localized: "Cancel"), action: onDismiss)
                 .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.64))
-                .padding(.horizontal, 10)
+                .foregroundStyle(.white.opacity(0.58))
 
             Button {
                 guard let chosen = selectedCandidate?.document else { return }
@@ -3382,10 +3302,7 @@ private struct LyricsCandidatePickerOverlay: View {
             } label: {
                 Text(String(localized: "Use Lyrics"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.88))
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 7)
-                    .background(Color.white.opacity(selectedCandidate == nil ? 0.35 : 0.94), in: Capsule())
+                    .foregroundStyle(.white.opacity(selectedCandidate == nil ? 0.35 : 0.94))
             }
             .buttonStyle(.plain)
             .disabled(selectedCandidate == nil)
@@ -3394,21 +3311,41 @@ private struct LyricsCandidatePickerOverlay: View {
 
     // MARK: - Helpers
 
+    private func seedCurrentDocumentOnly() {
+        hasSearched = false
+        guard let currentDocument,
+              let currentScored = LyricsCandidateRanker.scoreLenient(
+                  document: currentDocument,
+                  expected: currentDocument.trackKey,
+                  providerID: currentDocument.source?.resolvedProviderID ?? "current",
+                  nodeID: currentDocument.source?.nodeID,
+                  latencySeconds: 0,
+                  reliabilityScore: 1
+              )
+        else {
+            candidates = []
+            selectedCandidateID = nil
+            return
+        }
+        candidates = [currentScored]
+        selectedCandidateID = currentScored.id
+    }
+
     private func triggerSearch() {
         searchTask?.cancel()
         isSearching = true
+        hasSearched = true
         let title = queryTitle
         let artist = queryArtist
         let album = initialAlbum
-        let filter: String? = selectedProviderFilter == "all" ? nil : selectedProviderFilter
 
         searchTask = Task { @MainActor in
-            let fetched = await searchCandidates(title, artist, album, filter)
+            // nil filter → LyricsRouter uses the footer Menu routing selection.
+            let fetched = await searchCandidates(title, artist, album, nil)
             guard Task.isCancelled == false else { return }
             isSearching = false
             var combined = fetched
             if let currentDocument,
-               selectedProviderFilter == "all" || selectedProviderFilter == "local",
                combined.contains(where: { $0.document.id == currentDocument.id }) == false,
                let currentScored = LyricsCandidateRanker.scoreLenient(
                    document: currentDocument,

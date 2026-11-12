@@ -41,7 +41,8 @@ final class LyricsManualPreviewTests: XCTestCase {
             nextTrack: {},
             setLyricsOffset: { _ in },
             searchCandidates: { _, _, _, _ in [] },
-            applyCandidate: { _, _ in }
+            applyCandidate: { _, _ in },
+            isLyricsPickerPresented: .constant(false)
         )
         .frame(width: 1296, height: 841)
         .background(
@@ -67,8 +68,6 @@ final class LyricsManualPreviewTests: XCTestCase {
     }
 
     func testPickerOverlayPreviewSnapshot() throws {
-        setenv("AUDUNE_LYRICS_PICKER_PREVIEW", "1", 1)
-        defer { unsetenv("AUDUNE_LYRICS_PICKER_PREVIEW") }
 
         let model = IslandModel()
         model.nowPlaying = NowPlayingSnapshot(
@@ -148,24 +147,34 @@ final class LyricsManualPreviewTests: XCTestCase {
             )!,
         ]
 
-        let view = IslandFullscreenLyricsView(
-            model: model,
-            importLyrics: {},
-            chooseCandidate: { _ in },
-            deleteLyrics: { _ in },
-            retryLyrics: {},
-            seek: { _ in },
-            togglePlay: {},
-            previousTrack: {},
-            nextTrack: {},
-            setLyricsOffset: { _ in },
-            searchCandidates: { _, _, _, _ in candidates },
-            applyCandidate: { _, _ in }
-        )
+        let view = ZStack(alignment: .bottomLeading) {
+            LinearGradient(
+                colors: [Color(red: 0.36, green: 0.22, blue: 0.36), Color(red: 0.20, green: 0.28, blue: 0.46)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Color.black.opacity(0.45)
+            LyricsCandidatePickerOverlay(
+                initialTitle: model.nowPlaying.title,
+                initialArtist: model.nowPlaying.artist,
+                initialAlbum: model.nowPlaying.album,
+                trackDurationSeconds: model.nowPlaying.durationSeconds,
+                currentDocument: model.lyricsState.document,
+                clockAnchor: model.nowPlaying.playbackClockAnchor,
+                isPlaying: model.nowPlaying.isPlaying,
+                playbackRate: model.nowPlaying.playbackRate,
+                lyricsOffsetSeconds: 0,
+                canImport: true,
+                searchCandidates: { _, _, _, _ in candidates },
+                onSelect: { _, _ in },
+                onImportLocal: {},
+                onDismiss: {}
+            )
+            .frame(width: 720, height: 480)
+            .padding(.leading, 36)
+            .padding(.bottom, 40)
+        }
         .frame(width: 1296, height: 841)
-        .background(
-            LinearGradient(colors: [Color(red: 0.36, green: 0.22, blue: 0.36), Color(red: 0.20, green: 0.28, blue: 0.46)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
         .clipped()
 
         let host = NSHostingView(rootView: view)

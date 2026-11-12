@@ -4851,7 +4851,67 @@
     "lines": {},
     "·": {},
     "· %@": {},
-    "“%@”": {}
+    "“%@”": {},
+    "Current": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "Edit keywords": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑关键词"
+          }
+        }
+      }
+    },
+    "No lyrics found for this search.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次搜索没有找到歌词。"
+          }
+        }
+      }
+    },
+    "No lyrics loaded for this song yet.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这首歌还没有加载歌词。"
+          }
+        }
+      }
+    },
+    "Remembered for this song.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将记住本曲的选择。"
+          }
+        }
+      }
+    },
+    "Search other sources": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索其它来源"
+          }
+        }
+      }
+    }
   },
   "version": "1.0"
 }
