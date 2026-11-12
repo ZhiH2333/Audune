@@ -238,6 +238,137 @@ nonisolated enum LyricsPresentationTiming {
         guard reduceMotion == false else { return 1.0 }
         return isPlaying ? 1.0 : 0.86
     }
+
+    /// Apple Music depth-of-field row opacity curve.
+    /// Keeps a full wall of upcoming lines softly legible while past lines recede faster,
+    /// relying on progressive Gaussian blur and viewport edge masks rather than abrupt fade-out.
+    static func rowOpacity(
+        distance: Int,
+        hasActiveLine: Bool,
+        isPast: Bool,
+        isWaiting: Bool = false,
+        manualMode: Bool = false,
+        isHovered: Bool = false
+    ) -> Double {
+        let safeDistance = max(0, distance)
+        let isFocused = safeDistance == 0 && hasActiveLine
+        let rawOpacity: Double
+        if manualMode {
+            rawOpacity = manualBrowsingOpacity(isFocused: isFocused)
+        } else if isFocused {
+            rawOpacity = isWaiting ? 0.58 : 0.98
+        } else if isPast {
+            switch safeDistance {
+            case 1: rawOpacity = 0.26
+            case 2: rawOpacity = 0.17
+            case 3: rawOpacity = 0.10
+            case 4: rawOpacity = 0.05
+            default: rawOpacity = 0.0
+            }
+        } else {
+            switch safeDistance {
+            case 0: rawOpacity = 0.56
+            case 1: rawOpacity = 0.36
+            case 2: rawOpacity = 0.28
+            case 3: rawOpacity = 0.22
+            case 4: rawOpacity = 0.17
+            case 5: rawOpacity = 0.13
+            case 6: rawOpacity = 0.09
+            case 7: rawOpacity = 0.06
+            default: rawOpacity = 0.0
+            }
+        }
+        return isHovered ? max(rawOpacity, 0.88) : rawOpacity
+    }
+
+    /// Progressive depth-of-field Gaussian blur radius (in points) for non-focused lyric rows.
+    /// Returns zero for invisible rows so off-screen rows never trigger an offscreen pass.
+    static func rowBlurRadius(
+        distance: Int,
+        hasActiveLine: Bool,
+        isPast: Bool,
+        manualMode: Bool = false,
+        isHovered: Bool = false,
+        reduceMotion: Bool = false,
+        blurEnabled: Bool = true
+    ) -> Double {
+        guard manualMode == false,
+              isHovered == false,
+              reduceMotion == false,
+              blurEnabled
+        else {
+            return 0
+        }
+        let safeDistance = max(0, distance)
+        if hasActiveLine && safeDistance == 0 {
+            return 0
+        }
+        if (isPast && safeDistance >= 5) || (isPast == false && safeDistance >= 8) {
+            return 0
+        }
+        let effectiveDistance = hasActiveLine ? max(1, safeDistance) : min(6, safeDistance + 1)
+        let radius = 0.85 + Double(effectiveDistance) * 0.78 + (isPast ? 0.40 : 0.0)
+        return min(radius, 5.2)
+    }
+
+    /// Leading-anchored visual scale for a lyric row.
+    static func rowScale(
+        isFocused: Bool,
+        manualMode: Bool = false,
+        isHovered: Bool = false,
+        reduceMotion: Bool = false
+    ) -> Double {
+        guard reduceMotion == false else { return 1.0 }
+        if manualMode {
+            return isHovered ? 1.015 : 1.0
+        }
+        if isFocused {
+            return 1.05
+        }
+        return isHovered ? 0.98 : 0.955
+    }
+
+    /// Closed-form second-order spring displacement from `initialOffset` toward `0`.
+    /// Each row starts moving after `delay` (derived from `staggeredRowDelay`), producing
+    /// Apple Music's accordion wave without mutating per-row `@State` properties.
+    static func underdampedSpringDisplacement(
+        elapsed: TimeInterval,
+        delay: TimeInterval,
+        initialOffset: Double,
+        response: Double = 0.50,
+        dampingFraction: Double = 0.82
+    ) -> Double {
+        guard elapsed.isFinite,
+              delay.isFinite,
+              initialOffset.isFinite,
+              abs(initialOffset) > 0.001,
+              response.isFinite,
+              response > 0.01
+        else {
+            return 0
+        }
+        let t = elapsed - max(0, delay)
+        if t <= 0 {
+            return initialOffset
+        }
+        if t >= response * 3.2 {
+            return 0
+        }
+        let omega0 = (2.0 * .pi) / response
+        let zeta = min(max(dampingFraction.isFinite ? dampingFraction : 0.82, 0.1), 1.0)
+        if zeta < 1.0 {
+            let root = sqrt(1.0 - zeta * zeta)
+            let omegaD = omega0 * root
+            let envelope = exp(-zeta * omega0 * t)
+            let harmonic = cos(omegaD * t) + (zeta / root) * sin(omegaD * t)
+            let value = initialOffset * envelope * harmonic
+            return abs(value) < 0.05 ? 0 : value
+        } else {
+            let envelope = exp(-omega0 * t)
+            let value = initialOffset * envelope * (1.0 + omega0 * t)
+            return abs(value) < 0.05 ? 0 : value
+        }
+    }
 }
 
 nonisolated struct LyricsTrackKey: Codable, Equatable, Hashable, Sendable {
