@@ -154,9 +154,12 @@ final class LyricsManager {
     ) async -> [LyricsScoredCandidate] {
         var results: [LyricsScoredCandidate] = []
         if providerFilter == nil || providerFilter == "local" {
+            // Imported LRC / Custom bindings are per-track only — never leak across songs via
+            // the picker's lenient online ranking path.
             let localDocs = (try? store.load()) ?? []
             for doc in localDocs {
-                if let scored = LyricsCandidateRanker.scoreLenient(
+                guard LyricsCandidateRanker.passesTrackMatch(doc, trackKey: queryKey) else { continue }
+                if let scored = LyricsCandidateRanker.score(
                     document: doc,
                     expected: queryKey,
                     providerID: "local",
@@ -167,14 +170,19 @@ final class LyricsManager {
                     results.append(scored)
                 }
             }
-            let boundDocs = (try? store.loadBindings())?.map(\.document) ?? []
-            for rawDoc in boundDocs {
+            let bindings = (try? store.loadBindings()) ?? []
+            for binding in bindings {
+                // Bindings are keyed by Lyrics Track Key — only surface the current song.
+                guard LyricsCandidateRanker.passesTrackMatch(binding.document, trackKey: queryKey) else {
+                    continue
+                }
                 // Present remembered picks as Custom so they never masquerade as a provider hit.
-                var doc = rawDoc
+                var doc = binding.document
                 if doc.source?.kind != .localImport {
                     doc.source = LyricsSourceInfo.customSelection(preserving: doc.source)
                 }
-                if let scored = LyricsCandidateRanker.scoreLenient(
+                doc.trackKey = queryKey
+                if let scored = LyricsCandidateRanker.score(
                     document: doc,
                     expected: queryKey,
                     providerID: LyricsSourceInfo.customProviderID,

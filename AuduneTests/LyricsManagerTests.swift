@@ -261,6 +261,34 @@ final class LyricsManagerTests: XCTestCase {
         }
     }
 
+    func testSearchCandidatesKeepsLocalAndCustomBoundToMatchingTrackOnly() async throws {
+        let currentKey = makeKey(title: "Current Song")
+        let otherKey = makeKey(title: "Other Song")
+
+        try store.save(makeDocument(key: otherKey, text: "Other imported", source: .localImport))
+        try store.save(makeDocument(key: currentKey, text: "Current imported", source: .localImport))
+
+        let otherOnline = makeDocument(key: otherKey, text: "Other picked")
+        let manager = LyricsManager(
+            store: store,
+            provider: ImmediateLyricsProvider(results: [.notFound])
+        )
+        manager.activate(trackKey: otherKey)
+        manager.selectCandidate(
+            otherOnline,
+            for: otherKey,
+            rememberSelection: true,
+            lyricsOffsetSeconds: 0
+        )
+
+        let results = await manager.searchCandidates(for: currentKey, providerFilter: "local")
+        let texts = results.map { $0.document.lines.first?.text }
+        XCTAssertEqual(texts, ["Current imported"])
+        XCTAssertFalse(results.contains { $0.document.lines.first?.text == "Other imported" })
+        XCTAssertFalse(results.contains { $0.document.lines.first?.text == "Other picked" })
+        XCTAssertFalse(results.contains { $0.providerID == LyricsSourceInfo.customProviderID })
+    }
+
     func testRememberedCandidatePersistsSnapshotAndPerTrackOffsetAcrossSessions() async throws {
         let key = makeKey(title: "Remembered Song")
         let chosen = makeDocument(key: key, text: "Selected lyric line")
