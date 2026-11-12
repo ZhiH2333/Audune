@@ -67,6 +67,102 @@ final class LyricsManualPreviewTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testAutoFollowDepthStagePreviewSnapshot() throws {
+        unsetenv("AUDUNE_LYRICS_MANUAL_PREVIEW")
+
+        let model = IslandModel()
+        model.nowPlaying = NowPlayingSnapshot(
+            availability: .listening,
+            title: "夜に駆ける",
+            artist: "YOASOBI",
+            album: "THE BOOK",
+            isPlaying: true,
+            elapsedSeconds: 18.6,
+            durationSeconds: 257,
+            playbackRate: 1,
+            bundleIdentifier: "com.apple.Music",
+            artwork: nil,
+            seekSupported: true,
+            lastUpdated: Date(),
+            playbackClockAnchor: PlaybackClockAnchor(
+                elapsedSeconds: 18.6,
+                monotonicUptime: ProcessInfo.processInfo.systemUptime,
+                revision: 1
+            )
+        )
+        var doc = Self.document()
+        doc.declaredSynchronization = .wordSynced
+        doc.lines[3].words = [
+            LyricsWord(id: 0, text: "This ", startSeconds: 18.0, durationSeconds: 0.35),
+            LyricsWord(id: 1, text: "is ", startSeconds: 18.35, durationSeconds: 0.30),
+            LyricsWord(id: 2, text: "a ", startSeconds: 18.65, durationSeconds: 0.25),
+            LyricsWord(id: 3, text: "deliberately ", startSeconds: 18.90, durationSeconds: 0.85),
+            LyricsWord(id: 4, text: "long ", startSeconds: 19.75, durationSeconds: 0.50),
+            LyricsWord(id: 5, text: "lyric ", startSeconds: 20.25, durationSeconds: 0.45),
+            LyricsWord(id: 6, text: "line ", startSeconds: 20.70, durationSeconds: 0.45),
+            LyricsWord(id: 7, text: "that ", startSeconds: 21.15, durationSeconds: 0.35),
+            LyricsWord(id: 8, text: "should ", startSeconds: 21.50, durationSeconds: 0.40),
+            LyricsWord(id: 9, text: "keep ", startSeconds: 21.90, durationSeconds: 0.35),
+            LyricsWord(id: 10, text: "the ", startSeconds: 22.25, durationSeconds: 0.25),
+            LyricsWord(id: 11, text: "same ", startSeconds: 22.50, durationSeconds: 0.30),
+            LyricsWord(id: 12, text: "wrap", startSeconds: 22.80, durationSeconds: 0.40)
+        ]
+        model.lyricsState = .found(doc)
+        model.lyricsPositionSeconds = 18.6
+        model.lyricsDisplayPositionSeconds = 18.6
+        model.activeLyricsLineIndex = 3
+
+        let view = IslandFullscreenLyricsView(
+            model: model,
+            importLyrics: {},
+            chooseCandidate: { _ in },
+            deleteLyrics: { _ in },
+            retryLyrics: {},
+            seek: { _ in },
+            togglePlay: {},
+            previousTrack: {},
+            nextTrack: {},
+            setLyricsOffset: { _ in },
+            searchCandidates: { _, _, _, _ in [] },
+            applyCandidate: { _, _ in },
+            isLyricsPickerPresented: .constant(false)
+        )
+        .frame(width: 1296, height: 841)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.34, green: 0.16, blue: 0.38),
+                    Color(red: 0.16, green: 0.20, blue: 0.44),
+                    Color(red: 0.08, green: 0.10, blue: 0.22)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipped()
+
+        let host = NSHostingView(rootView: view)
+        let window = NSWindow(
+            contentRect: NSRect(x: -4000, y: 0, width: 1296, height: 841),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = host
+        window.orderFront(nil)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.8))
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+
+        let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let data = rep.representation(using: .png, properties: [:])!
+        let dir = URL(fileURLWithPath: "/tmp/lyrics-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try data.write(to: dir.appendingPathComponent("auto-follow-preview.png"))
+        window.orderOut(nil)
+    }
+
     func testPickerOverlayPreviewSnapshot() throws {
 
         let model = IslandModel()
