@@ -1371,6 +1371,7 @@ private struct LyricsDepthStage: View, Equatable {
     var onSeekLine: ((LyricsLine) -> Bool)? = nil
 
     @State private var rowHeights: [Int: CGFloat] = [:]
+    @State private var cascadeOffset: CGFloat = 0
     @State private var hoveredLineIndex: Int?
     @State private var isManualScrolling = false
     @State private var hasUserScrolled = false
@@ -1494,13 +1495,18 @@ private struct LyricsDepthStage: View, Equatable {
                             scrollToFocus(reader, focus: focusIndex, viewportHeight: proxy.size.height, focusTop: focusTop)
                         }
                     }
-                    .onChange(of: focus) { _, newFocus in
+                    .onChange(of: focus) { oldFocus, newFocus in
                         let now = ProcessInfo.processInfo.systemUptime
                         let dt = lastFocusChangeUptime > 0 ? (now - lastFocusChangeUptime) : .infinity
                         lastFocusChangeUptime = now
                         let rapid = dt < 0.24
                         if isRapidFocusCadence != rapid {
                             isRapidFocusCadence = rapid
+                        }
+                        if rapid {
+                            if cascadeOffset != 0 { cascadeOffset = 0 }
+                        } else {
+                            triggerCascadeSpring(from: oldFocus, to: newFocus)
                         }
                         guard isManualScrolling == false else { return }
                         scrollToFocus(
@@ -1573,6 +1579,7 @@ private struct LyricsDepthStage: View, Equatable {
             autoResumeTask?.cancel()
             autoResumeTask = nil
             rowHeights = [:]
+            cascadeOffset = 0
             hoveredLineIndex = nil
             isManualScrolling = false
             hasUserScrolled = false
@@ -1724,8 +1731,7 @@ private struct LyricsDepthStage: View, Equatable {
         pillHInset: CGFloat,
         pillVInset: CGFloat
     ) -> some View {
-        let signedDistance = index - focus
-        let distance = abs(signedDistance)
+        let distance = abs(index - focus)
         let isFocus = distance == 0 && hasActiveLine
         let isWaiting = isFocus && isInterlude
         let visualDistance = hasActiveLine ? distance : min(6, distance)
@@ -1771,17 +1777,19 @@ private struct LyricsDepthStage: View, Equatable {
                 distance: visualDistance,
                 reduceMotion: reduceMotion
             )
-        // Signed vertical wave spread: when `focus` advances, each row's target offset
-        // shifts by -4.2pt after its `staggerDelay`, creating Apple Music's accordion
-        // wave across the viewport with zero extra `@State` mutations.
-        let waveOffsetY: CGFloat = (manualMode || reduceMotion || isRapidFocusCadence || visualDistance > 6)
+        // Transient cascade only: settle back to 0 so rest spacing stays even. A permanent
+        // signedDistance offset stretched upcoming gaps and fought the scroll spring.
+        let rowCascadeY: CGFloat = (manualMode || reduceMotion || isRapidFocusCadence || isFocus || visualDistance > 6)
             ? 0
-            : CGFloat(min(max(signedDistance, -4), 6)) * 4.2
+            : cascadeOffset * min(CGFloat(visualDistance) * 0.34, 1.5)
         let shouldAnimateFocus = reduceMotion == false && isNearViewport
         let focusAnimation: Animation? = shouldAnimateFocus
             ? (isRapidFocusCadence
                 ? .easeOut(duration: 0.14)
                 : .spring(response: 0.50, dampingFraction: 0.82).delay(staggerDelay))
+            : nil
+        let cascadeAnimation: Animation? = (shouldAnimateFocus && isRapidFocusCadence == false)
+            ? .spring(response: 0.48, dampingFraction: 0.78).delay(staggerDelay)
             : nil
 
         let showsIntroDots = introWait && hasActiveLine == false && index == 0 && manualMode == false
@@ -1939,13 +1947,25 @@ private struct LyricsDepthStage: View, Equatable {
         .contentShape(Rectangle())
         .blur(radius: blurRadius)
         .scaleEffect(rowScale, anchor: scaleAnchor)
-        .offset(y: waveOffsetY)
         .animation(focusAnimation, value: focus)
+        .offset(y: rowCascadeY)
+        .animation(cascadeAnimation, value: cascadeOffset)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: manualMode)
         .animation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.84), value: isHovered)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: line))
         .accessibilityAddTraits(isFocus ? .isSelected : [])
+    }
+
+    private func triggerCascadeSpring(from oldFocus: Int, to newFocus: Int) {
+        guard reduceMotion == false, isManualScrolling == false, oldFocus != newFocus else {
+            return
+        }
+        let direction: CGFloat = newFocus > oldFocus ? 1 : -1
+        cascadeOffset = direction * 14
+        withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+            cascadeOffset = 0
+        }
     }
 
     private func formattedBackgroundText(_ text: String) -> String {

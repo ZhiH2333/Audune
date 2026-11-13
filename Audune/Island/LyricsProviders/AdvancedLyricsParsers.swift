@@ -106,22 +106,21 @@ nonisolated enum YRCLyricsParser {
             while remainder.isEmpty == false, remainder.first != "(" {
                 wordText.append(remainder.removeFirst())
             }
-            let cleaned = wordText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard cleaned.isEmpty == false else { continue }
+            // Keep trailing spaces from the source so English word boundaries survive and
+            // syllable fragments like "Twin"+"kle " do not become "Twin kle ".
+            let token = String(wordText.drop(while: { $0.isWhitespace }))
+                .trimmingCharacters(in: .newlines)
+            guard token.trimmingCharacters(in: .whitespaces).isEmpty == false else { continue }
             words.append(
                 .init(
-                    text: cleaned,
+                    text: token,
                     startMilliseconds: wordStart,
                     endMilliseconds: wordStart + wordDuration
                 )
             )
         }
-        let joined = words.map(\.text).joined()
-        let needsSpaces = words.contains { word in
-            word.text.unicodeScalars.contains { CharacterSet.letters.contains($0) && $0.isASCII }
-        }
-        let text = needsSpaces ? words.map(\.text).joined(separator: " ") : joined
-        guard text.isEmpty == false else { return nil }
+        let text = words.map(\.text).joined()
+        guard text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { return nil }
         return .init(
             text: text,
             startMilliseconds: lineStart,

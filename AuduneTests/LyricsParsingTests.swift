@@ -149,12 +149,16 @@ final class LyricsParsingTests: XCTestCase {
         let contents = """
         [54260,3090](54260,900,0)Stop (55160,480,0)and (55640,1710,0)stare
         [57380,1500](57380,150,0)I (57530,600,0)think
+        [60000,2000](60000,400,0)Twin(60400,400,0)kle (60800,400,0)Star
         """
         let document = try YRCLyricsParser.parse(contents, trackKey: trackKey)
-        XCTAssertEqual(document.lines.count, 2)
+        XCTAssertEqual(document.lines.count, 3)
         XCTAssertEqual(document.lines[0].text, "Stop and stare")
         XCTAssertEqual(try XCTUnwrap(document.lines[0].startSeconds), 54.26, accuracy: 0.001)
-        XCTAssertEqual(document.lines[0].words?.map(\.text), ["Stop", "and", "stare"])
+        // Trailing spaces stay on the token that owned them in the source.
+        XCTAssertEqual(document.lines[0].words?.map(\.text), ["Stop ", "and ", "stare"])
+        XCTAssertEqual(document.lines[2].text, "Twinkle Star")
+        XCTAssertEqual(document.lines[2].words?.map(\.text), ["Twin", "kle ", "Star"])
         XCTAssertEqual(document.synchronization, .wordSynced)
     }
 
